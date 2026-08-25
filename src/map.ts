@@ -1,5 +1,6 @@
 import L from 'leaflet';
 import { basemapById, type Basemap } from './basemaps';
+import { startHeading, type Heading } from './heading';
 
 export type MapHandle = {
   map: L.Map;
@@ -84,12 +85,33 @@ export function startLocating(map: L.Map, cb: LocateCallbacks): () => void {
     return () => {};
   }
 
-  const marker = L.circleMarker([0, 0], {
-    radius: 6,
-    color: '#fff',
-    weight: 2,
-    fillColor: '#1a73e8',
-    fillOpacity: 1,
+  // A divIcon rather than the circleMarker this used to be, for two reasons:
+  // the heading cone has to rotate, which is a CSS transform on an HTML element
+  // and not something a vector path option can express; and marker icons live
+  // in markerPane, above the overlayPane that every trail shares — so selecting
+  // a trail, which calls bringToFront() (see Halo.show), no longer buries the
+  // location under it. The 48px box is the cone's full reach; the dot sits at
+  // its centre. Cone first in DOM order so the dot paints over its apex.
+  const marker = L.marker([0, 0], {
+    icon: L.divIcon({
+      // Replaces Leaflet's default 'leaflet-div-icon' class, whose white box
+      // and grey border would otherwise frame the whole thing.
+      className: 'locate-icon',
+      html:
+        '<div class="locate-rotor">' +
+        '<svg viewBox="-24 -24 48 48" width="48" height="48" aria-hidden="true">' +
+        '<path class="locate-cone" d="M -13.766 -19.66 A 24 24 0 0 1 13.766 -19.66 L 0 0 Z"/>' +
+        '</svg>' +
+        '</div>' +
+        '<div class="locate-dot"></div>',
+      iconSize: [48, 48],
+      iconAnchor: [24, 24],
+    }),
+    // The old circleMarker was interactive by default and could swallow a click
+    // meant for the map handler — the same reason the halo opts out at
+    // selection.ts. Hit-testing is geometric (trailAt), so nothing is lost.
+    interactive: false,
+    keyboard: false,
   });
   const accuracy = L.circle([0, 0], {
     radius: 0,
@@ -100,6 +122,33 @@ export function startLocating(map: L.Map, cb: LocateCallbacks): () => void {
   });
   let first = true;
 
+  // Unwrapped degrees: it may drift past 360 or below 0, and that is the point.
+  // Transitioning rotate(350deg) to rotate(10deg) spins 340° the wrong way, so
+  // the accumulator only ever moves by the shortest signed step and the CSS
+  // transition follows it honestly across north.
+  let displayed = 0;
+  let current: Heading | null = null;
+
+  function applyHeading(next: Heading | null) {
+    current = next;
+    // Null until the marker is on the map, which is why the first fix re-applies
+    // whatever the compass had already reported.
+    const root = marker.getElement();
+    if (!root) return;
+    if (!next) {
+      root.removeAttribute('data-heading');
+      return;
+    }
+    // Shortest signed step, in [-180, 180). An exact half turn is ambiguous
+    // and resolves counter-clockwise, which is as good an answer as the other.
+    const delta = ((((next.degrees - displayed) % 360) + 540) % 360) - 180;
+    displayed += delta;
+    root.style.setProperty('--heading', `${displayed}deg`);
+    root.setAttribute('data-heading', next.source);
+  }
+
+  const heading = startHeading(applyHeading);
+
   const watchId = navigator.geolocation.watchPosition(
     (pos) => {
       const latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
@@ -108,7 +157,12 @@ export function startLocating(map: L.Map, cb: LocateCallbacks): () => void {
       if (first) {
         accuracy.addTo(map);
         marker.addTo(map);
+        // The icon element only exists now, so any heading that arrived before
+        // the first fix has not been written to it yet.
+        applyHeading(current);
       }
+      // Only consulted when no compass is live; see the latch in heading.ts.
+      heading.pushFix(pos.coords.heading, pos.coords.speed);
       cb.onFix(latlng, first);
       first = false;
     },
@@ -124,6 +178,7 @@ export function startLocating(map: L.Map, cb: LocateCallbacks): () => void {
 
   return () => {
     navigator.geolocation.clearWatch(watchId);
+    heading.stop();
     map.removeLayer(marker);
     map.removeLayer(accuracy);
   };

@@ -177,6 +177,33 @@ input[type='color']:disabled { opacity: .35; cursor: not-allowed; }
 }
 .trail-halo { animation: trail-halo-pulse .55s ease-in-out 2; }
 
+/* The current location: a blue dot, unchanged, plus a cone showing which way
+   you are facing. The cone is a divIcon rather than a vector because it has to
+   rotate — see the comment on the marker in map.ts. */
+.locate-icon { pointer-events: none; }
+.locate-rotor {
+  position: absolute; inset: 0;
+  transform: rotate(var(--heading, 0deg));
+  transform-origin: 50% 50%;
+  opacity: 0;
+  transition: transform .18s linear, opacity .2s ease;
+}
+/* No heading yet — and with no compass and no movement, which is a desktop
+   browser's permanent state, the marker then renders as exactly the bare dot
+   it was before this existed. */
+.locate-icon[data-heading] .locate-rotor { opacity: 1; }
+.locate-cone { fill: var(--accent); fill-opacity: .3; }
+.locate-dot {
+  position: absolute; left: 50%; top: 50%;
+  width: 12px; height: 12px; margin: -8px 0 0 -8px;
+  /* content-box keeps the blue disc 12px across with the ring outside it,
+     matching the circleMarker's radius 6 plus its 2px stroke. */
+  box-sizing: content-box;
+  border: 2px solid #fff; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 3px rgba(0,0,0,.4);
+}
+
 /* Inert outside the drawer breakpoint. Kept in the DOM (never [hidden]) so it
    can fade with the drawer. */
 #backdrop {
@@ -200,6 +227,21 @@ input[type='color']:disabled { opacity: .35; cursor: not-allowed; }
   box-shadow: 0 1px 4px rgba(0,0,0,.25);
 }
 #app[data-panel='open'] #expand { display: none; }
+
+/* Top-right: clears the panel on the left and the zoom control bottom-right.
+   Same z-index 1100 as #expand, and for the same reason documented there.
+   Only ever visible on iOS, where the compass needs a gesture to unlock. */
+#compass {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top));
+  right: calc(12px + env(safe-area-inset-right));
+  z-index: 1100;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; line-height: 1;
+  box-shadow: 0 1px 4px rgba(0,0,0,.25);
+}
+#compass[hidden] { display: none; }
 
 #notices {
   position: absolute;
@@ -273,13 +315,15 @@ input[type='color']:disabled { opacity: .35; cursor: not-allowed; }
   #sidebar, #backdrop { transition: none; }
   /* The halo still appears — only its attention-getting pulse is dropped. */
   .trail-halo { animation: none; }
+  /* Likewise the cone still points; it just snaps there. */
+  .locate-rotor { transition: none; }
 }
 
 /* ---------------------------------------------------------------------------
    Touch targets. Scoped to coarse pointers so the desktop layout is untouched.
 --------------------------------------------------------------------------- */
 @media (pointer: coarse) {
-  #expand { width: 44px; height: 44px; }
+  #expand, #compass { width: 44px; height: 44px; }
   .panel-head button { min-width: 44px; min-height: 44px; }
   input[type='color'] { width: 40px; height: 32px; }
   #trail-list li { padding: 10px 8px; gap: 10px; }

@@ -19,6 +19,9 @@ export type UiCallbacks = {
   onExport: (format: ExportFormat, scale: number) => void;
   onExportOptionChange: () => void;
   onFilterChange: () => void;
+  /** The compass button. Only ever fires on iOS, which gates device
+   *  orientation behind a grant that must come from a user gesture. */
+  onCompass: () => void;
 };
 
 /** Must match the drawer media query in style.css. */
@@ -51,6 +54,7 @@ export class Ui {
   private readonly progressBar = el('export-progress').firstElementChild as HTMLElement;
   private readonly notices = el('notices');
   private readonly dropOverlay = el('drop-overlay');
+  private readonly compass = el<HTMLButtonElement>('compass');
 
   /** Trail ids whose name is shown in full rather than clipped to one line.
    *  renderTrails() rebuilds every row, so this cannot live on the elements. */
@@ -113,6 +117,8 @@ export class Ui {
     this.exportButton.addEventListener('click', () => {
       this.cb.onExport(this.formatSelect.value as ExportFormat, Number(this.scaleSelect.value));
     });
+
+    this.compass.addEventListener('click', () => this.cb.onCompass());
 
     el('collapse').addEventListener('click', () => this.setPanel(false));
     el('expand').addEventListener('click', () => this.setPanel(true));
@@ -405,6 +411,12 @@ export class Ui {
 
   setProgress(done: number, total: number): void {
     this.progressBar.style.width = total > 0 ? `${(done / total) * 100}%` : '0';
+  }
+
+  /** Shown only where the compass needs an explicit grant, and hidden again the
+   *  moment one is given — there is nothing left to ask for. */
+  setCompassButton(show: boolean): void {
+    this.compass.hidden = !show;
   }
 
   notify(message: string, kind: 'info' | 'error' = 'info', timeout = 7000): void {

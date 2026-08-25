@@ -2,6 +2,7 @@ import L from 'leaflet';
 import './style.css';
 
 import { exportView, planExport, type ExportFormat } from './export';
+import { compassNeedsPermission, requestCompassPermission } from './heading';
 import { createMap, startLocating } from './map';
 import { Halo, trailAt } from './selection';
 import {
@@ -142,6 +143,20 @@ async function main(): Promise<void> {
     onExport: (format, scale) => void runExport(format, scale),
     onExportOptionChange: () => updateEstimate(),
     onFilterChange: () => refresh(),
+    onCompass: () => {
+      void requestCompassPermission().then((granted) => {
+        // On a grant there is nothing left to ask, so the button goes. On a
+        // denial it stays: iOS will not prompt again this page load, and the
+        // button is the only way back after a reload.
+        ui.setCompassButton(!granted);
+        if (!granted) {
+          ui.notify(
+            'Compass permission denied — the direction cone will only show while you are moving.',
+            'error',
+          );
+        }
+      });
+    },
   });
 
   ui.applySettings(settings);
@@ -277,6 +292,10 @@ async function main(): Promise<void> {
   const restored = visibleBounds();
   const hadTrails = restored.isValid();
   if (hadTrails) map.fitBounds(restored, { padding: [30, 30] });
+
+  // iOS 13+ only. Everywhere else the compass either needs no permission or
+  // does not exist, and an unusable button would be worse than none.
+  if (compassNeedsPermission()) ui.setCompassButton(true);
 
   startLocating(map, {
     onError: (message) => ui.notify(message),
