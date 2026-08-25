@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>oh-trail-map</title>
+  </head>
+  <body>
+    <div id="app">
+      <aside id="sidebar">
+        <header class="panel-head">
+          <h1>oh&#8209;trail&#8209;map</h1>
+          <button id="collapse" type="button" title="Hide panel" aria-label="Hide panel">&laquo;</button>
+        </header>
+
+        <div id="panel-body" class="panel-body">
+          <section class="block">
+            <label class="file-button">
+              <input id="file-input" type="file" accept=".gpx,application/gpx+xml" multiple />
+              <span>Import GPX files</span>
+            </label>
+            <p class="hint">or drop .gpx files onto the map</p>
+          </section>
+
+          <section class="block">
+            <label class="row">
+              <input id="uniform-toggle" type="checkbox" />
+              <span class="grow">Use one color for all trails</span>
+              <input id="uniform-color" type="color" />
+            </label>
+            <label class="row">
+              <span class="grow">Trail width</span>
+              <input id="trail-width" type="range" min="1" max="10" step="0.5" />
+              <output id="trail-width-value" class="muted"></output>
+            </label>
+          </section>
+
+          <section class="block grow-block">
+            <div class="row trail-head">
+              <input id="trail-all" type="checkbox" title="Show or hide every trail" aria-label="Show or hide every trail" />
+              <h2 class="grow">Trails <span id="trail-count" class="muted"></span></h2>
+              <button id="trail-expand-all" type="button">Expand all</button>
+            </div>
+            <input id="trail-search" type="search" placeholder="Filter by name"
+                   aria-label="Filter trails by name" autocomplete="off" />
+            <ul id="trail-list"></ul>
+            <p id="trail-empty" class="hint">No trails imported yet.</p>
+          </section>
+
+          <section class="block">
+            <h2>Basemap</h2>
+            <div id="basemap-options" class="options"></div>
+          </section>
+
+          <section class="block">
+            <h2>Export</h2>
+            <div class="row">
+              <label class="grow">Format
+                <select id="export-format">
+                  <option value="png">PNG (raster)</option>
+                  <option value="svg">SVG (vector trails)</option>
+                </select>
+              </label>
+              <label class="grow">Scale
+                <select id="export-scale">
+                  <option value="1">1&times;</option>
+                  <option value="2">2&times;</option>
+                  <option value="4" selected>4&times;</option>
+                  <option value="8">8&times;</option>
+                </select>
+              </label>
+            </div>
+            <p id="export-estimate" class="hint"></p>
+            <button id="export-button" type="button" class="primary">Export</button>
+            <div id="export-progress" class="progress" hidden><div></div></div>
+          </section>
+        </div>
+      </aside>
+
+      <div id="backdrop"></div>
+      <button id="expand" type="button" title="Show panel" aria-label="Show panel">&#9776;</button>
+      <div id="map"></div>
+      <div id="notices"></div>
+      <div id="drop-overlay" hidden><span>Drop GPX files to import</span></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

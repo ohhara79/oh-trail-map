@@ -1,0 +1,295 @@
+@import 'leaflet/dist/leaflet.css';
+
+:root {
+  --bg: #ffffff;
+  --fg: #1f2328;
+  --muted: #6b7280;
+  --border: #e2e5e9;
+  --accent: #1a73e8;
+  --sidebar-width: 310px;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--fg);
+  background: var(--bg);
+  overscroll-behavior: none;
+}
+
+/* 100dvh tracks the mobile URL bar; the 100vh above it is the fallback for
+   browsers without dvh. Without this the bottom of the map sits under the
+   browser chrome and #app's overflow:hidden makes it unreachable. */
+#app { position: relative; display: flex; height: 100vh; height: 100dvh; overflow: hidden; }
+
+#sidebar {
+  width: var(--sidebar-width);
+  flex: 0 0 var(--sidebar-width);
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  background: var(--bg);
+  /* Above Leaflet's control containers (z-index 1000), which live inside #map
+     and so would otherwise paint through the small-screen overlay drawer. */
+  z-index: 1100;
+}
+
+/* Panel state lives in one place: data-panel on #app. Not the `hidden`
+   property — it implies display:none, which cannot transition, and the
+   small-screen drawer below slides rather than disappearing. */
+#app[data-panel='closed'] #sidebar { display: none; }
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.panel-head h1 { font-size: 15px; margin: 0; flex: 1; letter-spacing: .01em; }
+
+.panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* flex-shrink:0 because .panel-body is both the scroller and a flex column:
+   without it the flex algorithm squeezes the blocks before the container
+   ever scrolls. */
+.block { padding: 12px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.block:last-child { border-bottom: 0; }
+/* .panel-body is the one scroller in the panel, at every width: the trails
+   section renders at its natural height and the panel scrolls past it. A nested
+   scroller here only ever showed the row or two of spare height the other
+   blocks left over, and emptying it in renderTrails discarded its scroll
+   position on every re-render. */
+.grow-block { flex: 0 0 auto; display: flex; flex-direction: column; }
+.block h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; }
+
+.row { display: flex; align-items: center; gap: 8px; }
+.row input[type='range'] { flex: 0 1 110px; min-width: 0; }
+.row output { min-width: 3.5em; text-align: right; }
+.grow { flex: 1; min-width: 0; }
+.muted { color: var(--muted); font-weight: 400; }
+.hint { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: var(--fg);
+}
+button:hover { background: #f5f6f8; }
+button.primary {
+  width: 100%;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  padding: 8px;
+  font-weight: 500;
+}
+button.primary:hover { background: #1765cc; }
+button.primary:disabled { background: #9db9e6; border-color: #9db9e6; cursor: progress; }
+
+select { font: inherit; width: 100%; padding: 4px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+label.grow { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+
+input[type='color'] {
+  width: 26px; height: 22px; padding: 0;
+  border: 1px solid var(--border); border-radius: 4px;
+  background: none; cursor: pointer;
+}
+input[type='color']:disabled { opacity: .35; cursor: not-allowed; }
+
+.file-button { display: block; }
+.file-button input { display: none; }
+.file-button span {
+  display: block;
+  text-align: center;
+  padding: 8px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.file-button span:hover { border-color: var(--accent); color: var(--accent); }
+
+#trail-search {
+  font: inherit; width: 100%; margin-bottom: 8px; padding: 5px 8px;
+  border: 1px solid var(--border); border-radius: 6px; background: #fff;
+}
+#trail-search:focus { outline: none; border-color: var(--accent); }
+
+#trail-list { list-style: none; margin: 0; padding: 0; }
+#trail-list li {
+  display: flex; align-items: center; gap: 8px;
+  /* The negative margin cancels the padding, so unselected rows look exactly as
+     they did — but a selected row's tint can then bleed out to the edge of the
+     block's own padding instead of leaving a white stripe beside it. */
+  padding: 6px 8px; margin: 0 -8px;
+  border-bottom: 1px solid #f1f3f5;
+}
+#trail-list li.selected {
+  background: #eaf2fd;
+  box-shadow: inset 3px 0 0 var(--accent);
+  border-radius: 4px;
+}
+#trail-list li:last-child { border-bottom: 0; }
+#trail-list li:not(.selected):hover { background: #f7f8fa; border-radius: 4px; }
+.trail-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Clicking a name drops the clamp so the whole thing is readable; anywhere
+   covers the filename fallback, which is often one unbroken token. */
+.trail-name.expanded { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+.trail-name mark { background: #fff3a3; color: inherit; border-radius: 2px; }
+.trail-stats { font-size: 11px; color: var(--muted); }
+.trail-remove { border: 0; background: none; color: var(--muted); font-size: 16px; line-height: 1; padding: 2px 4px; }
+.trail-remove:hover { color: #d33; background: none; }
+.trail-head { margin-bottom: 8px; }
+.trail-head h2 { margin: 0; }
+.trail-head button { font-size: 12px; padding: 2px 6px; color: var(--muted); }
+
+.options { display: flex; flex-direction: column; gap: 4px; }
+.options label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+
+.progress { margin-top: 8px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.progress > div { height: 100%; width: 0; background: var(--accent); transition: width .1s linear; }
+
+#map { flex: 1; min-width: 0; height: 100%; }
+
+/* The halo under the selected trail pulses twice on selection, then settles.
+   Halo paths are destroyed and rebuilt on every selection (see Halo.show), so
+   the animation restarts on its own — no class toggle plus forced reflow.
+   Leaflet writes stroke-opacity as a presentation attribute, which loses to any
+   author rule, so the keyframes apply while running and the attribute's own
+   value takes back over once they finish. */
+@keyframes trail-halo-pulse {
+  0%, 100% { stroke-opacity: .95; }
+  50%      { stroke-opacity: .2; }
+}
+.trail-halo { animation: trail-halo-pulse .55s ease-in-out 2; }
+
+/* Inert outside the drawer breakpoint. Kept in the DOM (never [hidden]) so it
+   can fade with the drawer. */
+#backdrop {
+  position: absolute; inset: 0; z-index: 1050;
+  background: rgba(0,0,0,.4);
+  opacity: 0; pointer-events: none;
+  transition: opacity .22s ease;
+}
+
+#expand {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top));
+  left: calc(12px + env(safe-area-inset-left));
+  /* Must clear Leaflet's control containers, which are also z-index 1000 and
+     come later in DOM order — that is what used to bury this button under the
+     zoom control. The zoom control now sits bottom-right as well. */
+  z-index: 1100;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; line-height: 1;
+  box-shadow: 0 1px 4px rgba(0,0,0,.25);
+}
+#app[data-panel='open'] #expand { display: none; }
+
+#notices {
+  position: absolute;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  left: 50%; transform: translateX(-50%);
+  z-index: 1200; display: flex; flex-direction: column; gap: 6px; align-items: center;
+  pointer-events: none;
+}
+.notice {
+  pointer-events: auto;
+  background: #2b3138; color: #fff;
+  padding: 8px 12px; border-radius: 6px;
+  font-size: 13px; max-width: min(62ch, calc(100vw - 32px));
+  box-shadow: 0 2px 10px rgba(0,0,0,.25);
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.notice.error { background: #a4262c; }
+.notice button { background: none; border: 0; color: inherit; opacity: .7; padding: 0 2px; }
+.notice button:hover { background: none; opacity: 1; }
+
+#drop-overlay {
+  position: absolute; inset: 0; z-index: 1500;
+  background: rgba(26,115,232,.12);
+  border: 3px dashed var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 500; color: #14538f;
+  pointer-events: none;
+}
+#drop-overlay[hidden] { display: none; }
+
+/* ---------------------------------------------------------------------------
+   Small screens: the sidebar leaves the flex row and becomes an overlay drawer,
+   so the map is always full width. A 310px fixed column left ~80px of map on a
+   390px phone, which is why trails rendered into a sliver.
+
+   The max-height arm catches landscape phones, which are wider than 720px but
+   have so little vertical room that a fixed column is the wrong trade.
+
+   This block must come after the base #app[data-panel='closed'] rule above:
+   both are one attribute + one id, so source order is what settles it.
+
+   Keep this query in sync with DRAWER_QUERY in src/ui.ts.
+--------------------------------------------------------------------------- */
+@media (max-width: 720px), (max-height: 480px) {
+  #sidebar {
+    position: absolute; top: 0; bottom: 0; left: 0;
+    width: min(86vw, 320px); flex: none;
+    padding-left: env(safe-area-inset-left);
+    border-right: 0;
+    box-shadow: 2px 0 16px rgba(0,0,0,.28);
+    transform: translateX(-100%);
+    /* visibility, not display: a translated-away panel stays focusable, and
+       display:none would kill the slide. Delayed so it hides after the slide. */
+    visibility: hidden;
+    transition: transform .22s ease, visibility 0s .22s;
+  }
+  /* Re-assert display over the desktop closed-rule; the drawer slides instead. */
+  #app[data-panel='closed'] #sidebar { display: flex; }
+  #app[data-panel='open'] #sidebar {
+    transform: none;
+    visibility: visible;
+    transition: transform .22s ease;
+  }
+  #app[data-panel='open'] #backdrop { opacity: 1; pointer-events: auto; }
+
+  /* Stop short of the bottom-right zoom control. */
+  #notices { left: 12px; right: 56px; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #sidebar, #backdrop { transition: none; }
+  /* The halo still appears — only its attention-getting pulse is dropped. */
+  .trail-halo { animation: none; }
+}
+
+/* ---------------------------------------------------------------------------
+   Touch targets. Scoped to coarse pointers so the desktop layout is untouched.
+--------------------------------------------------------------------------- */
+@media (pointer: coarse) {
+  #expand { width: 44px; height: 44px; }
+  .panel-head button { min-width: 44px; min-height: 44px; }
+  input[type='color'] { width: 40px; height: 32px; }
+  #trail-list li { padding: 10px 8px; gap: 10px; }
+  #trail-list li input[type='checkbox'],
+  .trail-head input[type='checkbox'] { width: 20px; height: 20px; }
+  .trail-head button { min-height: 32px; }
+  /* 16px is the threshold below which iOS Safari zooms the page on focus. */
+  #trail-search { padding: 8px; font-size: 16px; }
+  .trail-remove { padding: 10px 12px; font-size: 20px; }
+  .row input[type='range'] { flex: 1 1 auto; height: 32px; }
+  .options label { padding: 6px 0; }
+  select { padding: 8px 4px; }
+}
