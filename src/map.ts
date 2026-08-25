@@ -18,7 +18,9 @@ export function createMap(container: HTMLElement, basemapId: string): MapHandle 
     // and fractional zoom would make "4x" not mean exactly 4x.
     zoomSnap: 1,
     zoomDelta: 1,
-    attributionControl: true,
+    // No on-map credit box: each basemap's required credit is burned into the
+    // exported image instead (see Basemap.exportCredit).
+    attributionControl: false,
   }).setView([20, 0], 2);
 
   L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -40,7 +42,6 @@ export function createMap(container: HTMLElement, basemapId: string): MapHandle 
   let layer = L.tileLayer(source.url, {
     maxZoom: source.maxZoom,
     subdomains: source.subdomains ?? 'abc',
-    attribution: source.attribution,
     crossOrigin: 'anonymous',
   }).addTo(map);
 
@@ -57,7 +58,6 @@ export function createMap(container: HTMLElement, basemapId: string): MapHandle 
       layer = L.tileLayer(next.url, {
         maxZoom: next.maxZoom,
         subdomains: next.subdomains ?? 'abc',
-        attribution: next.attribution,
         crossOrigin: 'anonymous',
       }).addTo(map);
       // Zooming past the new source's limit would leave a blank canvas.

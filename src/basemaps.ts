@@ -9,7 +9,6 @@ export type Basemap = {
   url: string;
   maxZoom: number;
   subdomains?: string;
-  attribution: string;
   /** Short credit burned into exported images. */
   exportCredit: string;
 };
@@ -20,7 +19,6 @@ export const BASEMAPS: Basemap[] = [
     label: 'OSM Standard',
     url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
     maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     exportCredit: '© OpenStreetMap contributors',
   },
   {
@@ -29,7 +27,6 @@ export const BASEMAPS: Basemap[] = [
     url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
     maxZoom: 17,
     subdomains: 'abc',
-    attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)',
     exportCredit: '© OpenStreetMap contributors — OpenTopoMap (CC-BY-SA)',
   },
   {
@@ -37,7 +34,6 @@ export const BASEMAPS: Basemap[] = [
     label: 'Carto Light',
     url: 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
     maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
     exportCredit: '© OpenStreetMap contributors © CARTO',
   },
   {
@@ -46,7 +42,6 @@ export const BASEMAPS: Basemap[] = [
     // Note the {z}/{y}/{x} axis order — differs from the slippy-map default.
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     maxZoom: 19,
-    attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics',
     exportCredit: 'Imagery © Esri, Maxar, Earthstar Geographics',
   },
 ];
