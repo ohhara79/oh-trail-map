@@ -80,6 +80,13 @@ async function main(): Promise<void> {
   const { map } = handle;
   const halo = new Halo(map);
 
+  // Follow state for the bottom-right locate button. lastFix is the only copy
+  // of the current position outside startLocating's closure, and blockedMessage
+  // latches the geolocation errors that will never resolve on their own.
+  let lastFix: L.LatLng | null = null;
+  let following = false;
+  let blockedMessage: string | null = null;
+
   const ui = new Ui({
     onImport: (files) => void importFiles(files),
     onToggle: (id, visible) => {
@@ -143,6 +150,19 @@ async function main(): Promise<void> {
     onExport: (format, scale) => void runExport(format, scale),
     onExportOptionChange: () => updateEstimate(),
     onFilterChange: () => refresh(),
+    onLocate: () => {
+      if (blockedMessage) {
+        // The watch does not retry after a denial, so the only honest thing a
+        // click can do is say again why nothing is happening.
+        ui.notify(blockedMessage);
+        return;
+      }
+      following = !following;
+      // panTo, not setView: following moves the centre and never the zoom.
+      if (following && lastFix) map.panTo(lastFix);
+      else if (following) ui.notify('Finding your location…', 'info', 3000);
+      syncLocateButton();
+    },
     onCompass: () => {
       void requestCompassPermission().then((granted) => {
         // On a grant there is nothing left to ask, so the button goes. On a
@@ -160,6 +180,13 @@ async function main(): Promise<void> {
   });
 
   ui.applySettings(settings);
+
+  /** The single place the locate button's appearance is derived. */
+  function syncLocateButton(): void {
+    ui.setLocateState(
+      blockedMessage !== null ? 'blocked' : !following ? 'off' : lastFix ? 'on' : 'searching',
+    );
+  }
 
   function refresh(): void {
     ui.renderTrails(trails, settings, selectedId);
@@ -298,11 +325,41 @@ async function main(): Promise<void> {
   if (compassNeedsPermission()) ui.setCompassButton(true);
 
   startLocating(map, {
-    onError: (message) => ui.notify(message),
+    onError: (message, blocked) => {
+      ui.notify(message);
+      if (!blocked) return;
+      // Nothing is coming, so stop claiming to be waiting for it.
+      blockedMessage = message;
+      following = false;
+      syncLocateButton();
+    },
     onFix: (latlng, first) => {
+      lastFix = latlng;
+      // A fix answers whatever the last error claimed — Chrome re-runs the
+      // watch when a permission is changed from the address bar, without a
+      // reload — so the button must stop showing itself as blocked.
+      blockedMessage = null;
       // Only recentre on the first fix, and never over restored trails.
       if (first && !hadTrails) map.setView(latlng, 14);
+      if (following) map.panTo(latlng);
+      syncLocateButton();
     },
+  });
+
+  // Dragging away is how following stops — the gesture every map app uses.
+  // Deliberately not 'movestart', which also fires for our own panTo above and
+  // for every wheel or pinch zoom; zooming should stay centred on you.
+  map.on('dragstart', () => {
+    if (!following) return;
+    following = false;
+    syncLocateButton();
+  });
+  // Leaflet's keyboard pan goes through panBy and never fires dragstart, so it
+  // has to be said separately.
+  map.getContainer().addEventListener('keydown', (e) => {
+    if (!following || !e.key.startsWith('Arrow')) return;
+    following = false;
+    syncLocateButton();
   });
 
   // One handler for every click. No listener is attached to the polylines

@@ -22,7 +22,14 @@ export type UiCallbacks = {
   /** The compass button. Only ever fires on iOS, which gates device
    *  orientation behind a grant that must come from a user gesture. */
   onCompass: () => void;
+  /** The bottom-right locate button: recentre on, and then follow, the current
+   *  position — or stop following if it already is. */
+  onLocate: () => void;
 };
+
+/** What the locate button is currently saying: not following; following but
+ *  still waiting on a first fix; following; or geolocation is a dead end. */
+export type LocateState = 'off' | 'searching' | 'on' | 'blocked';
 
 /** Must match the drawer media query in style.css. */
 const DRAWER_QUERY = '(max-width: 720px), (max-height: 480px)';
@@ -55,6 +62,7 @@ export class Ui {
   private readonly notices = el('notices');
   private readonly dropOverlay = el('drop-overlay');
   private readonly compass = el<HTMLButtonElement>('compass');
+  private readonly locate = el<HTMLButtonElement>('locate');
 
   /** Trail ids whose name is shown in full rather than clipped to one line.
    *  renderTrails() rebuilds every row, so this cannot live on the elements. */
@@ -119,6 +127,7 @@ export class Ui {
     });
 
     this.compass.addEventListener('click', () => this.cb.onCompass());
+    this.locate.addEventListener('click', () => this.cb.onLocate());
 
     el('collapse').addEventListener('click', () => this.setPanel(false));
     el('expand').addEventListener('click', () => this.setPanel(true));
@@ -417,6 +426,13 @@ export class Ui {
    *  moment one is given — there is nothing left to ask for. */
   setCompassButton(show: boolean): void {
     this.compass.hidden = !show;
+  }
+
+  /** The button is never hidden or disabled: even in 'blocked' a click still
+   *  answers, by re-raising the notice that says why. */
+  setLocateState(state: LocateState): void {
+    this.locate.dataset.state = state;
+    this.locate.setAttribute('aria-pressed', String(state === 'on' || state === 'searching'));
   }
 
   notify(message: string, kind: 'info' | 'error' = 'info', timeout = 7000): void {

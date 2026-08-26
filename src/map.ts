@@ -70,18 +70,22 @@ export function createMap(container: HTMLElement, basemapId: string): MapHandle 
 }
 
 export type LocateCallbacks = {
-  onError: (message: string) => void;
+  /** `blocked` marks the dead ends — no geolocation API, an insecure page, a
+   *  denied permission — as opposed to a timeout the watch may still recover
+   *  from. The locate button uses it to decide whether a click is worth
+   *  anything; see syncLocateButton in main.ts. */
+  onError: (message: string, blocked: boolean) => void;
   /** True only for the first fix, so we don't yank the view on every update. */
   onFix: (latlng: L.LatLng, first: boolean) => void;
 };
 
 export function startLocating(map: L.Map, cb: LocateCallbacks): () => void {
   if (!navigator.geolocation) {
-    cb.onError('This browser has no geolocation support.');
+    cb.onError('This browser has no geolocation support.', true);
     return () => {};
   }
   if (!window.isSecureContext) {
-    cb.onError('Geolocation needs HTTPS (or localhost).');
+    cb.onError('Geolocation needs HTTPS (or localhost).', true);
     return () => {};
   }
 
@@ -167,11 +171,11 @@ export function startLocating(map: L.Map, cb: LocateCallbacks): () => void {
       first = false;
     },
     (err) => {
-      const message =
-        err.code === err.PERMISSION_DENIED
-          ? 'Location permission denied — the map still works, you just start at a world view.'
-          : `Could not get your location: ${err.message}`;
-      cb.onError(message);
+      const denied = err.code === err.PERMISSION_DENIED;
+      const message = denied
+        ? 'Location permission denied — the map still works, you just start at a world view.'
+        : `Could not get your location: ${err.message}`;
+      cb.onError(message, denied);
     },
     { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
   );

@@ -243,6 +243,43 @@ input[type='color']:disabled { opacity: .35; cursor: not-allowed; }
 }
 #compass[hidden] { display: none; }
 
+/* Bottom-right, stacked above the zoom control — the corner every map app puts
+   "where am I" in. Same recipe as #expand/#compass above, including the
+   z-index that has to beat Leaflet's 1000 control panes.
+
+   The offsets are the one thing that differs. 10px on the right is Leaflet's own
+   control margin, so this button's right edge lines up with the zoom control's
+   rather than sitting 2px inside it; the top-corner buttons use 12px because
+   they have no neighbour to align to. 84px clears the zoom control, which
+   reaches 74px up from the bottom — 10px margin plus 64px of control: two 30px
+   .leaflet-bar buttons inside a 2px border, the sizes Leaflet uses under its
+   .leaflet-touch class, which it applies wherever window.PointerEvent exists
+   and so on desktop too. That leaves the same 10px gap above the control. */
+#locate {
+  position: absolute;
+  right: calc(10px + env(safe-area-inset-right));
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  z-index: 1100;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+  color: #2b3138;
+  box-shadow: 0 1px 4px rgba(0,0,0,.25);
+}
+/* Following you, or waiting on the fix that will let it start. */
+#locate[data-state='on'], #locate[data-state='searching'] { color: var(--accent); }
+#locate[data-state='searching'] svg { animation: locate-pulse 1.4s ease-in-out infinite; }
+/* Denied or unavailable: the click still answers (it re-raises the notice), so
+   this is dimmed rather than disabled. */
+#locate[data-state='blocked'] { color: var(--muted); }
+.locate-slash { display: none; }
+#locate[data-state='blocked'] .locate-slash { display: inline; }
+
+@keyframes locate-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .35; }
+}
+
 #notices {
   position: absolute;
   bottom: calc(16px + env(safe-area-inset-bottom));
@@ -317,13 +354,15 @@ input[type='color']:disabled { opacity: .35; cursor: not-allowed; }
   .trail-halo { animation: none; }
   /* Likewise the cone still points; it just snaps there. */
   .locate-rotor { transition: none; }
+  /* The searching state still reads as distinct through its accent colour. */
+  #locate[data-state='searching'] svg { animation: none; }
 }
 
 /* ---------------------------------------------------------------------------
    Touch targets. Scoped to coarse pointers so the desktop layout is untouched.
 --------------------------------------------------------------------------- */
 @media (pointer: coarse) {
-  #expand, #compass { width: 44px; height: 44px; }
+  #expand, #compass, #locate { width: 44px; height: 44px; }
   .panel-head button { min-width: 44px; min-height: 44px; }
   input[type='color'] { width: 40px; height: 32px; }
   #trail-list li { padding: 10px 8px; gap: 10px; }

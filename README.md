@@ -14,6 +14,8 @@ npm run preview
 ## Features
 
 - OSM basemap with your current location (marker + accuracy circle), zoom/pan.
+- A locate button in the bottom-right: click to centre on yourself and keep
+  following as you move, until you drag the map away or click it again.
 - Import multiple GPX files via the file picker or by dropping them on the map.
 - Per-trail visibility toggle, colour, and distance / ascent / duration stats.
 - Adjustable trail line width, applied to the map and to both export formats.

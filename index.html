@@ -82,6 +82,17 @@
       <button id="compass" type="button" hidden
               title="Show which way you are facing"
               aria-label="Show which way you are facing">&#10148;</button>
+      <button id="locate" type="button" aria-pressed="false" data-state="off"
+              title="Show your location" aria-label="Show your location">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8" />
+          <circle cx="12" cy="12" r="2.5" fill="currentColor" />
+          <path d="M12 1.5v3.5M12 19v3.5M1.5 12h3.5M19 12h3.5" fill="none"
+                stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          <line class="locate-slash" x1="4.5" y1="4.5" x2="19.5" y2="19.5"
+                stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+        </svg>
+      </button>
       <div id="map"></div>
       <div id="notices"></div>
       <div id="drop-overlay" hidden><span>Drop GPX files to import</span></div>
