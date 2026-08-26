@@ -213,6 +213,21 @@ input[type='color']:disabled { opacity: .35; cursor: not-allowed; }
   transition: opacity .22s ease;
 }
 
+/* The app's own floating buttons over the map. All three take the zoom
+   control's size and chrome: under .leaflet-touch — which Leaflet applies
+   wherever window.PointerEvent exists, so on desktop too — .leaflet-bar is a
+   30px button inside a 2px border and no shadow, 34px square all told. Sharing
+   one rule is what stops the three from drifting apart from it, and from each
+   other. Overrides the base button rule's 1px border and 6px radius. */
+#expand, #compass, #locate {
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+  border: 2px solid rgba(0,0,0,.2);
+  border-radius: 4px;
+  box-shadow: none;
+}
+
 #expand {
   position: absolute;
   top: calc(12px + env(safe-area-inset-top));
@@ -221,10 +236,7 @@ input[type='color']:disabled { opacity: .35; cursor: not-allowed; }
      come later in DOM order — that is what used to bury this button under the
      zoom control. The zoom control now sits bottom-right as well. */
   z-index: 1100;
-  width: 40px; height: 40px;
-  display: flex; align-items: center; justify-content: center;
   font-size: 18px; line-height: 1;
-  box-shadow: 0 1px 4px rgba(0,0,0,.25);
 }
 #app[data-panel='open'] #expand { display: none; }
 
@@ -236,10 +248,7 @@ input[type='color']:disabled { opacity: .35; cursor: not-allowed; }
   top: calc(12px + env(safe-area-inset-top));
   right: calc(12px + env(safe-area-inset-right));
   z-index: 1100;
-  width: 40px; height: 40px;
-  display: flex; align-items: center; justify-content: center;
   font-size: 18px; line-height: 1;
-  box-shadow: 0 1px 4px rgba(0,0,0,.25);
 }
 #compass[hidden] { display: none; }
 
@@ -248,23 +257,18 @@ input[type='color']:disabled { opacity: .35; cursor: not-allowed; }
    z-index that has to beat Leaflet's 1000 control panes.
 
    The offsets are the one thing that differs. 10px on the right is Leaflet's own
-   control margin, so this button's right edge lines up with the zoom control's
-   rather than sitting 2px inside it; the top-corner buttons use 12px because
-   they have no neighbour to align to. 84px clears the zoom control, which
-   reaches 74px up from the bottom — 10px margin plus 64px of control: two 30px
-   .leaflet-bar buttons inside a 2px border, the sizes Leaflet uses under its
-   .leaflet-touch class, which it applies wherever window.PointerEvent exists
-   and so on desktop too. That leaves the same 10px gap above the control. */
+   control margin, so this button's right edge lines up with the zoom control's;
+   the top-corner buttons use 12px because they have no neighbour to align to.
+   84px clears the zoom control, which reaches 74px up from the bottom — 10px
+   margin plus 64px of control: two 30px .leaflet-bar buttons inside a 2px
+   border. That leaves the same 10px gap above the control. Both boxes being
+   34px wide (see the shared rule above), the two line up on both edges. */
 #locate {
   position: absolute;
   right: calc(10px + env(safe-area-inset-right));
   bottom: calc(84px + env(safe-area-inset-bottom));
   z-index: 1100;
-  width: 40px; height: 40px;
-  display: flex; align-items: center; justify-content: center;
-  padding: 0;
   color: #2b3138;
-  box-shadow: 0 1px 4px rgba(0,0,0,.25);
 }
 /* Following you, or waiting on the fix that will let it start. */
 #locate[data-state='on'], #locate[data-state='searching'] { color: var(--accent); }
@@ -362,7 +366,9 @@ input[type='color']:disabled { opacity: .35; cursor: not-allowed; }
    Touch targets. Scoped to coarse pointers so the desktop layout is untouched.
 --------------------------------------------------------------------------- */
 @media (pointer: coarse) {
-  #expand, #compass, #locate { width: 44px; height: 44px; }
+  /* #expand, #compass and #locate are deliberately absent: they hold the zoom
+     control's 34px on touch as well, which is the same sub-44px trade Leaflet
+     already makes for zooming, and the price of the two matching. */
   .panel-head button { min-width: 44px; min-height: 44px; }
   input[type='color'] { width: 40px; height: 32px; }
   #trail-list li { padding: 10px 8px; gap: 10px; }
