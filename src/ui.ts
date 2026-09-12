@@ -16,6 +16,8 @@ export type UiCallbacks = {
   onUniformChange: (enabled: boolean, color: string) => void;
   onTrailWidthChange: (weight: number) => void;
   onBasemapChange: (id: string) => void;
+  /** The 국가지점번호 layer's on/off checkbox. */
+  onPointsChange: (show: boolean) => void;
   onExport: (format: ExportFormat, scale: number) => void;
   onExportOptionChange: () => void;
   onFilterChange: () => void;
@@ -53,6 +55,7 @@ export class Ui {
   private readonly uniformColor = el<HTMLInputElement>('uniform-color');
   private readonly trailWidth = el<HTMLInputElement>('trail-width');
   private readonly trailWidthValue = el<HTMLOutputElement>('trail-width-value');
+  private readonly pointsToggle = el<HTMLInputElement>('points-toggle');
   private readonly formatSelect = el<HTMLSelectElement>('export-format');
   private readonly scaleSelect = el<HTMLSelectElement>('export-scale');
   private readonly estimate = el('export-estimate');
@@ -119,6 +122,10 @@ export class Ui {
       this.trailWidthValue.textContent = `${weight} px`;
       this.cb.onTrailWidthChange(weight);
     });
+
+    this.pointsToggle.addEventListener('change', () =>
+      this.cb.onPointsChange(this.pointsToggle.checked),
+    );
 
     this.formatSelect.addEventListener('change', () => this.cb.onExportOptionChange());
     this.scaleSelect.addEventListener('change', () => this.cb.onExportOptionChange());
@@ -210,6 +217,7 @@ export class Ui {
     this.uniformColor.value = settings.uniformColorValue;
     this.trailWidth.value = String(settings.trailWeight);
     this.trailWidthValue.textContent = `${settings.trailWeight} px`;
+    this.pointsToggle.checked = settings.showPoints;
     const radio = document.querySelector<HTMLInputElement>(
       `input[name="basemap"][value="${settings.basemapId}"]`,
     );

@@ -284,6 +284,53 @@ input[type='color']:disabled { opacity: .35; cursor: not-allowed; }
   50% { opacity: .35; }
 }
 
+/* The 국가지점번호 pins. The wrapper carries the colour so the SVG's fill can stay
+   currentColor and the whole pin is one custom property away from being restyled;
+   background and border are cleared because .point-pin replaces Leaflet's own
+   leaflet-div-icon class, not just decorates it. */
+.point-pin {
+  background: none;
+  border: 0;
+  color: #b45309;
+}
+/* The icon is an 18x24 box and the pin fills maybe half of it. Left interactive, the
+   empty corners would swallow clicks meant for a trail passing underneath — and since
+   a marker that listens for 'click' stops the event reaching the map handler (see
+   createPointsLayer), that trail would simply be unselectable there, with nothing on
+   screen to say why. So only the ink takes the click; Leaflet still finds the marker
+   by walking up from the <path> to the icon element it registered. The doubled class
+   is not decoration: it is the specificity needed to beat leaflet.css's own
+   .leaflet-marker-icon.leaflet-interactive rule. */
+.leaflet-marker-icon.point-pin { pointer-events: none; }
+.point-pin-body, .point-pin-hole { pointer-events: auto; }
+
+.point-pin-body {
+  fill: currentColor;
+  /* A casing, for the same reason the trail halo has two: no single colour reads on
+     both Carto Light and Esri satellite, and white under an amber fill does.
+     paint-order puts the stroke down first, so it reads as a halo outside the
+     silhouette instead of eating 0.75px into the pin from every edge. */
+  stroke: #fff;
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  paint-order: stroke;
+}
+.point-pin-hole { fill: #fff; }
+
+/* Leaflet's popup at the app's own weight: its default is a 12px radius and a
+   heavy shadow, against 6px and a hairline border everywhere else here. */
+.leaflet-popup-content-wrapper {
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 10px rgba(0,0,0,.18);
+}
+.leaflet-popup-content { margin: 8px 12px; font: inherit; }
+.point-popup strong { display: block; margin-bottom: 2px; }
+/* Tabular figures so the eight digits line up against the sign you are reading it
+   off, which is the only reason this number is ever looked at character by character. */
+.point-code { font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+.point-popup .muted { font-size: 12px; }
+
 #notices {
   position: absolute;
   bottom: calc(16px + env(safe-area-inset-bottom));

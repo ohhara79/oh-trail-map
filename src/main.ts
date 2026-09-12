@@ -4,6 +4,7 @@ import './style.css';
 import { exportView, planExport, type ExportFormat } from './export';
 import { compassNeedsPermission, requestCompassPermission } from './heading';
 import { createMap, startLocating } from './map';
+import { loadNationalPoints, createPointsLayer } from './points';
 import { Halo, trailAt } from './selection';
 import {
   buildTrail,
@@ -80,6 +81,12 @@ async function main(): Promise<void> {
   const { map } = handle;
   const halo = new Halo(map);
 
+  // The 국가지점번호 pins. They draw in their own pane (see points.ts), so this
+  // can sit wherever it reads best rather than having to run before startLocating.
+  const points = loadNationalPoints();
+  const pointsLayer = createPointsLayer(map, points);
+  if (settings.showPoints) pointsLayer.addTo(map);
+
   // Follow state for the bottom-right locate button. lastFix is the only copy
   // of the current position outside startLocating's closure, and blockedMessage
   // latches the geolocation errors that will never resolve on their own.
@@ -146,6 +153,12 @@ async function main(): Promise<void> {
       handle.setBasemap(id);
       void saveSettings(settings);
       updateEstimate();
+    },
+    onPointsChange: (show) => {
+      settings = { ...settings, showPoints: show };
+      if (show) pointsLayer.addTo(map);
+      else map.removeLayer(pointsLayer);
+      void saveSettings(settings);
     },
     onExport: (format, scale) => void runExport(format, scale),
     onExportOptionChange: () => updateEstimate(),
@@ -260,6 +273,7 @@ async function main(): Promise<void> {
         map,
         source: handle.source,
         trails,
+        points,
         settings,
         scale,
         format,

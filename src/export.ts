@@ -14,6 +14,16 @@
 import L from 'leaflet';
 import { tileUrl, type Basemap } from './basemaps';
 import { simplify } from './gpx';
+import type { NationalPoint } from './nationalPoint';
+import {
+  PIN_ANCHOR,
+  PIN_COLOR,
+  PIN_HOLE,
+  PIN_OUTLINE,
+  PIN_OUTLINE_WIDTH,
+  PIN_PATH,
+  PIN_SIZE,
+} from './points';
 import { colorOf, weightOf, type Settings, type Trail } from './trails';
 
 const TILE_SIZE = 256;
@@ -208,6 +218,34 @@ function projectSegment(
   });
 }
 
+/**
+ * The pins that land inside the canvas, as top-left corners of their icon box.
+ *
+ * Projected through projectSegment because a NationalPoint is a {lat, lon} with
+ * extra fields, so the trails' own projection is exactly right for it. The margin
+ * is the icon box itself: a pin anchored just past the edge still has most of its
+ * body on the canvas.
+ */
+function projectPins(
+  map: L.Map,
+  points: NationalPoint[],
+  geom: Geometry,
+  width: number,
+  height: number,
+): { x: number; y: number; point: NationalPoint }[] {
+  return projectSegment(map, points, geom)
+    // The point travels with its corner: the filter below drops rows, so an index
+    // back into `points` would be off by however many were culled.
+    .map((p, i) => ({ x: p.x - PIN_ANCHOR[0], y: p.y - PIN_ANCHOR[1], point: points[i] }))
+    .filter(
+      (p) =>
+        p.x > -PIN_SIZE[0] &&
+        p.y > -PIN_SIZE[1] &&
+        p.x < width + PIN_SIZE[0] &&
+        p.y < height + PIN_SIZE[1],
+    );
+}
+
 function drawAttribution(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -273,6 +311,8 @@ export type ExportOptions = {
   map: L.Map;
   source: Basemap;
   trails: Trail[];
+  /** Every 국가지점번호; settings.showPoints decides whether any are drawn. */
+  points: NationalPoint[];
   settings: Settings;
   scale: number;
   format: ExportFormat;
@@ -282,7 +322,7 @@ export type ExportOptions = {
 export type ExportResult = { blob: Blob; plan: ExportPlan; extension: string };
 
 export async function exportView(options: ExportOptions): Promise<ExportResult> {
-  const { map, source, trails, settings, scale, format, onProgress } = options;
+  const { map, source, trails, points, settings, scale, format, onProgress } = options;
 
   const plan = planExport(map, source, scale);
   if (plan.problem) throw new Error(plan.problem);
@@ -299,6 +339,9 @@ export async function exportView(options: ExportOptions): Promise<ExportResult> 
   };
 
   const visible = trails.filter((t) => t.visible);
+  // The same flag the map layer is added and removed by, so an export can never
+  // disagree with what is on screen.
+  const pins = settings.showPoints ? points : [];
   const strokeWidth = weightOf(settings);
 
   const ctx = makeCanvas(plan.width, plan.height);
@@ -319,6 +362,33 @@ export async function exportView(options: ExportOptions): Promise<ExportResult> 
         ctx.stroke();
       }
     }
+    // After the trails, as on screen: a pin marks a place you can stand, and a
+    // trail line drawn over it would hide the one thing it is there to show.
+    // Drawn at its on-screen size and never multiplied by achievedScale — the same
+    // rule the trail strokes follow, and for the same reason: the tiles come back
+    // with their labels at native weight, so a 4x pin would tower over all of them.
+    if (pins.length > 0) {
+      const pin = new Path2D(PIN_PATH);
+      const hole = new Path2D();
+      hole.arc(PIN_HOLE.x, PIN_HOLE.y, PIN_HOLE.r, 0, Math.PI * 2);
+      ctx.strokeStyle = PIN_OUTLINE;
+      ctx.lineWidth = PIN_OUTLINE_WIDTH;
+      ctx.lineJoin = 'round';
+      for (const p of projectPins(map, pins, geom, plan.width, plan.height)) {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        // Stroke, then fill over it — canvas has no paint-order, and this is how
+        // you spell the same thing: the casing ends up entirely outside the
+        // silhouette rather than half-eaten by the fill, matching style.css.
+        ctx.stroke(pin);
+        ctx.fillStyle = PIN_COLOR;
+        ctx.fill(pin);
+        ctx.fillStyle = PIN_OUTLINE;
+        ctx.fill(hole);
+        ctx.restore();
+      }
+    }
+
     drawAttribution(ctx, source.exportCredit, plan.width, plan.height, plan.achievedScale);
     const blob = await canvasToBlob(ctx.canvas);
     return { blob, plan, extension: 'png' };
@@ -341,6 +411,21 @@ export async function exportView(options: ExportOptions): Promise<ExportResult> 
           `<title>${escapeXml(trail.name)}</title></polyline>`,
       );
     }
+  }
+
+  // One <g> per pin rather than a <defs> + <use>: ~150 bytes each against a base64
+  // basemap image measured in megabytes, and every pin arrives in Inkscape as
+  // editable geometry instead of a reference. The <title> is what a person reads
+  // when they click it there, so it carries the code and, where there is one, the name.
+  for (const { x, y, point } of projectPins(map, pins, geom, plan.width, plan.height)) {
+    paths.push(
+      `  <g transform="translate(${x.toFixed(1)},${y.toFixed(1)})">` +
+        `<title>${escapeXml(point.name ? `${point.code} ${point.name}` : point.code)}</title>` +
+        `<path d="${PIN_PATH}" fill="${PIN_COLOR}" stroke="${PIN_OUTLINE}" ` +
+        `stroke-width="${PIN_OUTLINE_WIDTH}" stroke-linejoin="round" paint-order="stroke"/>` +
+        `<circle cx="${PIN_HOLE.x}" cy="${PIN_HOLE.y}" r="${PIN_HOLE.r}" fill="${PIN_OUTLINE}"/>` +
+        `</g>`,
+    );
   }
 
   const fontSize = Math.max(11, Math.round(12 * plan.achievedScale));

@@ -20,6 +20,8 @@ export type Settings = {
   basemapId: string;
   /** Stroke width in CSS/output pixels, shared by the map and both exporters. */
   trailWeight: number;
+  /** Whether the 국가지점번호 pins are drawn — on the map and in an export alike. */
+  showPoints: boolean;
 };
 
 export const DEFAULT_TRAIL_WEIGHT = 3;
@@ -31,6 +33,7 @@ export const DEFAULT_SETTINGS: Settings = {
   uniformColorValue: '#e02020',
   basemapId: 'osm',
   trailWeight: DEFAULT_TRAIL_WEIGHT,
+  showPoints: true,
 };
 
 /** How far an unselected trail recedes while something else is selected. */
