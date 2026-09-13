@@ -20,7 +20,7 @@ npm run preview
   browser — add or remove files and restart `npm run dev` or rebuild.
 - Per-trail visibility toggle, colour, and distance / ascent / duration stats.
 - Basemap switcher: OSM Standard, OpenTopoMap, Esri satellite.
-- 국가지점번호 emergency-location points from `data/national_points_w_name.tsv`, drawn as pins —
+- National Point Number emergency-location points from `data/national_points_w_name.tsv`, drawn as pins —
   amber where the point has an 이름, grey where it does not; click one for its 지점번호, 사물유형 and 이름. Toggled from the control panel.
   The grid codes are decoded to lat/lon at runtime — see
   `docs/plans/2026-09-13-01-national-point-markers.md` for the derivation.

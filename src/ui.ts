@@ -11,7 +11,7 @@ export type UiCallbacks = {
   /** null clears the selection. */
   onSelect: (id: string | null) => void;
   onBasemapChange: (id: string) => void;
-  /** The 국가지점번호 layer's on/off checkbox. */
+  /** The National Point Number layer's on/off checkbox. */
   onPointsChange: (show: boolean) => void;
   onFilterChange: () => void;
   /** The compass button. Only ever fires on iOS, which gates device

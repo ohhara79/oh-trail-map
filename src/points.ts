@@ -1,5 +1,5 @@
 /**
- * The 국가지점번호 layer: one pin per row of data/national_points_w_name.tsv, each
+ * The National Point Number layer: one pin per row of data/national_points_w_name.tsv, each
  * with a popup naming the 지점번호, the 사물유형 and — where the source has one —
  * the 이름.
  *

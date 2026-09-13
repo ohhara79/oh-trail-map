@@ -77,7 +77,7 @@ async function main(): Promise<void> {
   const { map } = handle;
   const halo = new Halo(map);
 
-  // The 국가지점번호 pins. They draw in their own pane (see points.ts), so this
+  // The National Point Number pins. They draw in their own pane (see points.ts), so this
   // can sit wherever it reads best rather than having to run before startLocating.
   const pointsLayer = createPointsLayer(map, loadNationalPoints());
   if (settings.showPoints) pointsLayer.addTo(map);

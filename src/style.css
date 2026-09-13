@@ -251,7 +251,7 @@ input[type='color'] {
   50% { opacity: .35; }
 }
 
-/* The 국가지점번호 pins. No colour here: points.ts sets it inline on each <svg>
+/* The National Point Number pins. No colour here: points.ts sets it inline on each <svg>
    (amber when the point has an 이름, grey when not) and the body fills currentColor.
    Background and border are cleared because .point-pin replaces Leaflet's own
    leaflet-div-icon class, not just decorates it. */

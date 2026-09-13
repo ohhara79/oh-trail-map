@@ -15,7 +15,7 @@ export type Trail = {
 
 export type Settings = {
   basemapId: string;
-  /** Whether the 국가지점번호 pins are drawn. */
+  /** Whether the National Point Number pins are drawn. */
   showPoints: boolean;
 };
 

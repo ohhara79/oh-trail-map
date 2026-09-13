@@ -1,7 +1,7 @@
 /**
- * 국가지점번호 (Korean national point number) → WGS84.
+ * National Point Number → WGS84.
  *
- * A 국가지점번호 is a grid reference, not a coordinate: two Hangul letters name a
+ * A National Point Number is a grid reference, not a coordinate: two Hangul letters name a
  * 100 km cell and eight digits give the offset inside it in 10 m units, so
  * `다사52414090` means "52,410 m east and 40,900 m north of the south-west corner
  * of cell 다사". The grid is laid over UTM-K (EPSG:5179, Korea 2000 / Unified CS),
