@@ -22,8 +22,8 @@ npm run preview
 - "Use one color for all trails" mode that overrides — but never overwrites —
   the individual colours.
 - Basemap switcher: OSM Standard, OpenTopoMap, Carto Light, Esri satellite.
-- 337 국가지점번호 emergency-location points around 관악산 / 삼성산, drawn as pins;
-  click one for its 지점번호, 사물유형 and 이름. Toggled from the control panel and
+- 337 국가지점번호 emergency-location points around 관악산 / 삼성산, drawn as pins —
+  amber where the point has an 이름, grey where it does not; click one for its 지점번호, 사물유형 and 이름. Toggled from the control panel and
   included in exports. The grid codes are decoded to lat/lon at runtime — see
   `docs/plans/2026-09-13-01-national-point-markers.md` for the derivation.
 - Trails persist in IndexedDB across reloads.

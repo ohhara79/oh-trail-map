@@ -284,14 +284,13 @@ input[type='color']:disabled { opacity: .35; cursor: not-allowed; }
   50% { opacity: .35; }
 }
 
-/* The 국가지점번호 pins. The wrapper carries the colour so the SVG's fill can stay
-   currentColor and the whole pin is one custom property away from being restyled;
-   background and border are cleared because .point-pin replaces Leaflet's own
+/* The 국가지점번호 pins. No colour here: points.ts sets it inline on each <svg>
+   (amber when the point has an 이름, grey when not) and the body fills currentColor.
+   Background and border are cleared because .point-pin replaces Leaflet's own
    leaflet-div-icon class, not just decorates it. */
 .point-pin {
   background: none;
   border: 0;
-  color: #b45309;
 }
 /* The icon is an 18x24 box and the pin fills maybe half of it. Left interactive, the
    empty corners would swallow clicks meant for a trail passing underneath — and since

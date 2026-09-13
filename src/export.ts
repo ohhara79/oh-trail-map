@@ -16,13 +16,14 @@ import { tileUrl, type Basemap } from './basemaps';
 import { simplify } from './gpx';
 import type { NationalPoint } from './nationalPoint';
 import {
+  namedLast,
   PIN_ANCHOR,
-  PIN_COLOR,
   PIN_HOLE,
   PIN_OUTLINE,
   PIN_OUTLINE_WIDTH,
   PIN_PATH,
   PIN_SIZE,
+  pinColor,
 } from './points';
 import { colorOf, weightOf, type Settings, type Trail } from './trails';
 
@@ -341,7 +342,7 @@ export async function exportView(options: ExportOptions): Promise<ExportResult> 
   const visible = trails.filter((t) => t.visible);
   // The same flag the map layer is added and removed by, so an export can never
   // disagree with what is on screen.
-  const pins = settings.showPoints ? points : [];
+  const pins = settings.showPoints ? namedLast(points) : [];
   const strokeWidth = weightOf(settings);
 
   const ctx = makeCanvas(plan.width, plan.height);
@@ -381,7 +382,7 @@ export async function exportView(options: ExportOptions): Promise<ExportResult> 
         // you spell the same thing: the casing ends up entirely outside the
         // silhouette rather than half-eaten by the fill, matching style.css.
         ctx.stroke(pin);
-        ctx.fillStyle = PIN_COLOR;
+        ctx.fillStyle = pinColor(p.point);
         ctx.fill(pin);
         ctx.fillStyle = PIN_OUTLINE;
         ctx.fill(hole);
@@ -421,7 +422,7 @@ export async function exportView(options: ExportOptions): Promise<ExportResult> 
     paths.push(
       `  <g transform="translate(${x.toFixed(1)},${y.toFixed(1)})">` +
         `<title>${escapeXml(point.name ? `${point.code} ${point.name}` : point.code)}</title>` +
-        `<path d="${PIN_PATH}" fill="${PIN_COLOR}" stroke="${PIN_OUTLINE}" ` +
+        `<path d="${PIN_PATH}" fill="${pinColor(point)}" stroke="${PIN_OUTLINE}" ` +
         `stroke-width="${PIN_OUTLINE_WIDTH}" stroke-linejoin="round" paint-order="stroke"/>` +
         `<circle cx="${PIN_HOLE.x}" cy="${PIN_HOLE.y}" r="${PIN_HOLE.r}" fill="${PIN_OUTLINE}"/>` +
         `</g>`,

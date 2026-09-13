@@ -26,12 +26,31 @@ export const PIN_ANCHOR: [number, number] = [9, 24];
 const POPUP_ANCHOR: [number, number] = [0, -22];
 export const PIN_HOLE = { x: 9, y: 8.5, r: 3 };
 /**
- * One colour for every pin, not one per 사물유형. There are nine of those, a
- * nine-swatch legend has nowhere to live in the panel, and the popup already names
- * the type. This amber is deliberately outside trails.ts PALETTE and nowhere near
- * the --accent blue of the location dot, so a pin can never be mistaken for either.
+ * Two colours, split on whether the row has an 이름 — not one per 사물유형. There
+ * are nine of those, a nine-swatch legend has nowhere to live in the panel, and the
+ * popup already names the type. A name is the one distinction worth seeing before
+ * the click: it is what marks a sign a hiker would say aloud (깔딱고개, K1 호암생활관)
+ * against the bare 전신주 and unnamed signs, so named pins keep the amber and the
+ * rest recede to slate grey. Both are deliberately outside trails.ts PALETTE and
+ * nowhere near the --accent blue of the location dot, so a pin can never be
+ * mistaken for either.
  */
-export const PIN_COLOR = '#b45309';
+export const PIN_COLOR_NAMED = '#b45309';
+export const PIN_COLOR_UNNAMED = '#64748b';
+
+export function pinColor(point: NationalPoint): string {
+  return point.name ? PIN_COLOR_NAMED : PIN_COLOR_UNNAMED;
+}
+
+/**
+ * The points in paint order: unnamed first, named last, each group in its original
+ * order. Pins overlap heavily along the ridge, and where they do the named one is
+ * the one worth seeing. The exporters paint in array order, so they read this; the
+ * map gets the same result from zIndexOffset in createPointsLayer.
+ */
+export function namedLast(points: NationalPoint[]): NationalPoint[] {
+  return [...points.filter((p) => !p.name), ...points.filter((p) => p.name)];
+}
 /** The casing that keeps the pin readable on Esri satellite as well as Carto Light. */
 export const PIN_OUTLINE = '#ffffff';
 export const PIN_OUTLINE_WIDTH = 1.5;
@@ -108,12 +127,16 @@ export function createPointsLayer(map: L.Map, points: NationalPoint[]): L.LayerG
   map.createPane(PIN_PANE).style.zIndex = PIN_PANE_Z_INDEX;
   const group = L.layerGroup();
 
-  const html =
+  // The colour goes inline on the <svg>, where the body's currentColor picks it up,
+  // so pinColor stays the only place it is decided — style.css no longer names one.
+  const iconHtml = (color: string) =>
     `<svg viewBox="0 0 ${PIN_SIZE[0]} ${PIN_SIZE[1]}" width="${PIN_SIZE[0]}" ` +
-    `height="${PIN_SIZE[1]}" aria-hidden="true">` +
+    `height="${PIN_SIZE[1]}" style="color:${color}" aria-hidden="true">` +
     `<path class="point-pin-body" d="${PIN_PATH}"/>` +
     `<circle class="point-pin-hole" cx="${PIN_HOLE.x}" cy="${PIN_HOLE.y}" r="${PIN_HOLE.r}"/>` +
     '</svg>';
+  const namedHtml = iconHtml(PIN_COLOR_NAMED);
+  const unnamedHtml = iconHtml(PIN_COLOR_UNNAMED);
 
   for (const point of points) {
     L.marker([point.lat, point.lon], {
@@ -122,7 +145,7 @@ export function createPointsLayer(map: L.Map, points: NationalPoint[]): L.LayerG
         // Replaces Leaflet's own 'leaflet-div-icon', whose white box and grey
         // border would frame every pin.
         className: 'point-pin',
-        html,
+        html: point.name ? namedHtml : unnamedHtml,
         iconSize: PIN_SIZE,
         iconAnchor: PIN_ANCHOR,
         popupAnchor: POPUP_ANCHOR,
@@ -134,6 +157,12 @@ export function createPointsLayer(map: L.Map, points: NationalPoint[]): L.LayerG
       // They overlap heavily along the 관악산 ridge, so the one under the cursor
       // has to come to the front to be clickable at all.
       riseOnHover: true,
+      // Leaflet stacks markers by screen y plus this offset, so every named pin sits
+      // over every unnamed one it overlaps — the map's half of namedLast. The rise has
+      // to clear that gap, or a grey pin under an amber one could never be hovered
+      // to the front: Leaflet's default riseOffset is only 250.
+      zIndexOffset: point.name ? 1000 : 0,
+      riseOffset: 2000,
       title: point.name || point.code,
     })
       // The function form: 337 popup DOM trees are built on first open rather than
