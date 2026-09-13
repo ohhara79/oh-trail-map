@@ -74,8 +74,6 @@ body {
 .block h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; }
 
 .row { display: flex; align-items: center; gap: 8px; }
-.row input[type='range'] { flex: 0 1 110px; min-width: 0; }
-.row output { min-width: 3.5em; text-align: right; }
 .grow { flex: 1; min-width: 0; }
 .muted { color: var(--muted); font-weight: 400; }
 .hint { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
@@ -90,26 +88,12 @@ button {
   color: var(--fg);
 }
 button:hover { background: #f5f6f8; }
-button.primary {
-  width: 100%;
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-  padding: 8px;
-  font-weight: 500;
-}
-button.primary:hover { background: #1765cc; }
-button.primary:disabled { background: #9db9e6; border-color: #9db9e6; cursor: progress; }
-
-select { font: inherit; width: 100%; padding: 4px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
-label.grow { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
 
 input[type='color'] {
   width: 26px; height: 22px; padding: 0;
   border: 1px solid var(--border); border-radius: 4px;
   background: none; cursor: pointer;
 }
-input[type='color']:disabled { opacity: .35; cursor: not-allowed; }
 
 .file-button { display: block; }
 .file-button input { display: none; }
@@ -159,9 +143,6 @@ input[type='color']:disabled { opacity: .35; cursor: not-allowed; }
 
 .options { display: flex; flex-direction: column; gap: 4px; }
 .options label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-
-.progress { margin-top: 8px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
-.progress > div { height: 100%; width: 0; background: var(--accent); transition: width .1s linear; }
 
 #map { flex: 1; min-width: 0; height: 100%; }
 
@@ -306,7 +287,7 @@ input[type='color']:disabled { opacity: .35; cursor: not-allowed; }
 .point-pin-body {
   fill: currentColor;
   /* A casing, for the same reason the trail halo has two: no single colour reads on
-     both Carto Light and Esri satellite, and white under an amber fill does.
+     both a pale basemap and Esri satellite, and white under an amber fill does.
      paint-order puts the stroke down first, so it reads as a halo outside the
      silhouette instead of eating 0.75px into the pin from every edge. */
   stroke: #fff;
@@ -424,7 +405,5 @@ input[type='color']:disabled { opacity: .35; cursor: not-allowed; }
   /* 16px is the threshold below which iOS Safari zooms the page on focus. */
   #trail-search { padding: 8px; font-size: 16px; }
   .trail-remove { padding: 10px 12px; font-size: 20px; }
-  .row input[type='range'] { flex: 1 1 auto; height: 32px; }
   .options label { padding: 6px 0; }
-  select { padding: 8px 4px; }
 }

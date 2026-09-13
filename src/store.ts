@@ -1,7 +1,7 @@
 /**
  * IndexedDB persistence. localStorage is not an option here — its ~5 MB quota
  * is easily blown by a handful of GPX files, which we keep verbatim so a trail
- * can be re-parsed (and re-exported) exactly as imported.
+ * can be re-parsed exactly as imported.
  */
 import { DEFAULT_SETTINGS, type Settings } from './trails';
 
@@ -73,7 +73,12 @@ export async function loadSettings(): Promise<Settings> {
   const stored = await run<Settings | undefined>(SETTINGS, 'readonly', (s) =>
     s.get(SETTINGS_KEY),
   );
-  return { ...DEFAULT_SETTINGS, ...(stored ?? {}) };
+  // Only the keys Settings still has: fields of removed features (uniform colour,
+  // trail width) are dropped here, and so vanish from storage on the next save.
+  return {
+    basemapId: stored?.basemapId ?? DEFAULT_SETTINGS.basemapId,
+    showPoints: stored?.showPoints ?? DEFAULT_SETTINGS.showPoints,
+  };
 }
 
 export function saveSettings(settings: Settings): Promise<unknown> {

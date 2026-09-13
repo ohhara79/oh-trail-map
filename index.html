@@ -22,19 +22,6 @@
             <p class="hint">or drop .gpx files onto the map</p>
           </section>
 
-          <section class="block">
-            <label class="row">
-              <input id="uniform-toggle" type="checkbox" />
-              <span class="grow">Use one color for all trails</span>
-              <input id="uniform-color" type="color" />
-            </label>
-            <label class="row">
-              <span class="grow">Trail width</span>
-              <input id="trail-width" type="range" min="1" max="10" step="0.5" />
-              <output id="trail-width-value" class="muted"></output>
-            </label>
-          </section>
-
           <section class="block grow-block">
             <div class="row trail-head">
               <input id="trail-all" type="checkbox" title="Show or hide every trail" aria-label="Show or hide every trail" />
@@ -58,29 +45,6 @@
           <section class="block">
             <h2>Basemap</h2>
             <div id="basemap-options" class="options"></div>
-          </section>
-
-          <section class="block">
-            <h2>Export</h2>
-            <div class="row">
-              <label class="grow">Format
-                <select id="export-format">
-                  <option value="png">PNG (raster)</option>
-                  <option value="svg">SVG (vector trails)</option>
-                </select>
-              </label>
-              <label class="grow">Scale
-                <select id="export-scale">
-                  <option value="1">1&times;</option>
-                  <option value="2">2&times;</option>
-                  <option value="4" selected>4&times;</option>
-                  <option value="8">8&times;</option>
-                </select>
-              </label>
-            </div>
-            <p id="export-estimate" class="hint"></p>
-            <button id="export-button" type="button" class="primary">Export</button>
-            <div id="export-progress" class="progress" hidden><div></div></div>
           </section>
         </div>
       </aside>

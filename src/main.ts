@@ -1,7 +1,6 @@
 import L from 'leaflet';
 import './style.css';
 
-import { exportView, planExport, type ExportFormat } from './export';
 import { compassNeedsPermission, requestCompassPermission } from './heading';
 import { createMap, startLocating } from './map';
 import { loadNationalPoints, createPointsLayer } from './points';
@@ -28,8 +27,8 @@ import { formatDistance } from './gpx';
 const trails: Trail[] = [];
 let settings: Settings;
 let colorCursor = 0;
-/** View state, like the filter query and the panel: never persisted, never
- *  exported. Settings describes how trails render; this describes what you are
+/** View state, like the filter query and the panel: never persisted.
+ *  Settings describes how trails render; this describes what you are
  *  currently looking at. */
 let selectedId: string | null = null;
 
@@ -83,8 +82,7 @@ async function main(): Promise<void> {
 
   // The 국가지점번호 pins. They draw in their own pane (see points.ts), so this
   // can sit wherever it reads best rather than having to run before startLocating.
-  const points = loadNationalPoints();
-  const pointsLayer = createPointsLayer(map, points);
+  const pointsLayer = createPointsLayer(map, loadNationalPoints());
   if (settings.showPoints) pointsLayer.addTo(map);
 
   // Follow state for the bottom-right locate button. lastFix is the only copy
@@ -117,7 +115,7 @@ async function main(): Promise<void> {
       const trail = findTrail(id);
       if (!trail) return;
       trail.color = color;
-      restyleTrail(trail, settings, selectedId);
+      restyleTrail(trail, selectedId);
       void putTrail(toRecord(trail));
     },
     onRemove: (id) => {
@@ -135,24 +133,10 @@ async function main(): Promise<void> {
       if (trail?.bounds.isValid()) map.fitBounds(trail.bounds, { padding: [30, 30] });
     },
     onSelect: (id) => selectTrail(id),
-    onUniformChange: (enabled, color) => {
-      settings = { ...settings, uniformColor: enabled, uniformColorValue: color };
-      restyleAll();
-      void saveSettings(settings);
-      refresh();
-    },
-    onTrailWidthChange: (weight) => {
-      settings = { ...settings, trailWeight: weight };
-      // restyleAll, not just the strokes: the halo's casings are derived from
-      // weightOf(), so they have to follow the slider too.
-      restyleAll();
-      void saveSettings(settings);
-    },
     onBasemapChange: (id) => {
       settings = { ...settings, basemapId: id };
       handle.setBasemap(id);
       void saveSettings(settings);
-      updateEstimate();
     },
     onPointsChange: (show) => {
       settings = { ...settings, showPoints: show };
@@ -160,8 +144,6 @@ async function main(): Promise<void> {
       else map.removeLayer(pointsLayer);
       void saveSettings(settings);
     },
-    onExport: (format, scale) => void runExport(format, scale),
-    onExportOptionChange: () => updateEstimate(),
     onFilterChange: () => refresh(),
     onLocate: () => {
       if (blockedMessage) {
@@ -202,17 +184,16 @@ async function main(): Promise<void> {
   }
 
   function refresh(): void {
-    ui.renderTrails(trails, settings, selectedId);
-    updateEstimate();
+    ui.renderTrails(trails, selectedId);
   }
 
   /**
-   * The one place map styling is re-applied. Colour, width and selection all
+   * The one place map styling is re-applied. Colour and selection both
    * land through it, so they can never be applied by different paths and drift.
    */
   function restyleAll(): void {
-    for (const trail of trails) restyleTrail(trail, settings, selectedId);
-    halo.show(trails.find((t) => t.id === selectedId && t.visible) ?? null, settings);
+    for (const trail of trails) restyleTrail(trail, selectedId);
+    halo.show(trails.find((t) => t.id === selectedId && t.visible) ?? null);
   }
 
   /** The single place selection changes. */
@@ -228,11 +209,6 @@ async function main(): Promise<void> {
     }
   }
 
-  function updateEstimate(): void {
-    const { scale } = ui.exportSelection();
-    ui.showEstimate(planExport(map, handle.source, scale), scale);
-  }
-
   async function importFiles(files: File[]): Promise<void> {
     let imported = 0;
     for (const file of files) {
@@ -245,7 +221,6 @@ async function main(): Promise<void> {
           file.name,
           nextColor(colorCursor++),
           true,
-          settings,
         );
         trails.push(trail);
         trail.layer.addTo(map);
@@ -266,43 +241,6 @@ async function main(): Promise<void> {
     }
   }
 
-  async function runExport(format: ExportFormat, scale: number): Promise<void> {
-    ui.setExporting(true);
-    try {
-      const result = await exportView({
-        map,
-        source: handle.source,
-        trails,
-        points,
-        settings,
-        scale,
-        format,
-        onProgress: (done, total) => ui.setProgress(done, total),
-      });
-
-      const url = URL.createObjectURL(result.blob);
-      const link = document.createElement('a');
-      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-      link.href = url;
-      link.download = `trail-map-${stamp}-${result.plan.achievedScale}x.${result.extension}`;
-      link.click();
-      // Revoking immediately can cancel the download in some browsers.
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-
-      const size = `${result.plan.width}×${result.plan.height} px`;
-      ui.notify(
-        result.plan.clamped
-          ? `Exported ${size} at ${result.plan.achievedScale}× — ${scale}× exceeds this basemap's zoom ${result.plan.tileZoom} limit.`
-          : `Exported ${size}.`,
-      );
-    } catch (err) {
-      ui.notify(err instanceof Error ? err.message : String(err), 'error', 12000);
-    } finally {
-      ui.setExporting(false);
-      updateEstimate(); // re-derives whether Export should be enabled
-    }
-  }
-
   // Restore previously imported trails before touching the view.
   try {
     const records = await loadTrails();
@@ -314,7 +252,6 @@ async function main(): Promise<void> {
           record.name,
           record.color,
           record.visible,
-          settings,
         );
         trails.push(trail);
         if (trail.visible) trail.layer.addTo(map);
@@ -384,9 +321,6 @@ async function main(): Promise<void> {
     const hit = trailAt(map, e.containerPoint, trails);
     selectTrail(hit && hit.id !== selectedId ? hit.id : null, true);
   });
-
-  map.on('zoomend moveend resize', updateEstimate);
-  updateEstimate();
 }
 
 void main();

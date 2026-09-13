@@ -160,60 +160,6 @@ export function parseGpx(text: string, fileName: string): ParsedGpx {
   return { name, segments, stats: computeStats(segments) };
 }
 
-/**
- * Douglas-Peucker on already-projected pixel coordinates. Used only for SVG
- * export, where the full point count would balloon the file for no visible gain.
- */
-export function simplify(
-  points: { x: number; y: number }[],
-  tolerance: number,
-): { x: number; y: number }[] {
-  if (points.length <= 2) return points;
-
-  const keep = new Uint8Array(points.length);
-  keep[0] = 1;
-  keep[points.length - 1] = 1;
-  const sqTolerance = tolerance * tolerance;
-
-  // Explicit stack — recursion blows up on tracks with 100k+ points.
-  const stack: [number, number][] = [[0, points.length - 1]];
-  while (stack.length > 0) {
-    const [first, last] = stack.pop()!;
-    if (last - first < 2) continue;
-
-    const a = points[first];
-    const b = points[last];
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const lenSq = dx * dx + dy * dy;
-
-    let maxSqDist = 0;
-    let index = first;
-    for (let i = first + 1; i < last; i++) {
-      const p = points[i];
-      let sqDist: number;
-      if (lenSq === 0) {
-        sqDist = (p.x - a.x) ** 2 + (p.y - a.y) ** 2;
-      } else {
-        let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq;
-        t = Math.max(0, Math.min(1, t));
-        sqDist = (p.x - (a.x + t * dx)) ** 2 + (p.y - (a.y + t * dy)) ** 2;
-      }
-      if (sqDist > maxSqDist) {
-        maxSqDist = sqDist;
-        index = i;
-      }
-    }
-
-    if (maxSqDist > sqTolerance) {
-      keep[index] = 1;
-      stack.push([first, index], [index, last]);
-    }
-  }
-
-  return points.filter((_, i) => keep[i] === 1);
-}
-
 export function formatDistance(metres: number): string {
   return metres >= 1000
     ? `${(metres / 1000).toFixed(1)} km`

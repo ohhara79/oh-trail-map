@@ -4,7 +4,7 @@ import { computeStats, parseGpx, type Pt, type Stats } from './gpx';
 export type Trail = {
   id: string;
   name: string;
-  /** The trail's own colour. Never overwritten by uniform-colour mode. */
+  /** The trail's own colour. */
   color: string;
   visible: boolean;
   gpxText: string;
@@ -15,26 +15,18 @@ export type Trail = {
 };
 
 export type Settings = {
-  uniformColor: boolean;
-  uniformColorValue: string;
   basemapId: string;
-  /** Stroke width in CSS/output pixels, shared by the map and both exporters. */
-  trailWeight: number;
-  /** Whether the 국가지점번호 pins are drawn — on the map and in an export alike. */
+  /** Whether the 국가지점번호 pins are drawn. */
   showPoints: boolean;
 };
 
-export const DEFAULT_TRAIL_WEIGHT = 3;
-export const TRAIL_WEIGHT_MIN = 1;
-export const TRAIL_WEIGHT_MAX = 10;
-
 export const DEFAULT_SETTINGS: Settings = {
-  uniformColor: false,
-  uniformColorValue: '#e02020',
   basemapId: 'osm',
-  trailWeight: DEFAULT_TRAIL_WEIGHT,
   showPoints: true,
 };
+
+/** Every trail's stroke width, in CSS pixels. The halo's casings are derived from it. */
+export const TRAIL_WEIGHT = 2;
 
 /** How far an unselected trail recedes while something else is selected. */
 export const DIM_OPACITY = 0.3;
@@ -49,33 +41,11 @@ export function nextColor(index: number): string {
 }
 
 /**
- * The single place that decides a trail's stroke colour. The map layers and
- * both exporters read through this, so uniform-colour mode can never drift
- * between what is on screen and what lands in the exported file.
- */
-export function colorOf(trail: Trail, settings: Settings): string {
-  return settings.uniformColor ? settings.uniformColorValue : trail.color;
-}
-
-/**
- * The single place that decides a trail's stroke width, for the same reason as
- * colorOf(). Clamped, because a stale persisted value must not be able to make
- * every trail invisible or absurdly fat.
- */
-/**
- * Map-only, unlike colorOf() and weightOf(): with a trail selected, every other
- * one recedes so the selection reads at a glance even in uniform-colour mode,
- * where colour says nothing. The exporters deliberately do not read this — an
- * export is of the trails, not of what happened to be selected.
+ * With a trail selected, every other one recedes so the selection reads at a
+ * glance, even where two trails' colours are hard to tell apart.
  */
 export function mapOpacityOf(trailId: string, selectedId: string | null): number {
   return selectedId === null || trailId === selectedId ? 1 : DIM_OPACITY;
-}
-
-export function weightOf(settings: Settings): number {
-  const w = Number(settings.trailWeight);
-  if (!Number.isFinite(w)) return DEFAULT_TRAIL_WEIGHT;
-  return Math.min(TRAIL_WEIGHT_MAX, Math.max(TRAIL_WEIGHT_MIN, w));
 }
 
 /**
@@ -116,7 +86,6 @@ export function buildTrail(
   fileName: string,
   color: string,
   visible: boolean,
-  settings: Settings,
 ): Trail {
   const parsed = parseGpx(gpxText, fileName);
   const layer = L.layerGroup();
@@ -132,32 +101,24 @@ export function buildTrail(
     layer,
   };
 
-  const stroke = colorOf(trail, settings);
   for (const seg of parsed.segments) {
     L.polyline(
       seg.map((p) => [p.lat, p.lon] as L.LatLngExpression),
-      { color: stroke, weight: weightOf(settings), lineJoin: 'round', lineCap: 'round' },
+      { color, weight: TRAIL_WEIGHT, lineJoin: 'round', lineCap: 'round' },
     ).addTo(layer);
   }
   return trail;
 }
 
 /**
- * Re-applies the resolved colour, width and selection opacity to every polyline
- * of a trail. Opacity is set here rather than anywhere else precisely because
+ * Re-applies the colour and selection opacity to every polyline of a trail. Opacity is set here rather than anywhere else precisely because
  * this is the only restyle path: a dimmed trail recoloured through some other
  * route would silently come back at full strength.
  */
-export function restyleTrail(
-  trail: Trail,
-  settings: Settings,
-  selectedId: string | null,
-): void {
-  const stroke = colorOf(trail, settings);
-  const weight = weightOf(settings);
+export function restyleTrail(trail: Trail, selectedId: string | null): void {
   const opacity = mapOpacityOf(trail.id, selectedId);
   trail.layer.eachLayer((l) => {
-    (l as L.Polyline).setStyle({ color: stroke, weight, opacity });
+    (l as L.Polyline).setStyle({ color: trail.color, opacity });
   });
 }
 

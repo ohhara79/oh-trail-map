@@ -1,6 +1,5 @@
-import { BASEMAPS } from './basemaps';
+import { basemapById, BASEMAPS } from './basemaps';
 import { formatDistance, formatDuration } from './gpx';
-import type { ExportFormat, ExportPlan } from './export';
 import { matchesTokens, searchTokens, type Settings, type Trail } from './trails';
 
 export type UiCallbacks = {
@@ -13,13 +12,9 @@ export type UiCallbacks = {
   onZoomTo: (id: string) => void;
   /** null clears the selection. */
   onSelect: (id: string | null) => void;
-  onUniformChange: (enabled: boolean, color: string) => void;
-  onTrailWidthChange: (weight: number) => void;
   onBasemapChange: (id: string) => void;
   /** The 국가지점번호 layer's on/off checkbox. */
   onPointsChange: (show: boolean) => void;
-  onExport: (format: ExportFormat, scale: number) => void;
-  onExportOptionChange: () => void;
   onFilterChange: () => void;
   /** The compass button. Only ever fires on iOS, which gates device
    *  orientation behind a grant that must come from a user gesture. */
@@ -51,17 +46,7 @@ export class Ui {
   private readonly expandAll = el<HTMLButtonElement>('trail-expand-all');
   private readonly empty = el('trail-empty');
   private readonly count = el('trail-count');
-  private readonly uniformToggle = el<HTMLInputElement>('uniform-toggle');
-  private readonly uniformColor = el<HTMLInputElement>('uniform-color');
-  private readonly trailWidth = el<HTMLInputElement>('trail-width');
-  private readonly trailWidthValue = el<HTMLOutputElement>('trail-width-value');
   private readonly pointsToggle = el<HTMLInputElement>('points-toggle');
-  private readonly formatSelect = el<HTMLSelectElement>('export-format');
-  private readonly scaleSelect = el<HTMLSelectElement>('export-scale');
-  private readonly estimate = el('export-estimate');
-  private readonly exportButton = el<HTMLButtonElement>('export-button');
-  private readonly progress = el('export-progress');
-  private readonly progressBar = el('export-progress').firstElementChild as HTMLElement;
   private readonly notices = el('notices');
   private readonly dropOverlay = el('drop-overlay');
   private readonly compass = el<HTMLButtonElement>('compass');
@@ -114,24 +99,9 @@ export class Ui {
       this.setAllNamesExpanded(this.expandedNames.size < this.list.children.length),
     );
 
-    this.uniformToggle.addEventListener('change', () => this.emitUniform());
-    this.uniformColor.addEventListener('input', () => this.emitUniform());
-
-    this.trailWidth.addEventListener('input', () => {
-      const weight = Number(this.trailWidth.value);
-      this.trailWidthValue.textContent = `${weight} px`;
-      this.cb.onTrailWidthChange(weight);
-    });
-
     this.pointsToggle.addEventListener('change', () =>
       this.cb.onPointsChange(this.pointsToggle.checked),
     );
-
-    this.formatSelect.addEventListener('change', () => this.cb.onExportOptionChange());
-    this.scaleSelect.addEventListener('change', () => this.cb.onExportOptionChange());
-    this.exportButton.addEventListener('click', () => {
-      this.cb.onExport(this.formatSelect.value as ExportFormat, Number(this.scaleSelect.value));
-    });
 
     this.compass.addEventListener('click', () => this.cb.onCompass());
     this.locate.addEventListener('click', () => this.cb.onLocate());
@@ -208,23 +178,17 @@ export class Ui {
     });
   }
 
-  private emitUniform(): void {
-    this.cb.onUniformChange(this.uniformToggle.checked, this.uniformColor.value);
-  }
-
   applySettings(settings: Settings): void {
-    this.uniformToggle.checked = settings.uniformColor;
-    this.uniformColor.value = settings.uniformColorValue;
-    this.trailWidth.value = String(settings.trailWeight);
-    this.trailWidthValue.textContent = `${settings.trailWeight} px`;
     this.pointsToggle.checked = settings.showPoints;
+    // Resolved rather than read raw: a saved id whose basemap has since been
+    // removed must check the radio for the fallback the map actually loaded.
     const radio = document.querySelector<HTMLInputElement>(
-      `input[name="basemap"][value="${settings.basemapId}"]`,
+      `input[name="basemap"][value="${basemapById(settings.basemapId).id}"]`,
     );
     if (radio) radio.checked = true;
   }
 
-  renderTrails(trails: Trail[], settings: Settings, selectedId: string | null): void {
+  renderTrails(trails: Trail[], selectedId: string | null): void {
     // .panel-body is the panel's only scroller and this rebuild empties the list
     // inside it, so without carrying the offset across, every toggle, recolor or
     // removal snaps the panel back to the top. A now-out-of-range value is
@@ -240,7 +204,7 @@ export class Ui {
 
     // The query lives in the input and nowhere else, so a render never needs to
     // be told about it. The filter narrows the list only — every trail stays on
-    // the map, and so in the export.
+    // the map.
     const tokens = searchTokens(this.search.value);
     const matches = tokens.length
       ? trails.filter((t) => matchesTokens(t.name, tokens))
@@ -297,12 +261,7 @@ export class Ui {
       const color = document.createElement('input');
       color.type = 'color';
       color.value = trail.color;
-      // Uniform mode overrides the per-trail colour, so editing it here would
-      // change nothing visible — disable rather than mislead.
-      color.disabled = settings.uniformColor;
-      color.title = settings.uniformColor
-        ? 'Turn off uniform color to edit'
-        : 'Trail color';
+      color.title = 'Trail color';
       color.addEventListener('input', () => this.cb.onTrailColor(trail.id, color.value));
 
       const text = document.createElement('div');
@@ -393,41 +352,6 @@ export class Ui {
     if (trail.stats.duration) parts.push(formatDuration(trail.stats.duration));
     parts.push(`${trail.stats.points} pts`);
     return parts.join('  ·  ');
-  }
-
-  exportSelection(): { format: ExportFormat; scale: number } {
-    return {
-      format: this.formatSelect.value as ExportFormat,
-      scale: Number(this.scaleSelect.value),
-    };
-  }
-
-  showEstimate(plan: ExportPlan, requestedScale: number): void {
-    if (plan.problem) {
-      this.estimate.textContent = plan.problem;
-      this.estimate.style.color = '#a4262c';
-      this.exportButton.disabled = true;
-      return;
-    }
-    this.estimate.style.color = '';
-    this.exportButton.disabled = false;
-    const size = `${plan.width} × ${plan.height} px, ${plan.tileCount} tiles`;
-    this.estimate.textContent = plan.clamped
-      ? `${size} — this basemap tops out at zoom ${plan.tileZoom}, so ${requestedScale}× becomes ${plan.achievedScale}×.`
-      : size;
-  }
-
-  setExporting(active: boolean): void {
-    // When switching off, the caller re-runs showEstimate to settle the
-    // disabled state — an unexportable view must stay disabled.
-    this.exportButton.disabled = active;
-    this.exportButton.textContent = active ? 'Exporting…' : 'Export';
-    this.progress.hidden = !active;
-    if (!active) this.progressBar.style.width = '0';
-  }
-
-  setProgress(done: number, total: number): void {
-    this.progressBar.style.width = total > 0 ? `${(done / total) * 100}%` : '0';
   }
 
   /** Shown only where the compass needs an explicit grant, and hidden again the

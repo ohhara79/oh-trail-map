@@ -1,12 +1,12 @@
 import L from 'leaflet';
-import { weightOf, type Settings, type Trail } from './trails';
+import { TRAIL_WEIGHT, type Trail } from './trails';
 
 /** Extra stroke width, in px, for the two casings drawn under a selected trail. */
 const OUTER_PAD = 10;
 const CASING_PAD = 6;
 
 /**
- * How close a click has to land, in CSS pixels. Generous compared to the 1–10px
+ * How close a click has to land, in CSS pixels. Generous compared to the 2px
  * a trail is actually drawn at: the line is what you aim for, not what you can
  * realistically hit.
  */
@@ -22,7 +22,7 @@ function tolerance(): number {
 /**
  * The halo drawn beneath the selected trail, and nothing else. Kept out of
  * trails.ts, which owns the trail model: this is decoration over it, never
- * persisted and never exported.
+ * persisted.
  */
 export class Halo {
   private readonly group = L.layerGroup();
@@ -38,16 +38,15 @@ export class Halo {
    * animation, where a retained one would need a class toggle plus a forced
    * reflow to re-trigger it.
    */
-  show(trail: Trail | null, settings: Settings): void {
+  show(trail: Trail | null): void {
     this.group.clearLayers();
     if (!trail) return;
 
-    const weight = weightOf(settings);
     // Two casings, because one colour cannot carry every basemap: white alone
-    // washes out on Carto Light, dark alone disappears on Esri satellite.
+    // washes out on a pale basemap, dark alone disappears on Esri satellite.
     const rings = [
-      { color: '#1f2328', weight: weight + OUTER_PAD, opacity: 0.35, className: 'trail-halo-outer' },
-      { color: '#ffffff', weight: weight + CASING_PAD, opacity: 0.95, className: 'trail-halo' },
+      { color: '#1f2328', weight: TRAIL_WEIGHT + OUTER_PAD, opacity: 0.35, className: 'trail-halo-outer' },
+      { color: '#ffffff', weight: TRAIL_WEIGHT + CASING_PAD, opacity: 0.95, className: 'trail-halo' },
     ];
 
     // Built from trail.segments, the same source buildTrail() strokes from, so
@@ -81,7 +80,7 @@ export class Halo {
 /**
  * The visible trail nearest `point`, or null past the tolerance.
  *
- * A geometric test rather than a listener per polyline: the strokes are 1-10px
+ * A geometric test rather than a listener per polyline: the strokes are 2px
  * wide, so hit-testing them exactly is a poor target, and widening one with an
  * invisible
  * hit line per segment would permanently double the SVG node count — a cost

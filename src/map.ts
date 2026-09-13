@@ -1,10 +1,9 @@
 import L from 'leaflet';
-import { basemapById, type Basemap } from './basemaps';
+import { basemapById } from './basemaps';
 import { startHeading, type Heading } from './heading';
 
 export type MapHandle = {
   map: L.Map;
-  source: Basemap;
   setBasemap: (id: string) => void;
 };
 
@@ -15,12 +14,10 @@ export function createMap(container: HTMLElement, basemapId: string): MapHandle 
     // the control comes later in DOM order, so it won the paint and the button
     // was unreachable. Bottom-right also puts zoom in thumb reach on a phone.
     zoomControl: false,
-    // Integer zoom only: the exporter derives its tile zoom as z + log2(scale),
-    // and fractional zoom would make "4x" not mean exactly 4x.
+    // Integer zoom only, so tiles are always drawn at their native size.
     zoomSnap: 1,
     zoomDelta: 1,
-    // No on-map credit box: each basemap's required credit is burned into the
-    // exported image instead (see Basemap.exportCredit).
+    // No on-map credit box.
     attributionControl: false,
   }).setView([20, 0], 2);
 
@@ -43,14 +40,10 @@ export function createMap(container: HTMLElement, basemapId: string): MapHandle 
   let layer = L.tileLayer(source.url, {
     maxZoom: source.maxZoom,
     subdomains: source.subdomains ?? 'abc',
-    crossOrigin: 'anonymous',
   }).addTo(map);
 
   const handle: MapHandle = {
     map,
-    get source() {
-      return source;
-    },
     setBasemap(id: string) {
       const next = basemapById(id);
       if (next.id === source.id) return;
@@ -59,7 +52,6 @@ export function createMap(container: HTMLElement, basemapId: string): MapHandle 
       layer = L.tileLayer(next.url, {
         maxZoom: next.maxZoom,
         subdomains: next.subdomains ?? 'abc',
-        crossOrigin: 'anonymous',
       }).addTo(map);
       // Zooming past the new source's limit would leave a blank canvas.
       if (map.getZoom() > next.maxZoom) map.setZoom(next.maxZoom);
