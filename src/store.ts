@@ -1,7 +1,6 @@
 /**
- * IndexedDB persistence. localStorage is not an option here — its ~5 MB quota
- * is easily blown by a handful of GPX files, which we keep verbatim so a trail
- * can be re-parsed exactly as imported.
+ * IndexedDB persistence. The GPX text itself is bundled from data/gpx/ (see
+ * trailFiles.ts), so all a trail record keeps is what you changed about it.
  */
 import { DEFAULT_SETTINGS, type Settings } from './trails';
 
@@ -11,13 +10,12 @@ const TRAILS = 'trails';
 const SETTINGS = 'settings';
 const SETTINGS_KEY = 'app';
 
+/** Keyed by the GPX file name. Records from the import era — timestamp ids
+ *  carrying the GPX text as well — match no file and are deleted at boot. */
 export type TrailRecord = {
   id: string;
-  name: string;
   color: string;
   visible: boolean;
-  gpxText: string;
-  addedAt: number;
 };
 
 let dbPromise: Promise<IDBDatabase> | null = null;
@@ -56,9 +54,8 @@ function run<T>(
   );
 }
 
-export async function loadTrails(): Promise<TrailRecord[]> {
-  const all = await run<TrailRecord[]>(TRAILS, 'readonly', (s) => s.getAll());
-  return all.sort((a, b) => a.addedAt - b.addedAt);
+export function loadTrails(): Promise<TrailRecord[]> {
+  return run<TrailRecord[]>(TRAILS, 'readonly', (s) => s.getAll());
 }
 
 export function putTrail(record: TrailRecord): Promise<unknown> {

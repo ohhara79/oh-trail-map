@@ -23,10 +23,10 @@ import {
 } from './store';
 import { Ui } from './ui';
 import { formatDistance } from './gpx';
+import { loadTrailFiles } from './trailFiles';
 
 const trails: Trail[] = [];
 let settings: Settings;
-let colorCursor = 0;
 /** View state, like the filter query and the panel: never persisted.
  *  Settings describes how trails render; this describes what you are
  *  currently looking at. */
@@ -57,11 +57,8 @@ function setVisible(trail: Trail, visible: boolean, map: L.Map): void {
 function toRecord(trail: Trail): TrailRecord {
   return {
     id: trail.id,
-    name: trail.name,
     color: trail.color,
     visible: trail.visible,
-    gpxText: trail.gpxText,
-    addedAt: Number(trail.id.split('-')[0]) || Date.now(),
   };
 }
 
@@ -93,7 +90,6 @@ async function main(): Promise<void> {
   let blockedMessage: string | null = null;
 
   const ui = new Ui({
-    onImport: (files) => void importFiles(files),
     onToggle: (id, visible) => {
       const trail = findTrail(id);
       if (!trail) return;
@@ -117,16 +113,6 @@ async function main(): Promise<void> {
       trail.color = color;
       restyleTrail(trail, selectedId);
       void putTrail(toRecord(trail));
-    },
-    onRemove: (id) => {
-      const index = trails.findIndex((t) => t.id === id);
-      if (index < 0) return;
-      map.removeLayer(trails[index].layer);
-      trails.splice(index, 1);
-      if (selectedId === id) selectedId = null;
-      void deleteTrail(id);
-      restyleAll();
-      refresh();
     },
     onZoomTo: (id) => {
       const trail = findTrail(id);
@@ -209,61 +195,41 @@ async function main(): Promise<void> {
     }
   }
 
-  async function importFiles(files: File[]): Promise<void> {
-    let imported = 0;
-    for (const file of files) {
-      try {
-        const text = await file.text();
-        const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-        const trail = buildTrail(
-          id,
-          text,
-          file.name,
-          nextColor(colorCursor++),
-          true,
-        );
-        trails.push(trail);
-        trail.layer.addTo(map);
-        await putTrail(toRecord(trail));
-        imported++;
-      } catch (err) {
-        ui.notify(err instanceof Error ? err.message : String(err), 'error');
-      }
+  // The trails are the files in data/gpx/; the store only remembers the colour
+  // and visibility you gave each one. Both are read before touching the view.
+  const [files, records] = await Promise.all([
+    loadTrailFiles().catch(() => {
+      ui.notify('Could not load the GPX files.', 'error');
+      return [];
+    }),
+    loadTrails().catch(() => {
+      ui.notify('Could not read saved trail settings from this browser.', 'error');
+      return null;
+    }),
+  ]);
+  const saved = new Map(records?.map((r) => [r.id, r]));
+  files.forEach(({ file, text }, index) => {
+    const record = saved.get(file);
+    try {
+      const trail = buildTrail(
+        file,
+        text,
+        file,
+        record?.color ?? nextColor(index),
+        record?.visible ?? true,
+      );
+      trails.push(trail);
+      if (trail.visible) trail.layer.addTo(map);
+    } catch (err) {
+      // A file that does not parse is skipped rather than blocking the rest.
+      ui.notify(err instanceof Error ? err.message : String(err), 'error');
     }
-    if (imported > 0) {
-      // Not just for the newcomers' dimming: a freshly added layer lands on top
-      // of the halo in DOM order, so the z-order has to be settled again.
-      restyleAll();
-      refresh();
-      const bounds = visibleBounds();
-      if (bounds.isValid()) map.fitBounds(bounds, { padding: [30, 30] });
-      ui.notify(`Imported ${imported} trail${imported === 1 ? '' : 's'}.`);
-    }
-  }
-
-  // Restore previously imported trails before touching the view.
-  try {
-    const records = await loadTrails();
-    for (const record of records) {
-      try {
-        const trail = buildTrail(
-          record.id,
-          record.gpxText,
-          record.name,
-          record.color,
-          record.visible,
-        );
-        trails.push(trail);
-        if (trail.visible) trail.layer.addTo(map);
-        colorCursor++;
-      } catch {
-        // A record that no longer parses is dropped rather than blocking boot.
-        void deleteTrail(record.id);
-      }
-    }
-  } catch {
-    ui.notify('Could not read saved trails from this browser.', 'error');
-  }
+  });
+  // Records for files no longer in data/gpx/ — and every record left from when
+  // trails were imported — have nothing to describe. Skipped when the store
+  // could not be read, and never a file that merely failed to parse.
+  const present = new Set(files.map((f) => f.file));
+  for (const id of saved.keys()) if (!present.has(id)) void deleteTrail(id);
 
   refresh();
 

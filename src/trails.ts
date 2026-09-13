@@ -7,7 +7,6 @@ export type Trail = {
   /** The trail's own colour. */
   color: string;
   visible: boolean;
-  gpxText: string;
   segments: Pt[][];
   stats: Stats;
   bounds: L.LatLngBounds;
@@ -94,7 +93,6 @@ export function buildTrail(
     name: parsed.name,
     color,
     visible,
-    gpxText,
     segments: parsed.segments,
     stats: parsed.stats,
     bounds: boundsOf(parsed.segments),

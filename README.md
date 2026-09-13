@@ -15,27 +15,30 @@ npm run preview
 - OSM basemap with your current location (marker + accuracy circle), zoom/pan.
 - A locate button in the bottom-right: click to centre on yourself and keep
   following as you move, until you drag the map away or click it again.
-- Import multiple GPX files via the file picker or by dropping them on the map.
+- Trails are the `.gpx` files in `data/gpx/`, bundled at build time (one lazy
+  chunk per file). No files, no trails; the set cannot be changed from the
+  browser — add or remove files and restart `npm run dev` or rebuild.
 - Per-trail visibility toggle, colour, and distance / ascent / duration stats.
 - Basemap switcher: OSM Standard, OpenTopoMap, Esri satellite.
 - 337 국가지점번호 emergency-location points around 관악산 / 삼성산, drawn as pins —
   amber where the point has an 이름, grey where it does not; click one for its 지점번호, 사물유형 and 이름. Toggled from the control panel.
   The grid codes are decoded to lat/lon at runtime — see
   `docs/plans/2026-09-13-01-national-point-markers.md` for the derivation.
-- Trails persist in IndexedDB across reloads.
+- Each trail's colour and visibility persist in IndexedDB across reloads.
 - Works on a phone: the map stays full-width and the control panel becomes a
   drawer over it, opened with the ☰ button in the top-left.
 
 ## Samples
 
 `samples/` holds two synthetic GPX tracks near Bukhansan, Seoul (~6.0 km /
-1120 m ascent and ~4.8 km / 310 m ascent) for testing import and toggling.
+1120 m ascent and ~4.8 km / 310 m ascent) for testing — copy them into
+`data/gpx/` to load them.
 
 ## Notes
 
 - Geolocation requires a secure context: `localhost` works in dev, but a
   deployed copy must be served over HTTPS. `npm run dev` binds the LAN address
   as well, so a phone on the same Wi-Fi can load it — but over plain HTTP at a
-  LAN IP the browser will refuse geolocation. Everything else (import, the
-  drawer) works there; testing *location* needs localhost or HTTPS.
+  LAN IP the browser will refuse geolocation. Everything else (the trails,
+  the drawer) works there; testing *location* needs localhost or HTTPS.
 - `dist/` is fully static and can be hosted anywhere.

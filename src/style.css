@@ -95,18 +95,6 @@ input[type='color'] {
   background: none; cursor: pointer;
 }
 
-.file-button { display: block; }
-.file-button input { display: none; }
-.file-button span {
-  display: block;
-  text-align: center;
-  padding: 8px;
-  border: 1px dashed var(--border);
-  border-radius: 6px;
-  cursor: pointer;
-}
-.file-button span:hover { border-color: var(--accent); color: var(--accent); }
-
 #trail-search {
   font: inherit; width: 100%; margin-bottom: 8px; padding: 5px 8px;
   border: 1px solid var(--border); border-radius: 6px; background: #fff;
@@ -135,8 +123,6 @@ input[type='color'] {
 .trail-name.expanded { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
 .trail-name mark { background: #fff3a3; color: inherit; border-radius: 2px; }
 .trail-stats { font-size: 11px; color: var(--muted); }
-.trail-remove { border: 0; background: none; color: var(--muted); font-size: 16px; line-height: 1; padding: 2px 4px; }
-.trail-remove:hover { color: #d33; background: none; }
 .trail-head { margin-bottom: 8px; }
 .trail-head h2 { margin: 0; }
 .trail-head button { font-size: 12px; padding: 2px 6px; color: var(--muted); }
@@ -330,16 +316,6 @@ input[type='color'] {
 .notice button { background: none; border: 0; color: inherit; opacity: .7; padding: 0 2px; }
 .notice button:hover { background: none; opacity: 1; }
 
-#drop-overlay {
-  position: absolute; inset: 0; z-index: 1500;
-  background: rgba(26,115,232,.12);
-  border: 3px dashed var(--accent);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px; font-weight: 500; color: #14538f;
-  pointer-events: none;
-}
-#drop-overlay[hidden] { display: none; }
-
 /* ---------------------------------------------------------------------------
    Small screens: the sidebar leaves the flex row and becomes an overlay drawer,
    so the map is always full width. A 310px fixed column left ~80px of map on a
@@ -404,6 +380,5 @@ input[type='color'] {
   .trail-head button { min-height: 32px; }
   /* 16px is the threshold below which iOS Safari zooms the page on focus. */
   #trail-search { padding: 8px; font-size: 16px; }
-  .trail-remove { padding: 10px 12px; font-size: 20px; }
   .options label { padding: 6px 0; }
 }

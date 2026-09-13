@@ -3,12 +3,10 @@ import { formatDistance, formatDuration } from './gpx';
 import { matchesTokens, searchTokens, type Settings, type Trail } from './trails';
 
 export type UiCallbacks = {
-  onImport: (files: File[]) => void;
   onToggle: (id: string, visible: boolean) => void;
   /** `ids` is the rows currently on screen, which a filter may have narrowed. */
   onToggleAll: (visible: boolean, ids: string[]) => void;
   onTrailColor: (id: string, color: string) => void;
-  onRemove: (id: string) => void;
   onZoomTo: (id: string) => void;
   /** null clears the selection. */
   onSelect: (id: string | null) => void;
@@ -48,7 +46,6 @@ export class Ui {
   private readonly count = el('trail-count');
   private readonly pointsToggle = el<HTMLInputElement>('points-toggle');
   private readonly notices = el('notices');
-  private readonly dropOverlay = el('drop-overlay');
   private readonly compass = el<HTMLButtonElement>('compass');
   private readonly locate = el<HTMLButtonElement>('locate');
 
@@ -80,13 +77,6 @@ export class Ui {
   }
 
   private bind(): void {
-    const fileInput = el<HTMLInputElement>('file-input');
-    fileInput.addEventListener('change', () => {
-      if (fileInput.files?.length) this.cb.onImport(Array.from(fileInput.files));
-      // Reset so re-picking the same file still fires a change event.
-      fileInput.value = '';
-    });
-
     // Scoped to the rendered rows, not every trail: with a filter active the
     // master checkbox summarises what is on screen, so it must act on that too.
     this.toggleAll.addEventListener('change', () =>
@@ -132,8 +122,6 @@ export class Ui {
     // persisted: Settings describes how trails render, and panel state is
     // per-device chrome rather than a rendering choice.
     this.setPanel(!window.matchMedia(DRAWER_QUERY).matches);
-
-    this.bindDropZone();
   }
 
   /**
@@ -143,39 +131,6 @@ export class Ui {
    */
   private setPanel(open: boolean): void {
     this.app.dataset.panel = open ? 'open' : 'closed';
-  }
-
-  private bindDropZone(): void {
-    let depth = 0;
-    const hasFiles = (e: DragEvent) =>
-      Array.from(e.dataTransfer?.types ?? []).includes('Files');
-
-    window.addEventListener('dragenter', (e) => {
-      if (!hasFiles(e)) return;
-      e.preventDefault();
-      // Counter, not a boolean: dragenter fires again for every child element.
-      if (++depth === 1) this.dropOverlay.hidden = false;
-    });
-    window.addEventListener('dragover', (e) => {
-      if (hasFiles(e)) e.preventDefault();
-    });
-    window.addEventListener('dragleave', () => {
-      if (--depth <= 0) {
-        depth = 0;
-        this.dropOverlay.hidden = true;
-      }
-    });
-    window.addEventListener('drop', (e) => {
-      if (!hasFiles(e)) return;
-      e.preventDefault();
-      depth = 0;
-      this.dropOverlay.hidden = true;
-      const files = Array.from(e.dataTransfer?.files ?? []).filter((f) =>
-        f.name.toLowerCase().endsWith('.gpx'),
-      );
-      if (files.length) this.cb.onImport(files);
-      else this.notify('Only .gpx files can be imported.', 'error');
-    });
   }
 
   applySettings(settings: Settings): void {
@@ -190,8 +145,8 @@ export class Ui {
 
   renderTrails(trails: Trail[], selectedId: string | null): void {
     // .panel-body is the panel's only scroller and this rebuild empties the list
-    // inside it, so without carrying the offset across, every toggle, recolor or
-    // removal snaps the panel back to the top. A now-out-of-range value is
+    // inside it, so without carrying the offset across, every toggle or recolor
+    // snaps the panel back to the top. A now-out-of-range value is
     // clamped by the browser, which is the right answer for a shorter list.
     const scroll = this.panelBody.scrollTop;
     this.list.replaceChildren();
@@ -217,7 +172,7 @@ export class Ui {
     this.empty.hidden = matches.length > 0;
     this.empty.textContent =
       trails.length === 0
-        ? 'No trails imported yet.'
+        ? 'No GPX files in data/gpx.'
         : `No trail matches “${this.search.value.trim()}”.`;
     this.count.textContent = !trails.length
       ? ''
@@ -243,7 +198,7 @@ export class Ui {
       // The whole row selects and zooms, so there is something to aim at besides
       // the name — a name click reaches this through bubbling, which keeps the
       // zoom in one place. Guarded rather than scoped to a sub-element: the
-      // checkbox, colour swatch and remove button keep their own meaning.
+      // checkbox and colour swatch keep their own meaning.
       li.addEventListener('click', (e) => {
         if ((e.target as HTMLElement).closest('input, button')) return;
         this.cb.onSelect(trail.id);
@@ -289,14 +244,7 @@ export class Ui {
       stats.textContent = this.statsLine(trail);
       text.append(name, stats);
 
-      const remove = document.createElement('button');
-      remove.type = 'button';
-      remove.className = 'trail-remove';
-      remove.textContent = '×';
-      remove.title = 'Remove trail';
-      remove.addEventListener('click', () => this.cb.onRemove(trail.id));
-
-      li.append(visible, color, text, remove);
+      li.append(visible, color, text);
       this.list.append(li);
     }
 

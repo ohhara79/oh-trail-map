@@ -14,14 +14,6 @@
         </header>
 
         <div id="panel-body" class="panel-body">
-          <section class="block">
-            <label class="file-button">
-              <input id="file-input" type="file" accept=".gpx,application/gpx+xml" multiple />
-              <span>Import GPX files</span>
-            </label>
-            <p class="hint">or drop .gpx files onto the map</p>
-          </section>
-
           <section class="block grow-block">
             <div class="row trail-head">
               <input id="trail-all" type="checkbox" title="Show or hide every trail" aria-label="Show or hide every trail" />
@@ -31,7 +23,7 @@
             <input id="trail-search" type="search" placeholder="Filter by name"
                    aria-label="Filter trails by name" autocomplete="off" />
             <ul id="trail-list"></ul>
-            <p id="trail-empty" class="hint">No trails imported yet.</p>
+            <p id="trail-empty" class="hint">No GPX files in data/gpx.</p>
           </section>
 
           <section class="block">
@@ -67,7 +59,6 @@
       </button>
       <div id="map"></div>
       <div id="notices"></div>
-      <div id="drop-overlay" hidden><span>Drop GPX files to import</span></div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
