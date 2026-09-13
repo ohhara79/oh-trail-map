@@ -18,9 +18,10 @@ const GRID_LETTERS = '가나다라마바사아자차카타파하';
 /**
  * South-west corner of cell 가가 in EPSG:5179 metres. Not derivable from the code —
  * it is the definition of the grid — so it is worth saying how it was confirmed:
- * 다사52414090 decodes to 37.46609, 126.96184, which is the K1 호암생활관 trailhead
- * on 관악산, and 다사49013778 to 37.43779, 126.92361, the 안양 만안구 사방댐. Either
- * origin component being wrong moves the whole set by a multiple of 100 km.
+ * 다사52414090 decodes to 37.46609, 126.96184 and 다사49013778 to 37.43779,
+ * 126.92361, each of which matches the surveyed position of the sign carrying that
+ * code. Either origin component being wrong moves the whole set by a multiple of
+ * 100 km.
  */
 const GRID_ORIGIN_X = 700_000;
 const GRID_ORIGIN_Y = 1_300_000;

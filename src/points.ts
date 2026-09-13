@@ -132,15 +132,15 @@ export function createPointsLayer(map: L.Map, points: NationalPoint[]): L.LayerG
         iconAnchor: PIN_ANCHOR,
         popupAnchor: POPUP_ANCHOR,
       }),
-      // Leaflet gives every marker a tabindex by default. 337 of them between the
+      // Leaflet gives every marker a tabindex by default. Hundreds of them between the
       // map and the rest of the page is a tab trap, and the pins carry no
       // information the popup does not repeat on click.
       keyboard: false,
-      // They overlap heavily along the 관악산 ridge, so the one under the cursor
+      // Where the points are dense they overlap heavily, so the one under the cursor
       // has to come to the front to be clickable at all.
       riseOnHover: true,
       // Leaflet stacks markers by screen y plus this offset, so every named pin sits
-      // over every unnamed one it overlaps — where pins crowd the ridge, the named one
+      // over every unnamed one it overlaps — where pins crowd together, the named one
       // is the one worth seeing. The rise has
       // to clear that gap, or a grey pin under an amber one could never be hovered
       // to the front: Leaflet's default riseOffset is only 250.
@@ -148,7 +148,7 @@ export function createPointsLayer(map: L.Map, points: NationalPoint[]): L.LayerG
       riseOffset: 2000,
       title: point.name || point.code,
     })
-      // The function form: 337 popup DOM trees are built on first open rather than
+      // The function form: the popup DOM trees are built on first open rather than
       // at boot, when almost none of them will ever be looked at.
       .bindPopup(() => popupContent(point), { closeButton: true, autoPan: true })
       .addTo(group);
