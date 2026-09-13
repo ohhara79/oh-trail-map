@@ -18,6 +18,9 @@ npm run preview
 - Trails are the `.gpx` files in `data/gpx/`, bundled at build time (one lazy
   chunk per file). No files, no trails; the set cannot be changed from the
   browser — add or remove files and restart `npm run dev` or rebuild.
+- `data/title.txt` names the area, shown after the app name in the tab title and
+  panel heading — `oh-trail-map (Gwanaksan Mountain)`. Bundled at build time; an
+  empty file leaves just `oh-trail-map`.
 - Per-trail visibility toggle, a distinct colour, and distance / ascent / duration stats.
 - Basemap switcher: OSM Standard, OpenTopoMap, Esri satellite.
 - National Point Number emergency-location points from `data/national_points_w_name.tsv`, drawn as pins —

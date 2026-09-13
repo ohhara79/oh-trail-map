@@ -24,6 +24,8 @@ import {
 import { Ui } from './ui';
 import { formatDistance } from './gpx';
 import { loadTrailFiles } from './trailFiles';
+// Imported rather than fetched, for the same reason as the TSV in points.ts.
+import rawTitle from '../data/title.txt?raw';
 
 const trails: Trail[] = [];
 let settings: Settings;
@@ -31,6 +33,20 @@ let settings: Settings;
  *  Settings describes how trails render; this describes what you are
  *  currently looking at. */
 let selectedId: string | null = null;
+
+/**
+ * The app name, with data/title.txt's area in brackets when the file has one:
+ * the tab title and the panel heading. The heading keeps index.html's
+ * non-breaking hyphens, so a narrow panel wraps before the bracket and never
+ * inside the name.
+ */
+function applyTitle(): void {
+  const place = rawTitle.trim();
+  const name = place ? `oh-trail-map (${place})` : 'oh-trail-map';
+  document.title = name;
+  const heading = document.querySelector('.panel-head h1');
+  if (heading) heading.textContent = name.replace('oh-trail-map', 'oh\u2011trail\u2011map');
+}
 
 function findTrail(id: string): Trail | undefined {
   return trails.find((t) => t.id === id);
@@ -70,6 +86,7 @@ function visibleBounds(): L.LatLngBounds {
 }
 
 async function main(): Promise<void> {
+  applyTitle();
   settings = await loadSettings().catch(() => DEFAULT_SETTINGS);
 
   const handle = createMap(document.getElementById('map')!, settings.basemapId);
