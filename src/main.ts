@@ -57,7 +57,6 @@ function setVisible(trail: Trail, visible: boolean, map: L.Map): void {
 function toRecord(trail: Trail): TrailRecord {
   return {
     id: trail.id,
-    color: trail.color,
     visible: trail.visible,
   };
 }
@@ -106,13 +105,6 @@ async function main(): Promise<void> {
       }
       restyleAll();
       refresh();
-    },
-    onTrailColor: (id, color) => {
-      const trail = findTrail(id);
-      if (!trail) return;
-      trail.color = color;
-      restyleTrail(trail, selectedId);
-      void putTrail(toRecord(trail));
     },
     onZoomTo: (id) => {
       const trail = findTrail(id);
@@ -195,8 +187,8 @@ async function main(): Promise<void> {
     }
   }
 
-  // The trails are the files in data/gpx/; the store only remembers the colour
-  // and visibility you gave each one. Both are read before touching the view.
+  // The trails are the files in data/gpx/; the store only remembers the
+  // visibility you gave each one. Both are read before touching the view.
   const [files, records] = await Promise.all([
     loadTrailFiles().catch(() => {
       ui.notify('Could not load the GPX files.', 'error');
@@ -215,7 +207,7 @@ async function main(): Promise<void> {
         file,
         text,
         file,
-        record?.color ?? nextColor(index),
+        nextColor(index),
         record?.visible ?? true,
       );
       trails.push(trail);

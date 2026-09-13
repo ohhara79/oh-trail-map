@@ -1,6 +1,7 @@
 /**
  * IndexedDB persistence. The GPX text itself is bundled from data/gpx/ (see
  * trailFiles.ts), so all a trail record keeps is what you changed about it.
+ * Colours come from trails.ts PALETTE and are never stored.
  */
 import { DEFAULT_SETTINGS, type Settings } from './trails';
 
@@ -11,10 +12,11 @@ const SETTINGS = 'settings';
 const SETTINGS_KEY = 'app';
 
 /** Keyed by the GPX file name. Records from the import era — timestamp ids
- *  carrying the GPX text as well — match no file and are deleted at boot. */
+ *  carrying the GPX text as well — match no file and are deleted at boot.
+ *  Records from when colours could be picked still carry a `color`; it is
+ *  ignored, and dropped the next time the record is written. */
 export type TrailRecord = {
   id: string;
-  color: string;
   visible: boolean;
 };
 

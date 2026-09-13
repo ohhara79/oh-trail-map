@@ -6,7 +6,6 @@ export type UiCallbacks = {
   onToggle: (id: string, visible: boolean) => void;
   /** `ids` is the rows currently on screen, which a filter may have narrowed. */
   onToggleAll: (visible: boolean, ids: string[]) => void;
-  onTrailColor: (id: string, color: string) => void;
   onZoomTo: (id: string) => void;
   /** null clears the selection. */
   onSelect: (id: string | null) => void;
@@ -213,11 +212,10 @@ export class Ui {
         this.cb.onToggle(trail.id, visible.checked),
       );
 
-      const color = document.createElement('input');
-      color.type = 'color';
-      color.value = trail.color;
-      color.title = 'Trail color';
-      color.addEventListener('input', () => this.cb.onTrailColor(trail.id, color.value));
+      // Only there to match a row to its line; a click falls through to the row.
+      const swatch = document.createElement('span');
+      swatch.className = 'trail-swatch';
+      swatch.style.background = trail.color;
 
       const text = document.createElement('div');
       text.className = 'grow';
@@ -244,7 +242,7 @@ export class Ui {
       stats.textContent = this.statsLine(trail);
       text.append(name, stats);
 
-      li.append(visible, color, text);
+      li.append(visible, swatch, text);
       this.list.append(li);
     }
 

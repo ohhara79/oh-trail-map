@@ -4,7 +4,7 @@ import { computeStats, parseGpx, type Pt, type Stats } from './gpx';
 export type Trail = {
   id: string;
   name: string;
-  /** The trail's own colour. */
+  /** From PALETTE, by the file's position in data/gpx/. */
   color: string;
   visible: boolean;
   segments: Pt[][];
@@ -30,9 +30,24 @@ export const TRAIL_WEIGHT = 2;
 /** How far an unselected trail recedes while something else is selected. */
 export const DIM_OPACITY = 0.3;
 
+/**
+ * 64 colours, handed out by position in data/gpx/ and repeating after the last.
+ * Picked greedily in OKLab from a 16-level sRGB grid: each entry is the candidate
+ * farthest from every entry before it, so the first N are the most distinct N for
+ * any N. Candidates are limited to lightness 0.40–0.75 and chroma ≥ 0.08, so a 2px
+ * line holds up on the street, topo and satellite basemaps. The halo casings, the
+ * points.ts pin amber and slate, the location blue and the OSM ground colours count
+ * as already taken, so no trail is mistaken for any of them.
+ */
 export const PALETTE = [
-  '#e6194b', '#3cb44b', '#4363d8', '#f58231',
-  '#911eb4', '#008080', '#f032e6', '#9a6324',
+  '#ff00ff', '#770088', '#00aa00', '#006600', '#ff7799', '#9911ff', '#0000dd', '#cc1188',
+  '#bb88ff', '#881122', '#bb9900', '#224488', '#44aadd', '#ff0022', '#777700', '#9955bb',
+  '#ff7700', '#00bb99', '#5533ff', '#664400', '#bb7788', '#994466', '#5500bb', '#ff33aa',
+  '#008866', '#55cc44', '#bb00cc', '#8866ff', '#bb0022', '#779966', '#006677', '#8888cc',
+  '#cc55ee', '#664499', '#dd9988', '#cc99cc', '#ee77dd', '#008800', '#0088bb', '#8822bb',
+  '#3355bb', '#990066', '#cc7744', '#cc4455', '#cc55aa', '#663366', '#339999', '#99bb66',
+  '#88aaff', '#6688ff', '#6666bb', '#885533', '#ff4477', '#aa0099', '#cc00ff', '#7744dd',
+  '#997744', '#77aa33', '#ee00cc', '#0033ff', '#996688', '#ee5511', '#556622', '#bb77cc',
 ];
 
 export function nextColor(index: number): string {
