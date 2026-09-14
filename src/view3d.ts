@@ -224,13 +224,22 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
 
   map.on('click', (e: MapMouseEvent) => {
     if (mode !== 'orbit') return;
+    // The same rule as the 2D handlers in main.ts: while a trail is selected or a
+    // popup is open, any click only clears it.
+    const popupOpen = popup?.isOpen() ?? false;
+    const trailSelected = getScene().selectedId !== null;
+    if (popupOpen || trailSelected) {
+      popup?.remove();
+      popup = null;
+      if (trailSelected) opts.onSelect(null);
+      return;
+    }
     const t = tolerance();
     const box: [[number, number], [number, number]] = [
       [e.point.x - t, e.point.y - t],
       [e.point.x + t, e.point.y + t],
     ];
-    // A point first, as in 2D, where a pin swallows the click and leaves the trail
-    // selection as it was.
+    // A point first, as in 2D, where a pin swallows the click.
     if (map.getLayoutProperty(LAYER_POINTS, 'visibility') !== 'none') {
       const hit = map.queryRenderedFeatures(
         [[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]],
@@ -238,8 +247,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       )[0];
       const point = hit ? points[hit.properties.index as number] : undefined;
       if (point) {
-        popup?.remove();
-        popup = new Popup({ offset: 10, maxWidth: '240px' })
+        // closeOnClick off: the check above decides what a click closes.
+        popup = new Popup({ offset: 10, maxWidth: '240px', closeOnClick: false })
           .setLngLat([point.lon, point.lat])
           .setDOMContent(popupContent(point))
           .addTo(map);
@@ -247,10 +256,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       }
     }
     const hit = map.queryRenderedFeatures(box, { layers: [LAYER_TRAILS] })[0];
-    const id = (hit?.properties.id as string | undefined) ?? null;
-    // The same rule as the 2D handler in main.ts: a second click on the selected
-    // trail, like a click on bare ground, clears it.
-    opts.onSelect(id && id !== getScene().selectedId ? id : null);
+    const id = hit?.properties.id as string | undefined;
+    if (id) opts.onSelect(id);
   });
 
   for (const layer of [LAYER_POINTS, LAYER_TRAILS]) {

@@ -26,9 +26,10 @@ export const PIN_STROKE = 1.5;
 /** Just big enough for the ring, rounded up to whole pixels so the centre is too. */
 const PIN_BOX = 2 * Math.ceil(PIN_RADIUS + PIN_STROKE);
 const PIN_CENTRE = PIN_BOX / 2;
-/** Lifts the popup's tail to the dot's top edge — without it Leaflet anchors the
- *  tail on iconAnchor, the centre, and the tail covers the dot it describes. */
-const POPUP_ANCHOR: [number, number] = [0, -PIN_CENTRE];
+/** Lifts the popup's tail to the dot's top edge — without it the tail sits on the
+ *  point itself, the dot's centre, and covers the dot it describes. The 7 is
+ *  Leaflet's default popup offset, which an explicit offset replaces. */
+const POPUP_OFFSET: [number, number] = [0, 7 - PIN_CENTRE];
 /**
  * Two colours, split on whether the row has an 이름 — not one per 사물유형. There
  * are nine of those, a nine-swatch legend has nowhere to live in the panel, and the
@@ -99,19 +100,38 @@ export function popupContent(point: NationalPoint): HTMLElement {
 }
 
 /**
+ * Opens the popup for `point`, replacing any other open on the map.
+ *
+ * closeOnClick is off because main.ts decides what a click closes: a click while
+ * the popup is open only closes it, and Leaflet's own close runs on 'preclick' —
+ * before the click is handled — which would leave nothing to tell that a popup
+ * had been open.
+ */
+export function openPointPopup(map: L.Map, point: NationalPoint): L.Popup {
+  return L.popup({ closeButton: true, autoPan: true, closeOnClick: false, offset: POPUP_OFFSET })
+    .setLatLng([point.lat, point.lon])
+    .setContent(popupContent(point))
+    .openOn(map);
+}
+
+/**
  * The pins as one group, so main.ts can add and remove the whole layer with the
  * sidebar toggle.
  *
  * These markers are the one layer in the app that is deliberately interactive.
  * Everywhere else — the halo (selection.ts), the location marker (map.ts) — opts
  * out so that clicks reach the single map handler in main.ts and trailAt() decides
- * what was hit. Here bindPopup makes each marker listen for 'click', and Leaflet's
+ * what was hit. Here each marker listens for 'click', and Leaflet's
  * _findEventTargets only falls back to the map when no layer listened, so a click
- * on a pin opens its popup and leaves the trail selection exactly as it was. That
- * is the wanted behaviour, not an accident: picking a landmark out of the map is a
- * different gesture from picking a trail.
+ * on a pin goes to `onPinClick` and never to the map handler. No bindPopup: its
+ * click listener opens the popup unconditionally, where main.ts only opens one
+ * when nothing is selected yet.
  */
-export function createPointsLayer(map: L.Map, points: NationalPoint[]): L.LayerGroup {
+export function createPointsLayer(
+  map: L.Map,
+  points: NationalPoint[],
+  onPinClick: (point: NationalPoint) => void,
+): L.LayerGroup {
   map.createPane(PIN_PANE).style.zIndex = PIN_PANE_Z_INDEX;
   const group = L.layerGroup();
 
@@ -137,7 +157,6 @@ export function createPointsLayer(map: L.Map, points: NationalPoint[]): L.LayerG
         iconSize: [PIN_BOX, PIN_BOX],
         // The centre, not a corner: the point is where the dot is.
         iconAnchor: [PIN_CENTRE, PIN_CENTRE],
-        popupAnchor: POPUP_ANCHOR,
       }),
       // Leaflet gives every marker a tabindex by default. Hundreds of them between the
       // map and the rest of the page is a tab trap, and the pins carry no
@@ -155,9 +174,7 @@ export function createPointsLayer(map: L.Map, points: NationalPoint[]): L.LayerG
       riseOffset: 2000,
       title: point.name || point.code,
     })
-      // The function form: the popup DOM trees are built on first open rather than
-      // at boot, when almost none of them will ever be looked at.
-      .bindPopup(() => popupContent(point), { closeButton: true, autoPan: true })
+      .on('click', () => onPinClick(point))
       .addTo(group);
   }
 

@@ -27,6 +27,10 @@ npm run preview
   amber where the point has an 이름, grey where it does not; click one for its 지점번호, 사물유형 and 이름. Toggled from the control panel.
   The grid codes are decoded to lat/lon at runtime — see
   `docs/plans/2026-09-13-01-national-point-markers.md` for the derivation.
+- Click a trail on the map to select it, or a point to open its popup. While
+  either is selected, a click anywhere on the map (2D or 3D orbit) only clears
+  it, so a near miss never jumps to a neighbouring trail or point. A row in the
+  trail list still selects its trail directly.
 - A **3D** button (top-right) turns the map into a MapLibre GL terrain view with
   the same basemap, trails and points:
   - **Orbit**: tilt and rotate from above.

@@ -4,7 +4,7 @@ import './style.css';
 import { basemapById } from './basemaps';
 import { compassNeedsPermission, requestCompassPermission, type Heading } from './heading';
 import { createMap, startLocating } from './map';
-import { loadNationalPoints, createPointsLayer } from './points';
+import { loadNationalPoints, createPointsLayer, openPointPopup } from './points';
 import { Halo, trailAt } from './selection';
 import {
   buildTrail,
@@ -98,7 +98,13 @@ async function main(): Promise<void> {
 
   // The National Point Number pins. They draw in their own pane (see points.ts), so this
   // can sit wherever it reads best rather than having to run before startLocating.
-  const pointsLayer = createPointsLayer(map, loadNationalPoints());
+  // The open point popup, if any. A pin opens one only when nothing is selected,
+  // like a trail click (see clearMapSelection).
+  let pointPopup: L.Popup | null = null;
+  const pointsLayer = createPointsLayer(map, loadNationalPoints(), (point) => {
+    if (clearMapSelection()) return;
+    pointPopup = openPointPopup(map, point);
+  });
   if (settings.showPoints) pointsLayer.addTo(map);
 
   // Follow state for the bottom-right locate button. lastFix is the only copy
@@ -153,7 +159,10 @@ async function main(): Promise<void> {
     onPointsChange: (show) => {
       settings = { ...settings, showPoints: show };
       if (show) pointsLayer.addTo(map);
-      else map.removeLayer(pointsLayer);
+      else {
+        map.removeLayer(pointsLayer);
+        map.closePopup();
+      }
       view3d?.setPointsVisible(show);
       void saveSettings(settings);
     },
@@ -317,6 +326,20 @@ async function main(): Promise<void> {
     refresh();
   }
 
+  /**
+   * Clears what a map click picked — the selected trail and the open point popup
+   * — and says whether there was anything. A click that clears does nothing
+   * else, so a click that misses empty map never jumps to a neighbouring trail
+   * or pin.
+   */
+  function clearMapSelection(): boolean {
+    const popupOpen = pointPopup?.isOpen() ?? false;
+    const trailSelected = selectedId !== null;
+    if (popupOpen) map.closePopup(pointPopup!);
+    if (trailSelected) selectTrail(null);
+    return popupOpen || trailSelected;
+  }
+
   // The trails are the files in data/gpx/; the store only remembers the
   // visibility you gave each one. Both are read before touching the view.
   const [files, records] = await Promise.all([
@@ -401,13 +424,14 @@ async function main(): Promise<void> {
     if (e.key.startsWith('Arrow')) stopFollowing();
   });
 
-  // One handler for every click. No listener is attached to the polylines
-  // themselves, so every click reaches the map and trailAt() decides what was
-  // hit — which makes bare map and a second click on the selected trail fall
-  // out of the same expression as "deselect".
+  // One handler for every click off the pins. No listener is attached to the
+  // polylines themselves, so every click reaches the map and trailAt() decides
+  // what was hit. While a trail is selected or a popup is open, any click only
+  // clears it; a trail is picked only from a clear map.
   map.on('click', (e) => {
+    if (clearMapSelection()) return;
     const hit = trailAt(map, e.containerPoint, trails);
-    selectTrail(hit && hit.id !== selectedId ? hit.id : null);
+    if (hit) selectTrail(hit.id);
   });
 }
 
