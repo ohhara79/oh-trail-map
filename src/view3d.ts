@@ -296,6 +296,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       surface: map.getCanvasContainer(),
       joystick: hud.joystick,
       onSpace: () => walker?.playback?.toggle(),
+      onTap: () => hud.tap(),
     });
     const next = new FirstPerson(map, controls, pose, height, groundGuess, () => {
       const playback = next.playback;

@@ -46,6 +46,10 @@ export type ControlsOptions = {
   surface: HTMLElement;
   joystick: HTMLElement;
   onSpace: () => void;
+  /** A click or tap on the surface, as opposed to a drag. Returns true when the
+   *  tap was spent bringing back hidden controls, so it must not also capture the
+   *  mouse. */
+  onTap?: () => boolean;
 };
 
 const RAD = Math.PI / 180;
@@ -152,11 +156,15 @@ export function createControls(opts: ControlsOptions): WalkControls {
     drags.delete(e.pointerId);
     if (!drag) return;
     const moved = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
+    if (e.type !== 'pointerup' || moved >= CLICK_SLOP) return;
+    // A click that brought the hidden playback controls back leaves the mouse
+    // free, or it could never reach them.
+    if (opts.onTap?.()) return;
     // A plain click with a mouse captures it, game-style, so looking no longer
     // needs a held button; Escape gives it back. Only on click, never on a drag,
     // so dragging to look keeps working for anyone who would rather not.
     // pointerup is a user activation, which requestPointerLock requires.
-    if (e.type === 'pointerup' && e.pointerType === 'mouse' && moved < CLICK_SLOP && surface.requestPointerLock) {
+    if (e.pointerType === 'mouse' && surface.requestPointerLock) {
       Promise.resolve(surface.requestPointerLock()).catch(() => {});
     }
   }

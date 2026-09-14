@@ -35,6 +35,8 @@ npm run preview
     to look around.
   - **▶ on a trail row**: plays that trail at eye height, with pause, speed
     (1×–50× walking pace) and a scrubber.
+    While it plays, the buttons over the scene fade out after 3 s; tap or click
+    the scene to bring them back, or again to hide them.
   - **▶ 3D on the selection bar**: clicking a trail on the map (2D or 3D)
     shows its name at the bottom with a ▶ that does the same, no panel needed.
   - **On a phone**: a joystick moves you, dragging looks around, and **Gyro**
