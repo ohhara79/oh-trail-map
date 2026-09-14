@@ -380,12 +380,13 @@ button:hover { background: #f5f6f8; }
 #mode3d {
   top: calc(12px + env(safe-area-inset-top));
   left: 50%; transform: translateX(-50%);
-  /* The 34px of #view3d beside it, so the two share top and bottom edges. The
-     buttons fill what the border and padding leave: 34 − 2×2 − 2×3 = 24px. */
-  height: 34px;
 }
+/* The 34px of #view3d, so both bars match the floating buttons (#mode3d shares
+   its top and bottom edges). The buttons fill what the border and padding
+   leave: 34 − 2×2 − 2×3 = 24px. */
+#mode3d, #selection-bar { height: 34px; }
 /* Outranks .hud-bar button, including its taller padding on touch below. */
-#mode3d button { align-self: stretch; padding-block: 0; }
+:is(#mode3d, #selection-bar) button { align-self: stretch; padding-block: 0; }
 .walk-only { display: none; }
 #app[data-mode3d='walk'] .walk-only,
 #app[data-mode3d='playback'] .walk-only { display: inline-block; }
@@ -428,7 +429,10 @@ button:hover { background: #f5f6f8; }
   left: 12px;
   /* Clears the locate button's column. */
   right: 56px;
-  max-width: 560px;
+  /* As wide as its contents, like #mode3d, centred between the insets. The
+     100% − 68px keeps a long name inside them, where it ellipsizes. */
+  width: max-content;
+  max-width: min(560px, 100% - 68px);
   margin: 0 auto;
 }
 /* .hud-bar's display: flex would otherwise outrank the hidden attribute. */
@@ -480,7 +484,7 @@ button:hover { background: #f5f6f8; }
 }
 .notice.error { background: #a4262c; }
 /* Above the selection bar rather than over it. */
-#app[data-selection] #notices { bottom: calc(60px + env(safe-area-inset-bottom)); }
+#app[data-selection] #notices { bottom: calc(56px + env(safe-area-inset-bottom)); }
 .notice button { background: none; border: 0; color: inherit; opacity: .7; padding: 0 2px; }
 .notice button:hover { background: none; opacity: 1; }
 
@@ -545,8 +549,9 @@ button:hover { background: #f5f6f8; }
 @media (pointer: coarse) {
   /* #expand, #compass and #locate are deliberately absent: they hold the zoom
      control's 34px on touch as well, which is the same sub-44px trade Leaflet
-     already makes for zooming, and the price of the two matching. #mode3d
-     likewise stays at #view3d's 34px, keeping only the wider side padding. */
+     already makes for zooming, and the price of the two matching. #mode3d and
+     #selection-bar likewise stay at #view3d's 34px, keeping only the wider
+     side padding. */
   .panel-head button { min-width: 44px; min-height: 44px; }
   #trail-list li { padding: 10px 8px; gap: 10px; }
   #trail-list li input[type='checkbox'],
