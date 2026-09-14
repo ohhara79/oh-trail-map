@@ -270,7 +270,7 @@ button:hover { background: #f5f6f8; }
   top: calc(12px + env(safe-area-inset-top));
   right: calc(12px + env(safe-area-inset-right));
   z-index: 1100;
-  font-size: 12px; font-weight: 700; letter-spacing: .02em;
+  font-size: 10px; font-weight: 700; letter-spacing: .02em;
   color: #2b3138;
 }
 #view3d[data-state='on'] { color: #fff; background: var(--accent); }
