@@ -13,17 +13,22 @@ import rawTsv from '../data/national_points_w_name.tsv?raw';
 import { parseNationalPoints, type NationalPoint } from './nationalPoint';
 
 /**
- * The pin drawn by the divIcon below: an 18x24 teardrop whose tip
- * is at (9, 24) — hence PIN_ANCHOR — around a circle of radius 8 centred on
- * (9, 8.5), which is also where the white hole goes.
+ * The marker is a dot with a white ring, the same in 2D and 3D: scene3d.ts feeds
+ * these two numbers straight to MapLibre's circle-radius and circle-stroke-width.
+ *
+ * MapLibre draws the stroke wholly outside the radius, so the ring's outer edge is
+ * at PIN_RADIUS + PIN_STROKE. An SVG stroke straddles the edge instead, so the
+ * divIcon below draws it twice as wide under the fill (paint-order in style.css),
+ * which leaves the same PIN_STROKE of white showing outside.
  */
-const PIN_PATH = 'M9 24C9 24 17 14 17 8.5A8 8 0 1 0 1 8.5C1 14 9 24 9 24Z';
-const PIN_SIZE: [number, number] = [18, 24];
-const PIN_ANCHOR: [number, number] = [9, 24];
-/** Lifts the popup's tail clear of the pin's head — without it Leaflet anchors the
- *  tail on iconAnchor, which is the tip, and the bubble covers the pin it describes. */
-const POPUP_ANCHOR: [number, number] = [0, -22];
-const PIN_HOLE = { x: 9, y: 8.5, r: 3 };
+export const PIN_RADIUS = 5;
+export const PIN_STROKE = 1.5;
+/** Just big enough for the ring, rounded up to whole pixels so the centre is too. */
+const PIN_BOX = 2 * Math.ceil(PIN_RADIUS + PIN_STROKE);
+const PIN_CENTRE = PIN_BOX / 2;
+/** Lifts the popup's tail to the dot's top edge — without it Leaflet anchors the
+ *  tail on iconAnchor, the centre, and the tail covers the dot it describes. */
+const POPUP_ANCHOR: [number, number] = [0, -PIN_CENTRE];
 /**
  * Two colours, split on whether the row has an 이름 — not one per 사물유형. There
  * are nine of those, a nine-swatch legend has nowhere to live in the panel, and the
@@ -113,10 +118,10 @@ export function createPointsLayer(map: L.Map, points: NationalPoint[]): L.LayerG
   // The colour goes inline on the <svg>, where the body's currentColor picks it up,
   // so the two constants above stay the only place it is decided — style.css names none.
   const iconHtml = (color: string) =>
-    `<svg viewBox="0 0 ${PIN_SIZE[0]} ${PIN_SIZE[1]}" width="${PIN_SIZE[0]}" ` +
-    `height="${PIN_SIZE[1]}" style="color:${color}" aria-hidden="true">` +
-    `<path class="point-pin-body" d="${PIN_PATH}"/>` +
-    `<circle class="point-pin-hole" cx="${PIN_HOLE.x}" cy="${PIN_HOLE.y}" r="${PIN_HOLE.r}"/>` +
+    `<svg viewBox="0 0 ${PIN_BOX} ${PIN_BOX}" width="${PIN_BOX}" ` +
+    `height="${PIN_BOX}" style="color:${color}" aria-hidden="true">` +
+    `<circle class="point-pin-body" cx="${PIN_CENTRE}" cy="${PIN_CENTRE}" ` +
+    `r="${PIN_RADIUS}" stroke-width="${2 * PIN_STROKE}"/>` +
     '</svg>';
   const namedHtml = iconHtml(PIN_COLOR_NAMED);
   const unnamedHtml = iconHtml(PIN_COLOR_UNNAMED);
@@ -129,8 +134,9 @@ export function createPointsLayer(map: L.Map, points: NationalPoint[]): L.LayerG
         // border would frame every pin.
         className: 'point-pin',
         html: point.name ? namedHtml : unnamedHtml,
-        iconSize: PIN_SIZE,
-        iconAnchor: PIN_ANCHOR,
+        iconSize: [PIN_BOX, PIN_BOX],
+        // The centre, not a corner: the point is where the dot is.
+        iconAnchor: [PIN_CENTRE, PIN_CENTRE],
         popupAnchor: POPUP_ANCHOR,
       }),
       // Leaflet gives every marker a tabindex by default. Hundreds of them between the

@@ -288,7 +288,7 @@ button:hover { background: #f5f6f8; }
   50% { opacity: .35; }
 }
 
-/* The National Point Number pins. No colour here: points.ts sets it inline on each <svg>
+/* The National Point Number dots. No colour here: points.ts sets it inline on each <svg>
    (amber when the point has an 이름, grey when not) and the body fills currentColor.
    Background and border are cleared because .point-pin replaces Leaflet's own
    leaflet-div-icon class, not just decorates it. */
@@ -296,29 +296,27 @@ button:hover { background: #f5f6f8; }
   background: none;
   border: 0;
 }
-/* The icon is an 18x24 box and the pin fills maybe half of it. Left interactive, the
-   empty corners would swallow clicks meant for a trail passing underneath — and since
-   a marker that listens for 'click' stops the event reaching the map handler (see
-   createPointsLayer), that trail would simply be unselectable there, with nothing on
-   screen to say why. So only the ink takes the click; Leaflet still finds the marker
-   by walking up from the <path> to the icon element it registered. The doubled class
+/* The icon is a square box around a round dot. Left interactive, the empty corners
+   would swallow clicks meant for a trail passing underneath — and since a marker
+   that listens for 'click' stops the event reaching the map handler (see
+   createPointsLayer), that trail would simply be unselectable there, with nothing
+   on screen to say why. So only the ink takes the click; Leaflet still finds the marker
+   by walking up from the <circle> to the icon element it registered. The doubled class
    is not decoration: it is the specificity needed to beat leaflet.css's own
    .leaflet-marker-icon.leaflet-interactive rule. */
 .leaflet-marker-icon.point-pin { pointer-events: none; }
-.point-pin-body, .point-pin-hole { pointer-events: auto; }
+.point-pin-body { pointer-events: auto; }
 
 .point-pin-body {
   fill: currentColor;
   /* A casing, for the same reason the trail halo has two: no single colour reads on
      both a pale basemap and Esri satellite, and white under an amber fill does.
-     paint-order puts the stroke down first, so it reads as a halo outside the
-     silhouette instead of eating 0.75px into the pin from every edge. */
+     paint-order puts the stroke down first, so it reads as a ring outside the
+     silhouette instead of eating into the dot. Its width is set on the <circle> by
+     points.ts, which shares the dot's size with the 3D view. */
   stroke: #fff;
-  stroke-width: 1.5;
-  stroke-linejoin: round;
   paint-order: stroke;
 }
-.point-pin-hole { fill: #fff; }
 
 /* Leaflet's popup at the app's own weight: its default is a 12px radius and a
    heavy shadow, against 6px and a hairline border everywhere else here. */

@@ -20,7 +20,7 @@ import type { Basemap } from './basemaps';
 import { offset } from './geo';
 import { EARTH_RADIUS } from './gpx';
 import type { NationalPoint } from './nationalPoint';
-import { PIN_COLOR_NAMED, PIN_COLOR_UNNAMED } from './points';
+import { PIN_COLOR_NAMED, PIN_COLOR_UNNAMED, PIN_RADIUS, PIN_STROKE } from './points';
 import { HALO_RINGS } from './selection';
 import { DIM_OPACITY, TRAIL_WEIGHT, type Trail } from './trails';
 
@@ -209,10 +209,10 @@ export function layers(lat: number): LayerSpecification[] {
       // Named points above the rest, for the reason given at zIndexOffset in points.ts.
       layout: { 'circle-sort-key': ['case', ['get', 'named'], 1, 0] },
       paint: {
-        'circle-radius': 5,
+        'circle-radius': PIN_RADIUS,
         'circle-color': ['case', ['get', 'named'], PIN_COLOR_NAMED, PIN_COLOR_UNNAMED],
         'circle-stroke-color': '#ffffff',
-        'circle-stroke-width': 1.5,
+        'circle-stroke-width': PIN_STROKE,
       },
     },
   ];
