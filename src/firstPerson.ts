@@ -10,7 +10,7 @@
  * in general), and that helper falls back to a 10 km centre whenever the view is
  * within about 6° of level — which at eye height is nearly always. A 10 km centre
  * puts the near plane ~130 m out and clips away every bit of ground you are standing
- * on. A fixed D of 40 m keeps it under a metre.
+ * on. A fixed D of 15 m keeps it at about 0.3 m.
  */
 import { LngLat, type Map as MlMap } from 'maplibre-gl';
 import { EARTH_RADIUS } from './gpx';
@@ -20,7 +20,7 @@ import { KEY_TURN_RATE, type WalkControls } from './walkControls';
 
 /** Camera-to-centre distance, in metres. See the module comment for the upper
  *  bound; the lower one is MapLibre's maxZoom, which a tiny D would exceed. */
-const LOOK_DISTANCE = 40;
+const LOOK_DISTANCE = 15;
 /** Vertical field of view while walking. Wider than MapLibre's 36.87° default,
  *  which at eye height feels like looking through a tube. */
 export const WALK_FOV = 50;
@@ -36,8 +36,11 @@ const FOLLOW_TAU = 0.5;
  *  how quickly it drifts back to straight ahead. */
 const LOOK_HOLD_MS = 2000;
 const LOOK_RETURN_TAU = 0.8;
-/** The camera never goes nearer the ground than this, whatever the smoothing says. */
-const MIN_CLEARANCE = 0.3;
+/** The camera never goes nearer the ground than this, whatever the smoothing says.
+ *  Well clear of the near plane (see the module comment): the smoothed ground lags
+ *  behind a fast climb, and a floor inside the near plane lets the slope ahead be
+ *  clipped away. */
+const MIN_CLEARANCE = 1.0;
 /** Seconds for the descent from the orbit view down to eye height. */
 const DESCENT_TAU = 0.45;
 /** Playback looks slightly down, as you would walking a path. */
