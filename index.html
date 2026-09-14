@@ -87,6 +87,15 @@
           <div id="joystick" aria-hidden="true"><div class="joystick-thumb"></div></div>
         </div>
       </div>
+      <div id="selection-bar" class="hud-bar" hidden>
+        <div class="grow selection-text">
+          <span id="selection-name" class="selection-name"></span>
+          <span id="selection-stats" class="muted"></span>
+        </div>
+        <button id="selection-walk" type="button" title="Walk this trail in 3D">&#9654; 3D</button>
+        <button id="selection-clear" type="button" title="Clear selection"
+                aria-label="Clear selection">&times;</button>
+      </div>
       <div id="notices"></div>
     </div>
     <script type="module" src="/src/main.ts"></script>

@@ -56,6 +56,10 @@ export class Ui {
   private readonly compass = el<HTMLButtonElement>('compass');
   private readonly locate = el<HTMLButtonElement>('locate');
   private readonly view3d = el<HTMLButtonElement>('view3d');
+  private readonly selectionBar = el('selection-bar');
+  private readonly selectionName = el('selection-name');
+  private readonly selectionStats = el('selection-stats');
+  private readonly selectionWalk = el<HTMLButtonElement>('selection-walk');
 
   /** Trail ids whose name is shown in full rather than clipped to one line.
    *  renderTrails() rebuilds every row, so this cannot live on the elements. */
@@ -104,6 +108,10 @@ export class Ui {
     this.compass.addEventListener('click', () => this.cb.onCompass());
     this.locate.addEventListener('click', () => this.cb.onLocate());
     this.view3d.addEventListener('click', () => this.cb.onToggle3d());
+    this.selectionWalk.addEventListener('click', () => {
+      if (this.lastSelectedId !== null) this.cb.onWalkTrail(this.lastSelectedId);
+    });
+    el('selection-clear').addEventListener('click', () => this.cb.onSelect(null));
 
     el('collapse').addEventListener('click', () => this.setPanel(false));
     el('expand').addEventListener('click', () => this.setPanel(true));
@@ -267,6 +275,7 @@ export class Ui {
 
     this.syncExpandAll();
     this.panelBody.scrollTop = scroll;
+    this.renderSelection(trails.find((t) => t.id === selectedId) ?? null);
 
     // After the scroll restore above, never before, or the two fight. A row
     // already on screen is left alone by block: 'nearest'; a selection whose
@@ -279,6 +288,26 @@ export class Ui {
         ?.closest('li')
         ?.scrollIntoView({ block: 'nearest' });
     }
+  }
+
+  /**
+   * The bar over the map that names the selected trail and plays it, so a trail
+   * clicked on the map can be walked without opening the panel to find its row.
+   * Found among every trail, not the filter's matches: the query narrows the
+   * list, never the map.
+   */
+  private renderSelection(trail: Trail | null): void {
+    this.selectionBar.hidden = !trail;
+    if (!trail) {
+      delete this.app.dataset.selection;
+      return;
+    }
+    // Lets style.css lift the notices clear of the bar.
+    this.app.dataset.selection = '';
+    this.selectionName.textContent = trail.name.normalize('NFC');
+    this.selectionName.title = trail.name;
+    this.selectionStats.textContent = formatDistance(trail.stats.distance);
+    this.selectionWalk.setAttribute('aria-label', `Walk ${trail.name} in 3D`);
   }
 
   /**

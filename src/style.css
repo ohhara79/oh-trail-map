@@ -408,6 +408,26 @@ button:hover { background: #f5f6f8; }
 .playback3d-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 #scrub3d { width: 100%; margin: 2px 0 0; accent-color: var(--accent); }
 
+/* The selected trail, with a way to play it that does not need the panel open.
+   Placed like #playback3d, which it gives way to below. Hidden in walk mode too:
+   clicks there look around rather than select, and the touch joystick holds the
+   bottom-left corner. */
+#selection-bar {
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  left: 12px;
+  /* Clears the locate button's column. */
+  right: 56px;
+  max-width: 560px;
+  margin: 0 auto;
+}
+/* .hud-bar's display: flex would otherwise outrank the hidden attribute. */
+#selection-bar[hidden],
+#app[data-mode3d='walk'] #selection-bar,
+#app[data-mode3d='playback'] #selection-bar { display: none; }
+.selection-text { display: flex; align-items: baseline; gap: 8px; min-width: 0; padding: 0 6px; font-size: 13px; }
+.selection-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+#selection-walk { color: #fff; background: var(--accent); }
+
 #joystick {
   display: none;
   position: absolute; z-index: 1000;
@@ -448,6 +468,8 @@ button:hover { background: #f5f6f8; }
   display: flex; gap: 10px; align-items: flex-start;
 }
 .notice.error { background: #a4262c; }
+/* Above the selection bar rather than over it. */
+#app[data-selection] #notices { bottom: calc(60px + env(safe-area-inset-bottom)); }
 .notice button { background: none; border: 0; color: inherit; opacity: .7; padding: 0 2px; }
 .notice button:hover { background: none; opacity: 1; }
 

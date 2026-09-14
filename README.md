@@ -35,6 +35,8 @@ npm run preview
     to look around.
   - **▶ on a trail row**: plays that trail at eye height, with pause, speed
     (1×–50× walking pace) and a scrubber.
+  - **▶ 3D on the selection bar**: clicking a trail on the map (2D or 3D)
+    shows its name at the bottom with a ▶ that does the same, no panel needed.
   - **On a phone**: a joystick moves you, dragging looks around, and **Gyro**
     turns the view with the phone.
   - **Esc**: steps back from playback to walk, then to orbit.

@@ -23,7 +23,6 @@ import {
   type TrailRecord,
 } from './store';
 import { Ui } from './ui';
-import { formatDistance } from './gpx';
 import { loadTrailFiles } from './trailFiles';
 // Type-only, and so erased: the module itself is loaded on demand in open3d(),
 // which is what keeps MapLibre out of the main bundle.
@@ -243,7 +242,7 @@ async function main(): Promise<void> {
             showPoints: settings.showPoints,
           }),
           start: { lat: centre.lat, lon: centre.lng, zoom: map.getZoom() },
-          onSelect: (id) => selectTrail(id, true),
+          onSelect: (id) => selectTrail(id),
           onDragStart: stopFollowing,
           onContextLost: () => {
             ui.notify('The 3D view lost its graphics context and was closed.', 'error');
@@ -308,17 +307,14 @@ async function main(): Promise<void> {
     view3d?.syncTrails();
   }
 
-  /** The single place selection changes. */
-  function selectTrail(id: string | null, fromMap = false): void {
+  /**
+   * The single place selection changes. No notice names a trail hit on the map:
+   * refresh() shows the selection bar, which does that with the panel closed too.
+   */
+  function selectTrail(id: string | null): void {
     selectedId = id;
     restyleAll();
     refresh();
-    // On a phone the drawer starts closed, and on desktop it can be collapsed,
-    // so a map click may have no row to highlight. Name what was hit instead.
-    const trail = id ? findTrail(id) : undefined;
-    if (fromMap && trail) {
-      ui.notify(`${trail.name} — ${formatDistance(trail.stats.distance)}`, 'info', 3000);
-    }
   }
 
   // The trails are the files in data/gpx/; the store only remembers the
@@ -411,7 +407,7 @@ async function main(): Promise<void> {
   // out of the same expression as "deselect".
   map.on('click', (e) => {
     const hit = trailAt(map, e.containerPoint, trails);
-    selectTrail(hit && hit.id !== selectedId ? hit.id : null, true);
+    selectTrail(hit && hit.id !== selectedId ? hit.id : null);
   });
 }
 
