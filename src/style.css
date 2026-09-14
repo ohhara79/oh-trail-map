@@ -122,6 +122,12 @@ button:hover { background: #f5f6f8; }
 .trail-name.expanded { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
 .trail-name mark { background: #fff3a3; color: inherit; border-radius: 2px; }
 .trail-stats { font-size: 11px; color: var(--muted); }
+/* Quiet until the row is hovered or selected, so 36 of them do not shout. */
+.trail-walk {
+  flex: none; border: 0; background: none;
+  padding: 2px 6px; font-size: 11px; color: var(--muted);
+}
+.trail-walk:hover { color: var(--accent); background: #eaf2fd; }
 .trail-head { margin-bottom: 8px; }
 .trail-head h2 { margin: 0; }
 .trail-head button { font-size: 12px; padding: 2px 6px; color: var(--muted); }
@@ -129,7 +135,15 @@ button:hover { background: #f5f6f8; }
 .options { display: flex; flex-direction: column; gap: 4px; }
 .options label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 
-#map { flex: 1; min-width: 0; height: 100%; }
+/* The map area. Both views fill it and trade places through visibility rather
+   than display: a display:none Leaflet map measures as 0x0, its ResizeObserver
+   (see createMap) would invalidate it at that size, and the 2D view would come
+   back with a stale tile grid. */
+#stage { flex: 1; min-width: 0; height: 100%; position: relative; }
+#map, #map3d { position: absolute; inset: 0; }
+#map3d { visibility: hidden; }
+#app[data-view='3d'] #map { visibility: hidden; }
+#app[data-view='3d'] #map3d { visibility: visible; }
 
 /* The halo under the selected trail pulses twice on selection, then settles.
    Halo paths are destroyed and rebuilt on every selection (see Halo.show), so
@@ -185,7 +199,7 @@ button:hover { background: #f5f6f8; }
    30px button inside a 2px border and no shadow, 34px square all told. Sharing
    one rule is what stops the three from drifting apart from it, and from each
    other. Overrides the base button rule's 1px border and 6px radius. */
-#expand, #compass, #locate {
+#expand, #compass, #locate, #view3d {
   width: 34px; height: 34px;
   display: flex; align-items: center; justify-content: center;
   padding: 0;
@@ -211,7 +225,8 @@ button:hover { background: #f5f6f8; }
    Only ever visible on iOS, where the compass needs a gesture to unlock. */
 #compass {
   position: absolute;
-  top: calc(12px + env(safe-area-inset-top));
+  /* Below #view3d, which holds the corner. */
+  top: calc(56px + env(safe-area-inset-top));
   right: calc(12px + env(safe-area-inset-right));
   z-index: 1100;
   font-size: 18px; line-height: 1;
@@ -244,6 +259,29 @@ button:hover { background: #f5f6f8; }
 #locate[data-state='blocked'] { color: var(--muted); }
 .locate-slash { display: none; }
 #locate[data-state='blocked'] .locate-slash { display: inline; }
+
+/* Top-right, the corner nothing else in 2D uses. Same chrome and z-index as
+   the buttons above. Deliberately not in the bottom-right stack: MapLibre's
+   navigation control is taller than Leaflet's zoom control, so that stack has
+   to shift between views, and the button just clicked must not move away from
+   the pointer. */
+#view3d {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top));
+  right: calc(12px + env(safe-area-inset-right));
+  z-index: 1100;
+  font-size: 12px; font-weight: 700; letter-spacing: .02em;
+  color: #2b3138;
+}
+#view3d[data-state='on'] { color: #fff; background: var(--accent); }
+#view3d[data-state='loading'] { color: var(--accent); animation: locate-pulse 1.4s ease-in-out infinite; }
+/* No WebGL2: dimmed, not disabled, so a click can still say why. */
+#view3d[data-state='unavailable'] { color: var(--muted); text-decoration: line-through; }
+
+/* MapLibre's zoom-and-compass control is three 30px buttons against Leaflet's
+   two, reaching 104px up instead of 74px, so the locate button rises by the
+   same 30px to keep its 10px gap. */
+#app[data-view='3d'] #locate { bottom: calc(114px + env(safe-area-inset-bottom)); }
 
 @keyframes locate-pulse {
   0%, 100% { opacity: 1; }
@@ -295,6 +333,100 @@ button:hover { background: #f5f6f8; }
    off, which is the only reason this number is ever looked at character by character. */
 .point-code { font-variant-numeric: tabular-nums; letter-spacing: .02em; }
 .point-popup .muted { font-size: 12px; }
+
+/* ---------------------------------------------------------------------------
+   3D view. data-mode3d on #app (orbit | walk | playback) decides which of the
+   HUD's parts show; hud3d.ts only writes the attribute.
+--------------------------------------------------------------------------- */
+#hud3d:not([hidden]) { display: contents; }
+
+/* MapLibre's controls in the chrome of Leaflet's .leaflet-bar, so the zoom
+   buttons look the same in both views. */
+#map3d .maplibregl-ctrl-group:not(:empty) {
+  border: 2px solid rgba(0,0,0,.2);
+  border-radius: 4px;
+  box-shadow: none;
+}
+#map3d .maplibregl-ctrl-group button { width: 30px; height: 30px; }
+#app[data-mode3d='walk'] #map3d .maplibregl-ctrl-bottom-right,
+#app[data-mode3d='playback'] #map3d .maplibregl-ctrl-bottom-right { display: none; }
+/* The pointer looks around while walking; the browser must not scroll or zoom
+   the page with it. */
+#app[data-mode3d='walk'] #map3d .maplibregl-canvas-container,
+#app[data-mode3d='playback'] #map3d .maplibregl-canvas-container { touch-action: none; cursor: grab; }
+
+#map3d .maplibregl-popup-content {
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 10px rgba(0,0,0,.18);
+  padding: 8px 24px 8px 12px;
+  font: inherit;
+}
+#map3d .maplibregl-popup-close-button { font-size: 16px; padding: 0 6px; border: 0; }
+/* The location marker's box, which Leaflet sizes through iconSize. */
+.maplibregl-marker.locate-icon { width: 48px; height: 48px; }
+
+/* Below the drawer and its backdrop (1100 / 1050), which cover the map on a phone. */
+.hud-bar {
+  position: absolute; z-index: 1000;
+  display: flex; align-items: center; gap: 4px;
+  padding: 3px;
+  background: #fff;
+  border: 2px solid rgba(0,0,0,.2);
+  border-radius: 6px;
+}
+.hud-bar button { border: 0; padding: 4px 10px; white-space: nowrap; }
+.hud-bar button[aria-pressed='true'] { background: var(--accent); color: #fff; }
+
+#mode3d {
+  top: calc(12px + env(safe-area-inset-top));
+  left: 50%; transform: translateX(-50%);
+}
+.walk-only { display: none; }
+#app[data-mode3d='walk'] .walk-only,
+#app[data-mode3d='playback'] .walk-only { display: inline-block; }
+/* A phone's orientation is only worth offering on a phone. */
+@media not (pointer: coarse) { #gyro3d { display: none !important; } }
+
+#playback3d {
+  display: none;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  left: 12px;
+  /* Clears the locate button's column. */
+  right: 56px;
+  max-width: 560px;
+  margin: 0 auto;
+}
+#app[data-mode3d='playback'] #playback3d { display: flex; }
+#play3d, #speed3d { min-width: 40px; font-variant-numeric: tabular-nums; }
+.playback3d-track { display: flex; flex-direction: column; padding: 0 4px; }
+.playback3d-text { display: flex; gap: 8px; font-size: 12px; line-height: 1.2; }
+.playback3d-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+#scrub3d { width: 100%; margin: 2px 0 0; accent-color: var(--accent); }
+
+#joystick {
+  display: none;
+  position: absolute; z-index: 1000;
+  left: calc(24px + env(safe-area-inset-left));
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.25);
+  border: 2px solid rgba(255,255,255,.75);
+  box-shadow: 0 0 6px rgba(0,0,0,.3);
+  touch-action: none;
+}
+.joystick-thumb {
+  position: absolute; left: 50%; top: 50%;
+  width: 48px; height: 48px; margin: -24px 0 0 -24px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.9);
+  box-shadow: 0 1px 4px rgba(0,0,0,.35);
+  pointer-events: none;
+}
+@media (pointer: coarse) {
+  #app[data-mode3d='walk'] #joystick { display: block; }
+}
 
 #notices {
   position: absolute;
@@ -352,6 +484,8 @@ button:hover { background: #f5f6f8; }
 
   /* Stop short of the bottom-right zoom control. */
   #notices { left: 12px; right: 56px; transform: none; }
+  /* Clear of #expand on the left and #view3d on the right. */
+  #mode3d { left: 58px; right: 58px; transform: none; justify-content: center; width: max-content; margin: 0 auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -362,6 +496,7 @@ button:hover { background: #f5f6f8; }
   .locate-rotor { transition: none; }
   /* The searching state still reads as distinct through its accent colour. */
   #locate[data-state='searching'] svg { animation: none; }
+  #view3d[data-state='loading'] { animation: none; }
 }
 
 /* ---------------------------------------------------------------------------
@@ -376,7 +511,9 @@ button:hover { background: #f5f6f8; }
   #trail-list li input[type='checkbox'],
   .trail-head input[type='checkbox'] { width: 20px; height: 20px; }
   .trail-head button { min-height: 32px; }
+  .trail-walk { min-width: 36px; min-height: 36px; }
   /* 16px is the threshold below which iOS Safari zooms the page on focus. */
   #trail-search { padding: 8px; font-size: 16px; }
+  .hud-bar button { padding: 8px 12px; }
   .options label { padding: 6px 0; }
 }

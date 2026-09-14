@@ -8,4 +8,7 @@ export default defineConfig({
   server: { port: 5173, host: true, allowedHosts: ['map.ohhara.io'] },
   preview: { port: 4173, host: true, allowedHosts: ['map.ohhara.io'] },
   build: { target: 'es2022' },
+  // MapLibre starts its worker with { type: 'module' } (see view3d.ts), which only
+  // loads an ES-module bundle; Vite's default worker format is a classic script.
+  worker: { format: 'es' },
 });

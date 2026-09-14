@@ -19,7 +19,7 @@ export type ParsedGpx = {
 /** Elevation deltas below this are barometer noise, not climbing. */
 const ELE_NOISE_THRESHOLD = 3;
 
-const EARTH_RADIUS = 6371008.8;
+export const EARTH_RADIUS = 6371008.8;
 
 function textOf(parent: Element, tag: string): string | undefined {
   const el = parent.getElementsByTagNameNS('*', tag)[0];

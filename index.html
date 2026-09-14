@@ -57,7 +57,36 @@
                 stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
         </svg>
       </button>
-      <div id="map"></div>
+      <button id="view3d" type="button" aria-pressed="false" data-state="off"
+              title="3D view" aria-label="3D view">3D</button>
+      <div id="stage">
+        <div id="map"></div>
+        <div id="map3d"></div>
+        <div id="hud3d" hidden>
+          <div id="mode3d" class="hud-bar" role="group" aria-label="3D controls">
+            <button type="button" data-mode="orbit" aria-pressed="true">Orbit</button>
+            <button type="button" data-mode="walk" aria-pressed="false">Walk</button>
+            <button id="eye3d" type="button" class="walk-only" title="Eye height">1.7 m</button>
+            <button id="gyro3d" type="button" class="walk-only" aria-pressed="false"
+                    title="Look around by moving your phone">Gyro</button>
+          </div>
+          <div id="playback3d" class="hud-bar">
+            <button id="play3d" type="button" aria-label="Pause">&#10074;&#10074;</button>
+            <button id="speed3d" type="button" title="Playback speed">5&times;</button>
+            <div class="grow playback3d-track">
+              <div class="playback3d-text">
+                <span id="playback3d-name" class="playback3d-name"></span>
+                <span id="scrub3d-label" class="muted"></span>
+              </div>
+              <input id="scrub3d" type="range" min="0" max="1000" step="1" value="0"
+                     aria-label="Position along the trail" />
+            </div>
+            <button id="close3d-playback" type="button" title="Stop walking the trail"
+                    aria-label="Stop walking the trail">&times;</button>
+          </div>
+          <div id="joystick" aria-hidden="true"><div class="joystick-thumb"></div></div>
+        </div>
+      </div>
       <div id="notices"></div>
     </div>
     <script type="module" src="/src/main.ts"></script>

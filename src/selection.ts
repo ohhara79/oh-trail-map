@@ -6,6 +6,17 @@ const OUTER_PAD = 10;
 const CASING_PAD = 6;
 
 /**
+ * The casings, outermost first. Two, because one colour cannot carry every
+ * basemap: white alone washes out on a pale basemap, dark alone disappears on
+ * Esri satellite. Exported for the 3D view, which draws the same two rings as
+ * line layers.
+ */
+export const HALO_RINGS = [
+  { color: '#1f2328', weight: TRAIL_WEIGHT + OUTER_PAD, opacity: 0.35, className: 'trail-halo-outer' },
+  { color: '#ffffff', weight: TRAIL_WEIGHT + CASING_PAD, opacity: 0.95, className: 'trail-halo' },
+] as const;
+
+/**
  * How close a click has to land, in CSS pixels. Generous compared to the 2px
  * a trail is actually drawn at: the line is what you aim for, not what you can
  * realistically hit.
@@ -13,7 +24,7 @@ const CASING_PAD = 6;
 const TOLERANCE_FINE = 15;
 const TOLERANCE_COARSE = 22;
 
-function tolerance(): number {
+export function tolerance(): number {
   return window.matchMedia('(pointer: coarse)').matches
     ? TOLERANCE_COARSE
     : TOLERANCE_FINE;
@@ -42,16 +53,9 @@ export class Halo {
     this.group.clearLayers();
     if (!trail) return;
 
-    // Two casings, because one colour cannot carry every basemap: white alone
-    // washes out on a pale basemap, dark alone disappears on Esri satellite.
-    const rings = [
-      { color: '#1f2328', weight: TRAIL_WEIGHT + OUTER_PAD, opacity: 0.35, className: 'trail-halo-outer' },
-      { color: '#ffffff', weight: TRAIL_WEIGHT + CASING_PAD, opacity: 0.95, className: 'trail-halo' },
-    ];
-
     // Built from trail.segments, the same source buildTrail() strokes from, so
     // the halo can never trace a different line than the trail it marks.
-    for (const ring of rings) {
+    for (const ring of HALO_RINGS) {
       for (const seg of trail.segments) {
         L.polyline(
           seg.map((p) => [p.lat, p.lon] as L.LatLngExpression),

@@ -34,8 +34,8 @@ const PIN_HOLE = { x: 9, y: 8.5, r: 3 };
  * nowhere near the --accent blue of the location dot, so a pin can never be
  * mistaken for either.
  */
-const PIN_COLOR_NAMED = '#b45309';
-const PIN_COLOR_UNNAMED = '#64748b';
+export const PIN_COLOR_NAMED = '#b45309';
+export const PIN_COLOR_UNNAMED = '#64748b';
 
 /**
  * The pins get a pane of their own, wedged between overlayPane (400, every trail
@@ -62,9 +62,10 @@ export function loadNationalPoints(): NationalPoint[] {
 /**
  * Builds the popup body as DOM rather than an HTML string. 이름 and 사물유형 are
  * arbitrary text from a file dropped into data/, and a name containing `<` would be
- * parsed as markup by innerHTML; textContent cannot be.
+ * parsed as markup by innerHTML; textContent cannot be. Shared with the 3D view's
+ * popups, so a point reads the same in both.
  */
-function popupContent(point: NationalPoint): HTMLElement {
+export function popupContent(point: NationalPoint): HTMLElement {
   const root = document.createElement('div');
   root.className = 'point-popup';
   // Without it a browser whose default stack has no Korean face falls back to a

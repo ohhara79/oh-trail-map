@@ -19,11 +19,19 @@ export type UiCallbacks = {
   /** The bottom-right locate button: recentre on, and then follow, the current
    *  position — or stop following if it already is. */
   onLocate: () => void;
+  /** The top-right 3D button: open the 3D view, or close it. */
+  onToggle3d: () => void;
+  /** A trail row's ▶: play the trail at eye height in the 3D view. */
+  onWalkTrail: (id: string) => void;
 };
 
 /** What the locate button is currently saying: not following; following but
  *  still waiting on a first fix; following; or geolocation is a dead end. */
 export type LocateState = 'off' | 'searching' | 'on' | 'blocked';
+
+/** The 3D button: 2D showing; MapLibre downloading or starting; 3D showing; or
+ *  no WebGL2, which 3D cannot run without. */
+export type View3dState = 'off' | 'loading' | 'on' | 'unavailable';
 
 /** Must match the drawer media query in style.css. */
 const DRAWER_QUERY = '(max-width: 720px), (max-height: 480px)';
@@ -47,6 +55,7 @@ export class Ui {
   private readonly notices = el('notices');
   private readonly compass = el<HTMLButtonElement>('compass');
   private readonly locate = el<HTMLButtonElement>('locate');
+  private readonly view3d = el<HTMLButtonElement>('view3d');
 
   /** Trail ids whose name is shown in full rather than clipped to one line.
    *  renderTrails() rebuilds every row, so this cannot live on the elements. */
@@ -94,6 +103,7 @@ export class Ui {
 
     this.compass.addEventListener('click', () => this.cb.onCompass());
     this.locate.addEventListener('click', () => this.cb.onLocate());
+    this.view3d.addEventListener('click', () => this.cb.onToggle3d());
 
     el('collapse').addEventListener('click', () => this.setPanel(false));
     el('expand').addEventListener('click', () => this.setPanel(true));
@@ -242,7 +252,16 @@ export class Ui {
       stats.textContent = this.statsLine(trail);
       text.append(name, stats);
 
-      li.append(visible, swatch, text);
+      // A button, so the row's own click handler above leaves it alone.
+      const walk = document.createElement('button');
+      walk.type = 'button';
+      walk.className = 'trail-walk';
+      walk.textContent = '▶';
+      walk.title = 'Walk this trail in 3D';
+      walk.setAttribute('aria-label', `Walk ${trail.name} in 3D`);
+      walk.addEventListener('click', () => this.cb.onWalkTrail(trail.id));
+
+      li.append(visible, swatch, text, walk);
       this.list.append(li);
     }
 
@@ -311,6 +330,19 @@ export class Ui {
   setLocateState(state: LocateState): void {
     this.locate.dataset.state = state;
     this.locate.setAttribute('aria-pressed', String(state === 'on' || state === 'searching'));
+  }
+
+  /** Like the locate button, never disabled: 'unavailable' still answers a
+   *  click with the reason. */
+  set3dState(state: View3dState): void {
+    this.view3d.dataset.state = state;
+    this.view3d.setAttribute('aria-pressed', String(state === 'on'));
+    this.view3d.title = state === 'on' ? 'Back to the 2D map' : '3D view';
+  }
+
+  /** On a phone the drawer covers the map, so an action that needs the map closes it. */
+  closeDrawer(): void {
+    if (window.matchMedia(DRAWER_QUERY).matches) this.setPanel(false);
   }
 
   notify(message: string, kind: 'info' | 'error' = 'info', timeout = 7000): void {

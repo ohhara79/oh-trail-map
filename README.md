@@ -27,6 +27,22 @@ npm run preview
   amber where the point has an 이름, grey where it does not; click one for its 지점번호, 사물유형 and 이름. Toggled from the control panel.
   The grid codes are decoded to lat/lon at runtime — see
   `docs/plans/2026-09-13-01-national-point-markers.md` for the derivation.
+- A **3D** button (top-right) turns the map into a MapLibre GL terrain view with
+  the same basemap, trails and points:
+  - **Orbit**: tilt and rotate from above.
+  - **Walk**: stand at eye height (1.7 m, or 20 m / 80 m) and move with
+    W A S D or the arrows, Shift to run. Drag, or click to capture the mouse,
+    to look around.
+  - **▶ on a trail row**: plays that trail at eye height, with pause, speed
+    (1×–50× walking pace) and a scrubber.
+  - **On a phone**: a joystick moves you, dragging looks around, and **Gyro**
+    turns the view with the phone.
+  - **Esc**: steps back from playback to walk, then to orbit.
+
+  Terrain comes from AWS Terrain Tiles (SRTM, ~30 m), so the mountain has its
+  true shape but no cliffs or trees, and the ground near your feet is soft. 3D
+  loads far more tiles than 2D does — worth keeping in mind with the OSM tile
+  usage policy. MapLibre (~1.5 MB) is only downloaded the first time 3D is opened.
 - Each trail's visibility persists in IndexedDB across reloads.
 - Works on a phone: the map stays full-width and the control panel becomes a
   drawer over it, opened with the ☰ button in the top-left.
