@@ -262,10 +262,9 @@ button:hover { background: #f5f6f8; }
 #locate[data-state='blocked'] .locate-slash { display: inline; }
 
 /* Top-right, the corner nothing else in 2D uses. Same chrome and z-index as
-   the buttons above. Deliberately not in the bottom-right stack: MapLibre's
-   navigation control is taller than Leaflet's zoom control, so that stack has
-   to shift between views, and the button just clicked must not move away from
-   the pointer. */
+   the buttons above. Deliberately not in the bottom-right stack: 3D adds a
+   compass there, and the button just clicked must not share a column that
+   changes under the pointer. */
 #view3d {
   position: absolute;
   top: calc(12px + env(safe-area-inset-top));
@@ -278,11 +277,6 @@ button:hover { background: #f5f6f8; }
 #view3d[data-state='loading'] { color: var(--accent); animation: locate-pulse 1.4s ease-in-out infinite; }
 /* No WebGL2: dimmed, not disabled, so a click can still say why. */
 #view3d[data-state='unavailable'] { color: var(--muted); text-decoration: line-through; }
-
-/* MapLibre's zoom-and-compass control is three 30px buttons against Leaflet's
-   two, reaching 104px up instead of 74px, so the locate button rises by the
-   same 30px to keep its 10px gap. */
-#app[data-view='3d'] #locate { bottom: calc(114px + env(safe-area-inset-bottom)); }
 
 @keyframes locate-pulse {
   0%, 100% { opacity: 1; }
@@ -347,6 +341,13 @@ button:hover { background: #f5f6f8; }
   box-shadow: none;
 }
 #map3d .maplibregl-ctrl-group button { width: 30px; height: 30px; }
+/* The compass is its own control (see view3d.ts), stacked on the zoom one. That
+   reaches 74px up like Leaflet's, and #locate spans 84-118px above it, so 54px
+   more puts this 34px box at 128px: the same 10px gap, above #locate. The inset
+   matches the env() term in #locate's own offset. */
+#map3d .maplibregl-ctrl-group:has(> .maplibregl-ctrl-compass) {
+  margin-bottom: calc(54px + env(safe-area-inset-bottom));
+}
 #app[data-mode3d='walk'] #map3d .maplibregl-ctrl-bottom-right,
 #app[data-mode3d='playback'] #map3d .maplibregl-ctrl-bottom-right { display: none; }
 /* The pointer looks around while walking; the browser must not scroll or zoom

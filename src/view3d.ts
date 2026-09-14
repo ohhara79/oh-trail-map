@@ -155,7 +155,11 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     throw err;
   });
 
-  map.addControl(new NavigationControl({ visualizePitch: true }), 'bottom-right');
+  // Two controls rather than one: zoom alone is as tall as Leaflet's zoom control, so
+  // #locate and the zoom buttons stay put between views, and the compass is lifted
+  // above #locate by style.css. Bottom controls stack upwards, so it goes second.
+  map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right');
+  map.addControl(new NavigationControl({ showZoom: false, visualizePitch: true }), 'bottom-right');
 
   // The same reason as createMap in map.ts: the panel collapsing changes the
   // container's size without a window resize.
