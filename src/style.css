@@ -387,6 +387,12 @@ button:hover { background: #f5f6f8; }
 #mode3d, #selection-bar { height: 34px; }
 /* Outranks .hud-bar button, including its taller padding on touch below. */
 :is(#mode3d, #selection-bar) button { align-self: stretch; padding-block: 0; }
+/* Orbit, Walk and Gyro as square icon buttons, so the bar stays narrow over the
+   scene. Outranks the rule above and the touch padding below. */
+#mode3d .hud-icon { width: 30px; padding: 0; }
+/* A button centres its content vertically on its own; margin: auto does the
+   horizontal, with no display on the button that .walk-only would fight. */
+#mode3d .hud-icon svg { display: block; margin: 0 auto; }
 .walk-only { display: none; }
 #app[data-mode3d='walk'] .walk-only,
 #app[data-mode3d='playback'] .walk-only { display: inline-block; }
@@ -565,5 +571,6 @@ button:hover { background: #f5f6f8; }
   /* 16px is the threshold below which iOS Safari zooms the page on focus. */
   #trail-search { padding: 8px; font-size: 16px; }
   .hud-bar button { padding: 8px 12px; }
+  #mode3d .hud-icon { width: 36px; }
   .options label { padding: 6px 0; }
 }
