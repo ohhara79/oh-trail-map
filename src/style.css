@@ -406,7 +406,8 @@ button:hover { background: #f5f6f8; }
 
 #playback3d {
   display: none;
-  bottom: calc(12px + env(safe-area-inset-bottom));
+  /* The zoom control's 10px margin, so the bar shares its bottom edge. */
+  bottom: calc(10px + env(safe-area-inset-bottom));
   left: 12px;
   /* Clears the locate button's column. */
   right: 56px;
@@ -425,7 +426,10 @@ button:hover { background: #f5f6f8; }
    clicks there look around rather than select, and the touch joystick holds the
    bottom-left corner. */
 #selection-bar {
-  bottom: calc(12px + env(safe-area-inset-bottom));
+  /* The zoom control's 10px margin, as for #playback3d. At 34px tall the bar
+     then spans 10–44px up, and the 30px inside its border lines up with the
+     zoom-out button's, so its labels sit level with the − glyph. */
+  bottom: calc(10px + env(safe-area-inset-bottom));
   left: 12px;
   /* Clears the locate button's column. */
   right: 56px;
@@ -484,7 +488,7 @@ button:hover { background: #f5f6f8; }
 }
 .notice.error { background: #a4262c; }
 /* Above the selection bar rather than over it. */
-#app[data-selection] #notices { bottom: calc(56px + env(safe-area-inset-bottom)); }
+#app[data-selection] #notices { bottom: calc(54px + env(safe-area-inset-bottom)); }
 .notice button { background: none; border: 0; color: inherit; opacity: .7; padding: 0 2px; }
 .notice button:hover { background: none; opacity: 1; }
 
