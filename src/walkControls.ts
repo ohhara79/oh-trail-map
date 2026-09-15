@@ -143,10 +143,10 @@ export function createControls(opts: ControlsOptions): WalkControls {
   function onPointerMove(e: PointerEvent) {
     const drag = drags.get(e.pointerId);
     if (!drag) return;
-    // Grab semantics, like Street View: the scene follows the finger, so dragging
-    // left turns you right.
-    dyaw -= (e.clientX - drag.x) * DRAG_DEG_PER_PX;
-    dlook += (e.clientY - drag.y) * DRAG_DEG_PER_PX;
+    // The camera follows the finger, like a game's look stick and the captured
+    // mouse: dragging left turns you left, dragging up looks up.
+    dyaw += (e.clientX - drag.x) * DRAG_DEG_PER_PX;
+    dlook -= (e.clientY - drag.y) * DRAG_DEG_PER_PX;
     drag.x = e.clientX;
     drag.y = e.clientY;
     touch();
