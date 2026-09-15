@@ -11,6 +11,7 @@
  * getScene() and is told when it changes; it never keeps a copy that could drift.
  */
 import {
+  LngLat,
   Map as MlMap,
   Marker,
   NavigationControl,
@@ -27,10 +28,12 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 
 import { basemapById } from './basemaps';
 import { FirstPerson, WALK_FOV, orbitCameraHeight, type Pose } from './firstPerson';
+import { angleDelta, bearing } from './geo';
 import { compassNeedsPermission, requestCompassPermission, type Heading } from './heading';
 import { Hud, type Mode3d } from './hud3d';
 import { haversine } from './gpx';
 import { LOCATE_ICON_HTML } from './map';
+import type { NationalPoint } from './nationalPoint';
 import { loadNationalPoints, popupContent } from './points';
 import {
   EMPTY,
@@ -217,6 +220,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   function setPointsVisible(show: boolean): void {
     map.setLayoutProperty(LAYER_POINTS, 'visibility', show ? 'visible' : 'none');
     if (!show) popup?.remove();
+    syncAim();
   }
 
   syncTrails();
@@ -230,8 +234,29 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   const locationMarker = new Marker({ element: locationEl, rotationAlignment: 'map', pitchAlignment: 'map' });
   let locationShown = false;
 
-  // -- clicks (orbit only; walking uses the pointer to look) ----------------------
+  // -- clicks --------------------------------------------------------------------
 
+  /** The point drawn within `r` pixels of (x, y) on the canvas, if points are shown. */
+  function pointAt(x: number, y: number, r: number): NationalPoint | undefined {
+    if (map.getLayoutProperty(LAYER_POINTS, 'visibility') === 'none') return undefined;
+    const hit = map.queryRenderedFeatures([[x - r, y - r], [x + r, y + r]], { layers: [LAYER_POINTS] })[0];
+    return hit ? points[hit.properties.index as number] : undefined;
+  }
+
+  function openPopup(point: NationalPoint): void {
+    // closeOnClick off: the click handlers decide what a click closes.
+    popup = new Popup({ offset: 10, maxWidth: '240px', closeOnClick: false })
+      .setLngLat([point.lon, point.lat])
+      .setDOMContent(popupContent(point))
+      .addTo(map);
+  }
+
+  function closePopup(): void {
+    popup?.remove();
+    popup = null;
+  }
+
+  // Orbit only: walking uses the pointer to look, and aims with the crosshair instead.
   map.on('click', (e: MapMouseEvent) => {
     if (mode !== 'orbit') return;
     // The same rule as the 2D handlers in main.ts: while a trail is selected or a
@@ -239,9 +264,14 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     const popupOpen = popup?.isOpen() ?? false;
     const trailSelected = getScene().selectedId !== null;
     if (popupOpen || trailSelected) {
-      popup?.remove();
-      popup = null;
+      closePopup();
       if (trailSelected) opts.onSelect(null);
+      return;
+    }
+    // A point first, as in 2D, where a pin swallows the click.
+    const point = pointAt(e.point.x, e.point.y, 6);
+    if (point) {
+      openPopup(point);
       return;
     }
     const t = tolerance();
@@ -249,26 +279,59 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       [e.point.x - t, e.point.y - t],
       [e.point.x + t, e.point.y + t],
     ];
-    // A point first, as in 2D, where a pin swallows the click.
-    if (map.getLayoutProperty(LAYER_POINTS, 'visibility') !== 'none') {
-      const hit = map.queryRenderedFeatures(
-        [[e.point.x - 6, e.point.y - 6], [e.point.x + 6, e.point.y + 6]],
-        { layers: [LAYER_POINTS] },
-      )[0];
-      const point = hit ? points[hit.properties.index as number] : undefined;
-      if (point) {
-        // closeOnClick off: the check above decides what a click closes.
-        popup = new Popup({ offset: 10, maxWidth: '240px', closeOnClick: false })
-          .setLngLat([point.lon, point.lat])
-          .setDOMContent(popupContent(point))
-          .addTo(map);
-        return;
-      }
-    }
     const hit = map.queryRenderedFeatures(box, { layers: [LAYER_TRAILS] })[0];
     const id = hit?.properties.id as string | undefined;
     if (id) opts.onSelect(id);
   });
+
+  // While walking, the pointer looks around and a captured mouse has no cursor, so
+  // the crosshair at the screen centre, where the camera looks, is what you aim
+  // with. Just wider than its 7px ring, so anything inside the ring counts.
+  function aimedPoint(): NationalPoint | undefined {
+    const canvas = map.getCanvas();
+    return pointAt(canvas.clientWidth / 2, canvas.clientHeight / 2, 8);
+  }
+
+  function syncAim(): void {
+    hud.setAimed(mode !== 'orbit' && aimedPoint() !== undefined);
+  }
+
+  /** Whether a popup at `lngLat` is still on screen from where you stand. MapLibre
+   *  projects a point behind the camera to a mirrored spot in front of it, so being
+   *  inside the canvas is not enough on its own. */
+  function inWalkView(lngLat: LngLat): boolean {
+    if (!walker) return true;
+    const { pose } = walker;
+    const there = { lat: lngLat.lat, lon: lngLat.lng };
+    if (Math.abs(angleDelta(pose.yaw, bearing(pose, there))) >= 90) return false;
+    const p = map.project(lngLat);
+    const canvas = map.getCanvas();
+    return p.x >= 0 && p.y >= 0 && p.x <= canvas.clientWidth && p.y <= canvas.clientHeight;
+  }
+
+  // The walk camera only jumps when it actually moves, so standing still costs no query.
+  map.on('move', () => {
+    if (mode === 'orbit') return;
+    syncAim();
+    // Walked or looked away from the point: its popup has nothing left to point at.
+    if (popup && !inWalkView(popup.getLngLat())) closePopup();
+  });
+
+  /** A tap or click on the scene while walking. True when it was spent here, so it
+   *  must not also capture the mouse. */
+  function onSceneTap(): boolean {
+    // The same rule as orbit: while a popup is open, a tap only closes it.
+    if (popup?.isOpen()) {
+      closePopup();
+      return true;
+    }
+    const point = aimedPoint();
+    if (point) {
+      openPopup(point);
+      return true;
+    }
+    return hud.tap();
+  }
 
   for (const layer of [LAYER_POINTS, LAYER_TRAILS]) {
     map.on('mouseenter', layer, () => {
@@ -313,7 +376,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       surface: map.getCanvasContainer(),
       joystick: hud.joystick,
       onSpace: () => walker?.playback?.toggle(),
-      onTap: () => hud.tap(),
+      onTap: onSceneTap,
     });
     const next = new FirstPerson(map, controls, pose, height, groundGuess, () => {
       const playback = next.playback;
@@ -334,8 +397,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       hinted = true;
       notify(
         window.matchMedia('(pointer: coarse)').matches
-          ? 'Move with the joystick, drag to look around.'
-          : 'W A S D or arrows to move, Shift to run. Drag, or click to capture the mouse, to look around. Esc to go back.',
+          ? 'Move with the joystick, drag to look around. Aim the crosshair at a point and tap to see it.'
+          : 'W A S D or arrows to move, Shift to run. Drag, or click to capture the mouse, to look around. Aim the crosshair at a point and click to see it. Esc to go back.',
         'info',
         6000,
       );
@@ -385,6 +448,9 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     // 'playback' is only ever entered through walkTrail, which sets it up first.
     mode = next;
     hud.setMode(mode);
+    // A popup opened while walking would otherwise stay behind in orbit.
+    closePopup();
+    syncAim();
   }
 
   function toggleGyro(): void {
@@ -444,6 +510,9 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     walker.setPlayback(playback);
     mode = 'playback';
     hud.setMode(mode);
+    // The jump may leave the point it names far behind.
+    closePopup();
+    syncAim();
   }
 
   // Escape undoes the most local thing first: playback back to walking, walking

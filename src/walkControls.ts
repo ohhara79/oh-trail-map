@@ -46,9 +46,10 @@ export type ControlsOptions = {
   surface: HTMLElement;
   joystick: HTMLElement;
   onSpace: () => void;
-  /** A click or tap on the surface, as opposed to a drag. Returns true when the
-   *  tap was spent bringing back hidden controls, so it must not also capture the
-   *  mouse. */
+  /** A click or tap on the surface, as opposed to a drag, including a click with
+   *  the mouse already captured. Returns true when the tap was spent on something
+   *  the free mouse must still reach — a popup or the hidden controls — so it must
+   *  not also capture the mouse. */
   onTap?: () => boolean;
 };
 
@@ -135,8 +136,13 @@ export function createControls(opts: ControlsOptions): WalkControls {
   }
 
   function onPointerDown(e: PointerEvent) {
-    if (document.pointerLockElement === surface) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
+    // A captured mouse never drags, so every press is a click: what it aims at
+    // with the crosshair. It is captured already, so the result does not matter.
+    if (document.pointerLockElement === surface) {
+      opts.onTap?.();
+      return;
+    }
     drags.set(e.pointerId, { x: e.clientX, y: e.clientY, startX: e.clientX, startY: e.clientY });
     surface.setPointerCapture(e.pointerId);
   }
@@ -157,8 +163,8 @@ export function createControls(opts: ControlsOptions): WalkControls {
     if (!drag) return;
     const moved = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
     if (e.type !== 'pointerup' || moved >= CLICK_SLOP) return;
-    // A click that brought the hidden playback controls back leaves the mouse
-    // free, or it could never reach them.
+    // A click that opened a popup or brought the hidden playback controls back
+    // leaves the mouse free, or it could never reach them.
     if (opts.onTap?.()) return;
     // A plain click with a mouse captures it, game-style, so looking no longer
     // needs a held button; Escape gives it back. Only on click, never on a drag,
