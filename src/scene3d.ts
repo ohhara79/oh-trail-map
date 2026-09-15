@@ -209,6 +209,10 @@ export function layers(lat: number): LayerSpecification[] {
       // Named points above the rest, for the reason given at zIndexOffset in points.ts.
       layout: { 'circle-sort-key': ['case', ['get', 'named'], 1, 0] },
       paint: {
+        // A fixed size on screen, as in 2D. The default, 'map', sizes a dot by its
+        // distance against the camera's look-at point — 15 m ahead while walking — so
+        // a point at your feet ballooned and one across the valley vanished.
+        'circle-pitch-scale': 'viewport',
         'circle-radius': PIN_RADIUS,
         'circle-color': ['case', ['get', 'named'], PIN_COLOR_NAMED, PIN_COLOR_UNNAMED],
         'circle-stroke-color': '#ffffff',
