@@ -37,6 +37,8 @@ npm run preview
   - **Walk** (a toggle; off again is back to orbit): stand at eye height (1.7 m, or 20 m / 80 m) and move with
     W A S D or the arrows, Shift to run. Drag, or click to capture the mouse,
     to look around.
+    Aim the crosshair at a point or a trail and click or tap to open or select
+    it; the selected trail's bar shows while walking too.
   - **▶ on a trail row**: plays that trail at eye height, with pause, speed
     (1×–50× walking pace) and a scrubber.
     While it plays, the buttons over the scene fade out after 3 s; tap or click

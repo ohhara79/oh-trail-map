@@ -213,6 +213,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     map.setFilter(LAYER_TRAILS, visible);
     for (const id of [...LAYER_HALOS, LAYER_TRAIL_SELECTED]) map.setFilter(id, selected);
     map.setPaintProperty(LAYER_TRAILS, 'line-opacity', trailOpacity(selectedId));
+    // A trail hidden, or the one aimed at now selected, changes what a tap would do.
+    syncAim();
   }
 
   function setPointsVisible(show: boolean): void {
@@ -277,10 +279,15 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       [e.point.x - t, e.point.y - t],
       [e.point.x + t, e.point.y + t],
     ];
-    const hit = map.queryRenderedFeatures(box, { layers: [LAYER_TRAILS] })[0];
-    const id = hit?.properties.id as string | undefined;
+    const id = trailIn(box);
     if (id) opts.onSelect(id);
   });
+
+  /** The id of the visible trail drawn inside `box` on the canvas. */
+  function trailIn(box: [[number, number], [number, number]]): string | undefined {
+    const hit = map.queryRenderedFeatures(box, { layers: [LAYER_TRAILS] })[0];
+    return hit?.properties.id as string | undefined;
+  }
 
   // While walking, the pointer looks around and a captured mouse has no cursor, so
   // the crosshair at the screen centre, where the camera looks, is what you aim
@@ -290,8 +297,20 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     return pointAt(canvas.clientWidth / 2, canvas.clientHeight / 2, 8);
   }
 
+  /** The trail under the crosshair, unless it is already the selected one, which a
+   *  tap has nothing more to do with. A trail far off is a hairline, so anywhere
+   *  inside the crosshair's ticks counts, not only its ring. */
+  function aimedTrail(): string | undefined {
+    const canvas = map.getCanvas();
+    const x = canvas.clientWidth / 2;
+    const y = canvas.clientHeight / 2;
+    const r = 12;
+    const id = trailIn([[x - r, y - r], [x + r, y + r]]);
+    return id === getScene().selectedId ? undefined : id;
+  }
+
   function syncAim(): void {
-    hud.setAimed(mode !== 'orbit' && aimedPoint() !== undefined);
+    hud.setAimed(mode !== 'orbit' && (aimedPoint() !== undefined || aimedTrail() !== undefined));
   }
 
   /** Whether a popup at `lngLat` is still on screen from where you stand. MapLibre
@@ -318,14 +337,27 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   /** A tap or click on the scene while walking. True when it was spent here, so it
    *  must not also capture the mouse. */
   function onSceneTap(): boolean {
-    // The same rule as orbit: while a popup is open, a tap only closes it.
+    // The same rule as orbit: while a popup is open or a trail is selected, a tap
+    // only clears it. Not during playback, where the trail playing is the
+    // selection and a tap is for the controls.
     if (popup?.isOpen()) {
       closePopup();
+      return true;
+    }
+    if (mode === 'walk' && getScene().selectedId !== null) {
+      opts.onSelect(null);
       return true;
     }
     const point = aimedPoint();
     if (point) {
       openPopup(point);
+      return true;
+    }
+    // Selected, the trail's name shows on the selection bar, with the ▶ that the
+    // free mouse has to be able to reach.
+    const trail = aimedTrail();
+    if (trail) {
+      opts.onSelect(trail);
       return true;
     }
     return hud.tap();
@@ -409,8 +441,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       hinted = true;
       notify(
         window.matchMedia('(pointer: coarse)').matches
-          ? 'Move with the joystick, drag to look around. Aim the crosshair at a point and tap to see it.'
-          : 'W A S D or arrows to move, Shift to run. Drag, or click to capture the mouse, to look around. Aim the crosshair at a point and click to see it. Esc to go back.',
+          ? 'Move with the joystick, drag to look around. Aim the crosshair at a point or trail and tap to pick it.'
+          : 'W A S D or arrows to move, Shift to run. Drag, or click to capture the mouse, to look around. Aim the crosshair at a point or trail and click to pick it. Esc to go back.',
         'info',
         6000,
       );

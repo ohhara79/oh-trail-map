@@ -429,9 +429,8 @@ button:hover { background: #f5f6f8; }
 #scrub3d { width: 100%; margin: 2px 0 0; accent-color: var(--accent); }
 
 /* The selected trail, with a way to play it that does not need the panel open.
-   Placed like #playback3d, which it gives way to below. Hidden in walk mode too:
-   clicks there look around rather than select, and the touch joystick holds the
-   bottom-left corner. */
+   Placed like #playback3d, which it gives way to below. Walking, it shows the
+   trail picked with the crosshair, lifted above the touch joystick. */
 #selection-bar {
   /* The zoom control's 10px margin, as for #playback3d. At 34px tall the bar
      then spans 10–44px up, and the 30px inside its border lines up with the
@@ -448,7 +447,6 @@ button:hover { background: #f5f6f8; }
 }
 /* .hud-bar's display: flex would otherwise outrank the hidden attribute. */
 #selection-bar[hidden],
-#app[data-mode3d='walk'] #selection-bar,
 #app[data-mode3d='playback'] #selection-bar { display: none; }
 .selection-text { display: flex; align-items: baseline; gap: 8px; min-width: 0; padding: 0 6px; font-size: 13px; }
 .selection-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
@@ -495,6 +493,8 @@ button:hover { background: #f5f6f8; }
 }
 @media (pointer: coarse) {
   #app[data-mode3d='walk'] #joystick { display: block; }
+  /* Clear of the joystick, which spans 24–144px up. */
+  #app[data-mode3d='walk'] #selection-bar { bottom: calc(154px + env(safe-area-inset-bottom)); }
 }
 
 #notices {
