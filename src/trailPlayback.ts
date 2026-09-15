@@ -103,17 +103,14 @@ export class Playback {
 
   constructor(readonly path: Path) {}
 
-  /** Advances by `dt` seconds. Pauses at the end rather than looping, so a trail
-   *  left playing does not quietly start over behind your back. */
+  /** Advances by `dt` seconds. Past the end it carries on from the start, so a
+   *  trail left playing keeps looping. */
   tick(dt: number): void {
     if (!this.playing) return;
-    this.s = Math.min(this.path.total, this.s + WALK_PACE * this.speed * dt);
-    if (this.s >= this.path.total) this.playing = false;
+    this.s = (this.s + WALK_PACE * this.speed * dt) % this.path.total;
   }
 
-  /** Play from the start again once the end has been reached. */
   toggle(): void {
-    if (!this.playing && this.s >= this.path.total) this.s = 0;
     this.playing = !this.playing;
   }
 

@@ -115,8 +115,8 @@ export class Hud {
   }
 
   setPlayback(state: PlaybackState): void {
-    // Called every frame, so only a change of playing does anything. Paused, or at
-    // the end of the trail, the controls come back and stay.
+    // Called every frame, so only a change of playing does anything. Paused, the
+    // controls come back and stay.
     if (state.playing !== this.playing) {
       this.playing = state.playing;
       if (state.playing) this.scheduleHide();
