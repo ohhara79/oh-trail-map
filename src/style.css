@@ -454,6 +454,22 @@ button:hover { background: #f5f6f8; }
 .selection-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 #selection-walk { color: #fff; background: var(--accent); }
 
+/* Where Walk will put you: walking starts at the map centre, facing screen-up (see
+   setMode in view3d.ts), so the longer tick is the way you will face. Orbit only;
+   clicks pass through to the trails and points under it. */
+#crosshair3d {
+  display: none;
+  position: absolute; z-index: 900;
+  left: 50%; top: 50%;
+  width: 28px; height: 28px;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  filter: drop-shadow(0 0 1.5px rgba(0,0,0,.7));
+  pointer-events: none;
+}
+#crosshair3d svg { display: block; }
+#app[data-mode3d='orbit'] #crosshair3d { display: block; }
+
 #joystick {
   display: none;
   position: absolute; z-index: 1000;

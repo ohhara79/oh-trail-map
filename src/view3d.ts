@@ -373,6 +373,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
         walker.setPlayback(null);
         playingId = null;
       } else {
+        // Keep in sync with #crosshair3d, which marks this spot in orbit mode.
         const centre = map.getCenter();
         walker = startWalking(
           { lat: centre.lat, lon: centre.lng, yaw: map.getBearing(), look: -10 },
