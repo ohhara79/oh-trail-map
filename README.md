@@ -39,9 +39,10 @@ npm run preview
     to look around.
     Aim the crosshair at a point or a trail and click or tap to open or select
     it; the selected trail's bar shows while walking too.
+    Walking past a national point (within 25 m) opens its popup on its own, in
+    playback too.
   - **▶ on a trail row**: plays that trail at eye height, with pause, speed
     (1×–50× walking pace) and a scrubber.
-    Walking past a national point (within 25 m) opens its popup on its own.
     While it plays, the buttons over the scene fade out after 3 s; tap or click
     the scene to bring them back, or again to hide them.
   - **▶ 3D on the selection bar**: clicking a trail on the map (2D or 3D)

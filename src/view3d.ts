@@ -121,7 +121,7 @@ const EYE_HEIGHTS = [1.7, 20, 80];
  *  there has a moment to load before you are standing in it. */
 const FAR_JUMP = 200;
 const JUMP_HEIGHT = 150;
-/** Playback opens a point's popup on its own within this many metres. Trails that
+/** Walking opens a point's popup on its own within this many metres. Trails that
  *  visit a point pass within 15–20 m of it, and points are rarely closer than 50 m
  *  to each other. */
 const NEARBY = 25;
@@ -343,14 +343,14 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     syncAim();
     // Walked or looked away from the point: its popup has nothing left to point at.
     if (popup && !inWalkView(popup.getLngLat())) closePopup();
-    if (mode === 'playback') openNearby();
+    openNearby();
   });
 
-  /** Points whose popup playback has opened, until you are NEARBY_RELEASE away from
+  /** Points whose popup has opened on its own, until you are NEARBY_RELEASE away from
    *  them. A point closed with a tap, or left behind, does not open again meanwhile. */
   const opened = new Set<NationalPoint>();
 
-  /** Opens the popup of the closest point playback has walked up to, as a tap on it
+  /** Opens the popup of the closest point you have walked up to, as a tap on it
    *  would. Only one in view: beside or behind you, it would close on the next frame. */
   function openNearby(): void {
     if (!walker || tween || !pointsShown()) return;
@@ -497,6 +497,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     controls?.destroy();
     walker = null;
     controls = null;
+    // Walking again, the points around you open again.
+    opened.clear();
     return stood;
   }
 
