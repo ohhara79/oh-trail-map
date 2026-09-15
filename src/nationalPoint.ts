@@ -144,7 +144,7 @@ export function decodeNationalPoint(code: string): { lat: number; lon: number } 
 }
 
 /**
- * Parses the 순번 / 시·도 / 시·군·구 / 지점번호 / 사물유형 / 이름 TSV.
+ * Parses the 시·도 / 시·군·구 / 지점번호 / 사물유형 / 이름 TSV.
  *
  * Every tolerance here answers something actually present in the file: rows that stop
  * after 사물유형 because they have no 이름 (most of them), a header row, CRLF, a
@@ -162,24 +162,22 @@ export function parseNationalPoints(tsv: string): NationalPoint[] {
   for (const line of tsv.split(/\r?\n/)) {
     if (!line.trim()) continue;
     const fields = line.split('\t');
-    if (fields.length < 5) continue;
+    if (fields.length < 4) continue;
 
-    // The header is skipped by its non-numeric 순번 rather than by position, so a
-    // file exported without one still parses completely.
-    if (!/^\d+$/.test(fields[0].trim())) continue;
-
-    const code = fields[3].trim();
+    const code = fields[2].trim();
     if (seen.has(code)) continue;
+    // Also what skips the header: its 지점번호 cell holds the literal text 지점번호,
+    // which is not a decodable code. So a file exported without one parses too.
     const at = decodeNationalPoint(code);
     if (!at) continue;
     seen.add(code);
 
     points.push({
       code,
-      kind: fields[4].trim(),
+      kind: fields[3].trim(),
       // NFC for the same reason trails.ts folds names: Hangul from a macOS export
       // arrives decomposed and would otherwise not match anything typed.
-      name: (fields[5] ?? '').trim().normalize('NFC'),
+      name: (fields[4] ?? '').trim().normalize('NFC'),
       lat: at.lat,
       lon: at.lon,
     });

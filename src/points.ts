@@ -79,8 +79,8 @@ export function popupContent(point: NationalPoint): HTMLElement {
   root.lang = 'ko';
 
   // The name leads when there is one — it is the thing a person recognises. The
-  // line is left out entirely rather than rendered empty for the 238 of 338 rows
-  // that have no name, where a blank bold line would read as a bug.
+  // line is left out entirely rather than rendered empty for the rows that have
+  // no name, where a blank bold line would read as a bug.
   if (point.name) {
     const title = document.createElement('strong');
     title.textContent = point.name;
