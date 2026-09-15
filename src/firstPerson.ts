@@ -12,8 +12,7 @@
  * puts the near plane ~130 m out and clips away every bit of ground you are standing
  * on. A fixed D of 15 m keeps it at about 0.3 m.
  */
-import { LngLat, type Map as MlMap } from 'maplibre-gl';
-import { EARTH_RADIUS } from './gpx';
+import { LngLat, type CameraOptions, type Map as MlMap } from 'maplibre-gl';
 import { angleDelta, offset } from './geo';
 import { Playback, sampleAt, tangentBearing } from './trailPlayback';
 import { KEY_TURN_RATE, type WalkControls } from './walkControls';
@@ -41,7 +40,7 @@ const LOOK_RETURN_TAU = 0.8;
  *  behind a fast climb, and a floor inside the near plane lets the slope ahead be
  *  clipped away. */
 const MIN_CLEARANCE = 1.0;
-/** Seconds for the descent from the orbit view down to eye height. */
+/** Seconds for the descent from a jump's height down to eye height. */
 const DESCENT_TAU = 0.45;
 /** Playback looks slightly down, as you would walking a path. */
 const PLAYBACK_LOOK = -6;
@@ -57,18 +56,28 @@ const clampLook = (look: number) => Math.max(LOOK_MIN, Math.min(LOOK_MAX, look))
 const smooth = (tau: number, dt: number) => 1 - Math.exp(-dt / tau);
 
 /**
- * Height of the orbit camera above its centre point, in metres. MapLibre no longer
- * exposes its transform, but the distance falls out of the public camera state:
- * the centre sits 0.5·H / tan(fov/2) pixels in front of the camera, and a pixel is
- * circumference·cos(lat) / (512·2^zoom) metres there.
+ * The camera options that put the eye at `alt` metres, standing at `pose`, seen
+ * with a `fov` field of view. Exported so the flight down from orbit ends exactly
+ * where walking's first frame begins.
  */
-export function orbitCameraHeight(map: MlMap): number {
-  const fov = map.getVerticalFieldOfView() * (Math.PI / 180);
-  const centre = map.getCenter();
-  const px = 0.5 * map.getCanvas().clientHeight / Math.tan(fov / 2);
-  const metresPerPx =
-    (2 * Math.PI * EARTH_RADIUS * Math.cos(centre.lat * (Math.PI / 180))) / (512 * 2 ** map.getZoom());
-  return px * metresPerPx * Math.cos(map.getPitch() * (Math.PI / 180));
+export function eyeCamera(map: MlMap, pose: Pose, alt: number, fov = map.getVerticalFieldOfView()): CameraOptions {
+  const { lat, lon, yaw, look } = pose;
+  const rad = look * (Math.PI / 180);
+  const h = LOOK_DISTANCE * Math.cos(rad);
+  const target = offset(lat, lon, h * Math.sin(yaw * (Math.PI / 180)), h * Math.cos(yaw * (Math.PI / 180)));
+  const camera = map.calculateCameraOptionsFromTo(
+    new LngLat(lon, lat),
+    alt,
+    new LngLat(target.lon, target.lat),
+    alt + LOOK_DISTANCE * Math.sin(rad),
+  );
+  // MapLibre solves the zoom for the field of view it has now, and the camera sits
+  // 0.5·H / tan(fov/2) pixels back, so another field of view shifts the zoom.
+  if (camera.zoom !== undefined) {
+    const halfTan = (deg: number) => Math.tan(deg * (Math.PI / 360));
+    camera.zoom += Math.log2(halfTan(map.getVerticalFieldOfView()) / halfTan(fov));
+  }
+  return camera;
 }
 
 export class FirstPerson {
@@ -152,6 +161,11 @@ export class FirstPerson {
     const baseLook = this.playback ? PLAYBACK_LOOK : 0;
     this.yawOffset = angleDelta(baseYaw, this.pose.yaw);
     this.lookOffset = on ? 0 : this.pose.look - baseLook;
+  }
+
+  /** The smoothed ground height under the eye, in metres. */
+  get groundHeight(): number {
+    return this.ground;
   }
 
   destroy(): void {
@@ -261,15 +275,6 @@ export class FirstPerson {
     if (key === this.lastCamera) return;
     this.lastCamera = key;
 
-    const rad = look * (Math.PI / 180);
-    const h = LOOK_DISTANCE * Math.cos(rad);
-    const target = offset(lat, lon, h * Math.sin(yaw * (Math.PI / 180)), h * Math.cos(yaw * (Math.PI / 180)));
-    const camera = this.map.calculateCameraOptionsFromTo(
-      new LngLat(lon, lat),
-      alt,
-      new LngLat(target.lon, target.lat),
-      alt + LOOK_DISTANCE * Math.sin(rad),
-    );
-    this.map.jumpTo(camera);
+    this.map.jumpTo(eyeCamera(this.map, this.pose, alt));
   }
 }

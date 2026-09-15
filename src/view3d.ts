@@ -27,7 +27,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 
 import { basemapById } from './basemaps';
-import { FirstPerson, WALK_FOV, orbitCameraHeight, type Pose } from './firstPerson';
+import { tweenCamera, type Tween } from './cameraTween';
+import { FirstPerson, WALK_FOV, eyeCamera, type Pose } from './firstPerson';
 import { angleDelta, bearing } from './geo';
 import { compassNeedsPermission, requestCompassPermission, type Heading } from './heading';
 import { Hud, type Mode3d } from './hud3d';
@@ -116,9 +117,6 @@ const ORBIT_FOG = 0.5;
 const WALK_FOG = 0.9;
 /** Eye heights the HUD cycles through: standing, a tree top, a drone. */
 const EYE_HEIGHTS = [1.7, 20, 80];
-/** The highest point a descent into walk mode starts from. A zoomed-out orbit can
- *  be hundreds of kilometres up, and falling from there takes too long to watch. */
-const MAX_DESCENT = 600;
 /** A jump to a trail further away than this descends from above, so the terrain
  *  there has a moment to load before you are standing in it. */
 const FAR_JUMP = 200;
@@ -186,6 +184,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   let gyroOn = false;
   let hinted = false;
   let popup: Popup | null = null;
+  /** The camera flight between orbit and walk, while one is under way. */
+  let tween: Tween | null = null;
 
   const hud = new Hud({
     onMode: (next) => {
@@ -258,7 +258,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
 
   // Orbit only: walking uses the pointer to look, and aims with the crosshair instead.
   map.on('click', (e: MapMouseEvent) => {
-    if (mode !== 'orbit') return;
+    if (mode !== 'orbit' || tween) return;
     // The same rule as the 2D handlers in main.ts: while a trail is selected or a
     // popup is open, any click only clears it.
     const popupOpen = popup?.isOpen() ?? false;
@@ -358,19 +358,33 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     map.keyboard,
   ];
 
-  /** Starts the eye-height camera at `pose`, descending from `height` metres. */
-  function startWalking(pose: Pose, height: number, groundGuess: number): FirstPerson {
+  /** Lifts the orbit limits for a camera at eye height. Order matters: they have
+   *  to be lifted before the first camera placement that needs them, or MapLibre
+   *  clamps it. */
+  function walkLimits(): void {
     for (const h of HANDLERS) h.disable();
     popup?.remove();
     map.stop();
-    // Order matters: the pitch and zoom limits have to be lifted before the first
-    // camera placement that needs them, or MapLibre clamps it.
     map.setMaxZoom(WALK_MAX_ZOOM);
     map.setMaxPitch(WALK_MAX_PITCH);
     map.setCenterClampedToGround(false);
+    map.getCanvas().style.cursor = '';
+  }
+
+  function orbitLimits(): void {
+    for (const h of HANDLERS) h.enable();
+    map.setCenterClampedToGround(true);
+    map.setVerticalFieldOfView(ORBIT_FOV);
+    map.setMaxPitch(ORBIT_MAX_PITCH);
+    map.setMaxZoom(ORBIT_MAX_ZOOM);
+    map.setSky(sky(ORBIT_FOG));
+  }
+
+  /** Starts the eye-height camera at `pose`, descending from `height` metres. */
+  function startWalking(pose: Pose, height: number, groundGuess: number): FirstPerson {
+    walkLimits();
     map.setVerticalFieldOfView(WALK_FOV);
     map.setSky(sky(WALK_FOG));
-    map.getCanvas().style.cursor = '';
 
     controls = createControls({
       surface: map.getCanvasContainer(),
@@ -406,30 +420,52 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     return next;
   }
 
-  function stopWalking(): Pose | null {
-    const pose = walker ? { ...walker.pose } : null;
+  /** Stops the eye-height camera and says where it stood. The camera keeps the walk
+   *  limits: the flight back up starts past the orbit's pitch limit. */
+  function stopWalking(): { pose: Pose; ground: number } | null {
+    const stood = walker ? { pose: { ...walker.pose }, ground: walker.groundHeight } : null;
     walker?.destroy();
     controls?.destroy();
     walker = null;
     controls = null;
-    for (const h of HANDLERS) h.enable();
-    map.setCenterClampedToGround(true);
-    map.setVerticalFieldOfView(ORBIT_FOV);
-    map.setMaxPitch(ORBIT_MAX_PITCH);
-    map.setMaxZoom(ORBIT_MAX_ZOOM);
-    map.setSky(sky(ORBIT_FOG));
-    return pose;
+    return stood;
+  }
+
+  /** Ends a camera flight now, if one is under way, so what follows starts from a
+   *  settled mode rather than one half set up. */
+  function settle(): void {
+    tween?.finish();
   }
 
   let playingId: string | null = null;
 
   function setMode(next: Mode3d): void {
+    settle();
     if (next === mode) return;
     if (next === 'orbit') {
-      const pose = stopWalking();
+      const stood = stopWalking();
       playingId = null;
-      if (pose) {
-        map.jumpTo({ center: [pose.lon, pose.lat], zoom: 16, pitch: ORBIT_PITCH, bearing: pose.yaw });
+      if (stood) {
+        // Up and back from where you stood, which stays at the screen centre the
+        // whole way and ends under #crosshair3d.
+        const { pose, ground } = stood;
+        tween = tweenCamera(
+          map,
+          {
+            center: new LngLat(pose.lon, pose.lat),
+            zoom: 16,
+            pitch: ORBIT_PITCH,
+            bearing: pose.yaw,
+            elevation: ground,
+            fov: ORBIT_FOV,
+          },
+          () => {
+            tween = null;
+            orbitLimits();
+          },
+        );
+      } else {
+        orbitLimits();
       }
     } else if (next === 'walk') {
       if (walker) {
@@ -438,10 +474,26 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       } else {
         // Keep in sync with #crosshair3d, which marks this spot in orbit mode.
         const centre = map.getCenter();
-        walker = startWalking(
-          { lat: centre.lat, lon: centre.lng, yaw: map.getBearing(), look: -10 },
-          Math.min(orbitCameraHeight(map), MAX_DESCENT),
-          map.getCenterElevation(),
+        const pose: Pose = { lat: centre.lat, lon: centre.lng, yaw: map.getBearing(), look: -10 };
+        const ground = map.getCenterElevation();
+        const eye = EYE_HEIGHTS[eyeIndex];
+        walkLimits();
+        // Down onto that spot, ending on the camera walking's first frame places.
+        const camera = eyeCamera(map, pose, ground + eye, WALK_FOV);
+        tween = tweenCamera(
+          map,
+          {
+            center: LngLat.convert(camera.center ?? centre),
+            zoom: camera.zoom ?? map.getZoom(),
+            pitch: camera.pitch ?? map.getPitch(),
+            bearing: camera.bearing ?? pose.yaw,
+            elevation: camera.elevation ?? ground + eye,
+            fov: WALK_FOV,
+          },
+          () => {
+            tween = null;
+            walker = startWalking(pose, eye, ground);
+          },
         );
       }
     }
@@ -488,6 +540,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   }
 
   function walkTrail(id: string): void {
+    settle();
     const trail = getScene().trails.find((t) => t.id === id);
     if (!trail) return;
     const path = buildPath(trail.segments);
@@ -581,11 +634,14 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     },
     walkTrail,
     viewFor2d() {
+      // Where the flight was going, not wherever it had got to.
+      settle();
       if (walker) return { lat: walker.pose.lat, lon: walker.pose.lon, zoom: 17 };
       const c = map.getCenter();
       return { lat: c.lat, lon: c.lng, zoom: Math.round(map.getZoom() + ZOOM_OFFSET) };
     },
     destroy() {
+      settle();
       window.removeEventListener('keydown', onKeyDown, { capture: true });
       walker?.destroy();
       controls?.destroy();
