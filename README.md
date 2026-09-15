@@ -33,8 +33,8 @@ npm run preview
   trail list still selects its trail directly.
 - A **3D** button (top-right) turns the map into a MapLibre GL terrain view with
   the same basemap, trails and points:
-  - **Orbit**: tilt and rotate from above.
-  - **Walk**: stand at eye height (1.7 m, or 20 m / 80 m) and move with
+  - It opens in orbit, to tilt and rotate from above.
+  - **Walk** (a toggle; off again is back to orbit): stand at eye height (1.7 m, or 20 m / 80 m) and move with
     W A S D or the arrows, Shift to run. Drag, or click to capture the mouse,
     to look around.
   - **▶ on a trail row**: plays that trail at eye height, with pause, speed

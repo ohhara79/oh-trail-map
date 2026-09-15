@@ -388,7 +388,7 @@ button:hover { background: #f5f6f8; }
 #mode3d, #selection-bar { height: 34px; }
 /* Outranks .hud-bar button, including its taller padding on touch below. */
 :is(#mode3d, #selection-bar) button { align-self: stretch; padding-block: 0; }
-/* Orbit, Walk and Gyro as square icon buttons, so the bar stays narrow over the
+/* Walk and Gyro as square icon buttons, so the bar stays narrow over the
    scene. Outranks the rule above and the touch padding below. */
 #mode3d .hud-icon { width: 30px; padding: 0; }
 /* A button centres its content vertically on its own; margin: auto does the

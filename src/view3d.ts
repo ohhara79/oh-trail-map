@@ -188,10 +188,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   let tween: Tween | null = null;
 
   const hud = new Hud({
-    onMode: (next) => {
-      if (next === 'orbit') setMode('orbit');
-      else if (mode === 'orbit') setMode('walk');
-    },
+    // A toggle: pressed while walking or playing, so a press from either is back to orbit.
+    onWalk: () => setMode(mode === 'orbit' ? 'walk' : 'orbit'),
     onPlayToggle: () => walker?.playback?.toggle(),
     onSpeed: () => walker?.playback?.nextSpeed(),
     onSeek: (fraction) => walker?.playback?.seek(fraction * walker.playback.path.total),

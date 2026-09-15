@@ -13,7 +13,8 @@ import { formatDistance } from './gpx';
 export type Mode3d = 'orbit' | 'walk' | 'playback';
 
 export type HudCallbacks = {
-  onMode: (mode: 'orbit' | 'walk') => void;
+  /** Walk pressed: walking or playing a trail. Not pressed: orbit. */
+  onWalk: () => void;
   onPlayToggle: () => void;
   onSpeed: () => void;
   /** 0..1 along the trail. */
@@ -44,9 +45,7 @@ export class Hud {
   private readonly root = el('hud3d');
   readonly joystick = el('joystick');
   private readonly crosshair = el('crosshair3d');
-  private readonly modeButtons = Array.from(
-    el('mode3d').querySelectorAll<HTMLButtonElement>('button[data-mode]'),
-  );
+  private readonly walk = el<HTMLButtonElement>('walk3d');
   private readonly eye = el<HTMLButtonElement>('eye3d');
   private readonly gyro = el<HTMLButtonElement>('gyro3d');
   private readonly play = el<HTMLButtonElement>('play3d');
@@ -64,9 +63,7 @@ export class Hud {
 
   constructor(cb: HudCallbacks) {
     const signal = this.abort.signal;
-    for (const button of this.modeButtons) {
-      button.addEventListener('click', () => cb.onMode(button.dataset.mode as 'orbit' | 'walk'), { signal });
-    }
+    this.walk.addEventListener('click', () => cb.onWalk(), { signal });
     this.eye.addEventListener('click', () => cb.onEye(), { signal });
     this.gyro.addEventListener('click', () => cb.onGyro(), { signal });
     this.play.addEventListener('click', () => cb.onPlayToggle(), { signal });
@@ -101,10 +98,7 @@ export class Hud {
     // Another trail started while one was already playing: setPlayback sees no
     // change, so the timer starts here.
     if (mode === 'playback' && this.playing) this.scheduleHide();
-    for (const button of this.modeButtons) {
-      const on = button.dataset.mode === mode || (mode === 'playback' && button.dataset.mode === 'walk');
-      button.setAttribute('aria-pressed', String(on));
-    }
+    this.walk.setAttribute('aria-pressed', String(mode !== 'orbit'));
   }
 
   setEye(metres: number): void {
