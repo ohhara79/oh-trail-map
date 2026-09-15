@@ -24,7 +24,7 @@ npm run preview
 - Per-trail visibility toggle, a distinct colour, and distance / ascent / duration stats.
 - Basemap switcher: OSM Standard, OpenTopoMap, Esri satellite.
 - National Point Number emergency-location points from `data/national_points_w_name.tsv`, drawn as circles —
-  amber where the point has an 이름, grey where it does not; click one for its 지점번호, 사물유형 and 이름. Toggled from the control panel.
+  amber where the point has an 이름, grey where it does not; click one for its 지점번호, 사물유형, 시/도 · 시/군/구 and 이름. Toggled from the control panel.
   The grid codes are decoded to lat/lon at runtime — see
   `docs/plans/2026-09-13-01-national-point-markers.md` for the derivation.
 - Click a trail on the map to select it, or a point to open its popup. While

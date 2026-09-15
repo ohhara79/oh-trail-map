@@ -45,6 +45,11 @@ const FALSE_NORTHING = 2_000_000;
 const CODE_PATTERN = /^([가-하])([가-하])(\d{4})(\d{4})$/;
 
 export type NationalPoint = {
+  /** 시/도. Always present in the file; shown in the popup joined to `district`. */
+  province: string;
+  /** 시/군/구. Two words for the rows under 안양시 (안양시 동안구, 안양시 만안구) — that
+   *  space is the source's own, not a join. */
+  district: string;
   /** 지점번호, e.g. 다사52414090. */
   code: string;
   /** 사물유형 — what the number is posted on. */
@@ -152,8 +157,12 @@ export function decodeNationalPoint(code: string): { lat: number; lon: number } 
  *
  * That duplicate is deduplicated, first row wins. It is not two signs: it is one
  * sign on the 금천구 / 안양시 만안구 boundary, filed once under each, identical in
- * 지점번호, 사물유형 and 이름 alike. Keeping both would stack two markers on the
- * same coordinate, the lower one permanently unclickable, to say nothing twice.
+ * 지점번호 and 사물유형 and nameless in both. The one thing the two rows disagree on
+ * is now on screen, so the tiebreak is worth stating: first row wins means the popup
+ * reads 서울특별시 금천구 and never 경기도 안양시 만안구. Which of the two it shows is
+ * the order of the file, not a fact about which side of the line the sign stands on.
+ * Keeping both would stack two markers on the same coordinate, the lower one
+ * permanently unclickable, to say almost the same thing twice.
  */
 export function parseNationalPoints(tsv: string): NationalPoint[] {
   const points: NationalPoint[] = [];
@@ -173,6 +182,11 @@ export function parseNationalPoints(tsv: string): NationalPoint[] {
     seen.add(code);
 
     points.push({
+      // Left exactly as the file has them, like 사물유형 below: these are only ever
+      // rendered, never matched against anything typed, so the NFC fold 이름 needs
+      // would be a third rule for the same kind of text.
+      province: fields[0].trim(),
+      district: fields[1].trim(),
       code,
       kind: fields[3].trim(),
       // NFC for the same reason trails.ts folds names: Hangul from a macOS export

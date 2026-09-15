@@ -1,7 +1,7 @@
 /**
  * The National Point Number layer: one pin per row of data/national_points_w_name.tsv, each
- * with a popup naming the 지점번호, the 사물유형 and — where the source has one —
- * the 이름.
+ * with a popup naming the 지점번호, the 사물유형, the 시/도 and 시/군/구 it is filed
+ * under, and — where the source has one — the 이름.
  *
  * The data is imported rather than fetched. `vite build` copies only public/, so a
  * repo-root data/ would 404 in dist/; `?raw` makes it part of the bundle instead,
@@ -66,10 +66,10 @@ export function loadNationalPoints(): NationalPoint[] {
 }
 
 /**
- * Builds the popup body as DOM rather than an HTML string. 이름 and 사물유형 are
- * arbitrary text from a file dropped into data/, and a name containing `<` would be
- * parsed as markup by innerHTML; textContent cannot be. Shared with the 3D view's
- * popups, so a point reads the same in both.
+ * Builds the popup body as DOM rather than an HTML string. 이름, 사물유형 and the two
+ * region cells are all arbitrary text from a file dropped into data/, and a name
+ * containing `<` would be parsed as markup by innerHTML; textContent cannot be. Shared
+ * with the 3D view's popups, so a point reads the same in both.
  */
 export function popupContent(point: NationalPoint): HTMLElement {
   const root = document.createElement('div');
@@ -96,6 +96,24 @@ export function popupContent(point: NationalPoint): HTMLElement {
   kind.textContent = point.kind;
 
   root.append(code, kind);
+
+  // 시/도 and 시/군/구 last, and muted: by the time you are reading a popup you know
+  // roughly where you are, so this is the line the eye is free to skip — it earns its
+  // place only when the point sits near one of the boundaries the set crosses
+  // (관악구 / 금천구, and the 서울 / 경기 line into 과천시 and 안양시).
+  //
+  // Joined rather than templated so a row missing one half — none in the file today,
+  // but the parser accepts one — reads as the half it has, not as "서울특별시 " with a
+  // trailing space that looks like something got cut off. Where the line runs to three
+  // words, 경기도 안양시 동안구, the second space came out of the 시/군/구 cell itself.
+  const region = [point.province, point.district].filter(Boolean).join(' ');
+  if (region) {
+    const where = document.createElement('div');
+    where.className = 'muted';
+    where.textContent = region;
+    root.append(where);
+  }
+
   return root;
 }
 
