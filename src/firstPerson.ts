@@ -31,8 +31,12 @@ const LOOK_MAX = 60;
 const GROUND_TAU = 0.15;
 /** Seconds for playback to swing round to face along the trail. */
 const FOLLOW_TAU = 0.5;
-/** How long after you stop looking around playback leaves the view alone, then
- *  how quickly it drifts back to straight ahead. */
+/** Seconds for following your location to swing round to your heading. Shorter
+ *  than FOLLOW_TAU, since you are turning your own body, yet enough to hide the
+ *  compass's 1° steps and its jitter. */
+const HEADING_TAU = 0.3;
+/** How long after you stop looking around playback, or following your heading,
+ *  leaves the view alone, then how quickly it drifts back. */
 const LOOK_HOLD_MS = 2000;
 const LOOK_RETURN_TAU = 0.8;
 /** The camera never goes nearer the ground than this, whatever the smoothing says.
@@ -85,12 +89,19 @@ export class FirstPerson {
   /** Metres above the ground: eye height, or a drone's. */
   eye = 1.7;
   playback: Playback | null = null;
+  /** The way you are facing, from the compass or GPS course, while steering is
+   *  on. Null keeps the view on whatever it last eased to. */
+  heading: number | null = null;
 
   /** User turn on top of whatever the base direction is — see frame(). */
   private yawOffset: number;
   private lookOffset: number;
   /** The direction playback is easing towards, trailing the path's tangent. */
   private followYaw = 0;
+  /** Following your location outside playback: the view faces `heading`. */
+  private steering = false;
+  /** The direction steering is easing towards, trailing `heading`. */
+  private headingYaw = 0;
   /** Where the phone was pointing when the gyroscope was switched on, since on
    *  some platforms its yaw has no fixed north. */
   private deviceRef: number | null = null;
@@ -131,10 +142,29 @@ export class FirstPerson {
       this.yawOffset = angleDelta(this.followYaw, yaw);
       this.lookOffset = look - PLAYBACK_LOOK;
     } else {
-      this.yawOffset = yaw;
+      this.rebaseYaw();
       this.lookOffset = look;
     }
     this.deviceRef = null;
+  }
+
+  /** Turns facing your heading on or off, from wherever the view points now. */
+  setSteering(on: boolean): void {
+    if (on === this.steering) return;
+    this.steering = on;
+    this.deviceRef = null;
+    if (!this.playback) this.rebaseYaw();
+  }
+
+  /** Outside playback: the offset takes the whole direction, or, while steering,
+   *  none of it, so the view swings from where it points round to your heading. */
+  private rebaseYaw(): void {
+    if (this.steering) {
+      this.headingYaw = this.pose.yaw;
+      this.yawOffset = 0;
+    } else {
+      this.yawOffset = this.pose.yaw;
+    }
   }
 
   /**
@@ -157,7 +187,7 @@ export class FirstPerson {
     this.deviceRef = null;
     // Whatever the phone reported is no longer part of the view, so the offsets
     // take over the whole direction and nothing jumps.
-    const baseYaw = this.playback ? this.followYaw : 0;
+    const baseYaw = this.playback ? this.followYaw : this.steering ? this.headingYaw : 0;
     const baseLook = this.playback ? PLAYBACK_LOOK : 0;
     this.yawOffset = angleDelta(baseYaw, this.pose.yaw);
     this.lookOffset = on ? 0 : this.pose.look - baseLook;
@@ -192,8 +222,9 @@ export class FirstPerson {
 
   /**
    * The view direction is always base + offset. The base is what something other
-   * than you says: nothing while walking, the trail ahead during playback, the
-   * phone's orientation when the gyroscope is on. The offset is your own turning
+   * than you says: nothing while walking, your heading while following your
+   * location, the trail ahead during playback, the phone's orientation when the
+   * gyroscope is on. The offset is your own turning
    * from drags and keys. Keeping the two apart is what lets playback steer while
    * you look around, and lets it drift back once you stop.
    */
@@ -216,16 +247,28 @@ export class FirstPerson {
       baseYaw = this.followYaw;
       baseLook = PLAYBACK_LOOK;
     }
+    const steering = this.steering && !playback;
+    if (steering) {
+      if (this.heading !== null) {
+        this.headingYaw += angleDelta(this.headingYaw, this.heading) * smooth(HEADING_TAU, dt);
+      }
+      baseYaw = this.headingYaw;
+    }
 
     const device = this.controls.device();
     if (device) {
-      this.deviceRef ??= device.yaw;
-      baseYaw += angleDelta(this.deviceRef, device.yaw);
+      // While steering the compass already turns with the phone, so the phone
+      // only tilts the view; its yaw on top would count every turn twice.
+      if (!steering) {
+        this.deviceRef ??= device.yaw;
+        baseYaw += angleDelta(this.deviceRef, device.yaw);
+      }
       baseLook = device.look;
-    } else if (playback && now - this.controls.lastInput() > LOOK_HOLD_MS) {
+    } else if ((playback || steering) && now - this.controls.lastInput() > LOOK_HOLD_MS) {
       const k = smooth(LOOK_RETURN_TAU, dt);
       this.yawOffset -= angleDelta(0, this.yawOffset) * k;
-      this.lookOffset -= this.lookOffset * k;
+      // Your heading says nothing about tilt, so walking keeps the one you chose.
+      if (playback) this.lookOffset -= this.lookOffset * k;
     }
 
     // Clamped as a total, and the offset pulled back to match, so looking past

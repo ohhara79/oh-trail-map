@@ -92,6 +92,8 @@ export type View3d = {
   setPointsVisible(show: boolean): void;
   setLocation(fix: { lat: number; lon: number; accuracy: number } | null): void;
   setHeading(heading: Heading | null): void;
+  /** Whether the locate button is following you: in Walk, you face your heading too. */
+  setFollowing(on: boolean): void;
   fitTrail(id: string): void;
   panTo(lat: number, lon: number): void;
   walkTrail(id: string): void;
@@ -190,6 +192,9 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   let walker: FirstPerson | null = null;
   let eyeIndex = 0;
   let gyroOn = false;
+  let following = false;
+  /** Your latest heading in degrees, which Walk faces while following. */
+  let heading: number | null = null;
   let hinted = false;
   let popup: Popup | null = null;
   /** The camera flight between orbit and walk, while one is under way. */
@@ -483,6 +488,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     });
     next.eye = EYE_HEIGHTS[eyeIndex];
     if (gyroOn) next.setGyro(true);
+    next.heading = heading;
+    next.setSteering(following);
 
     if (!hinted) {
       hinted = true;
@@ -517,6 +524,14 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   }
 
   let playingId: string | null = null;
+
+  /** Walk faces your heading while following your location. Playback steers along
+   *  its trail instead, and starting one stops following anyway. */
+  function syncSteering(): void {
+    if (!walker) return;
+    walker.heading = heading;
+    walker.setSteering(following && mode !== 'playback');
+  }
 
   function setMode(next: Mode3d): void {
     settle();
@@ -579,6 +594,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     // 'playback' is only ever entered through walkTrail, which sets it up first.
     mode = next;
     hud.setMode(mode);
+    syncSteering();
     // A popup opened while walking would otherwise stay behind in orbit.
     closePopup();
     syncAim();
@@ -646,6 +662,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     walker.setPlayback(playback);
     mode = 'playback';
     hud.setMode(mode);
+    syncSteering();
     // The jump may leave the point it names far behind.
     closePopup();
     syncAim();
@@ -689,16 +706,22 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
         locationShown = true;
       }
     },
-    setHeading(heading) {
+    setHeading(next) {
+      heading = next?.degrees ?? null;
+      syncSteering();
       // Rotated by MapLibre rather than through the --heading property the 2D
       // marker uses: the marker's transform is rewritten on every frame, and only
       // setRotation composes with the map's own bearing and pitch.
-      if (!heading) {
+      if (!next) {
         locationEl.removeAttribute('data-heading');
         return;
       }
-      locationEl.setAttribute('data-heading', heading.source);
-      locationMarker.setRotation(heading.degrees);
+      locationEl.setAttribute('data-heading', next.source);
+      locationMarker.setRotation(next.degrees);
+    },
+    setFollowing(on) {
+      following = on;
+      syncSteering();
     },
     fitTrail(id) {
       // Walking stays where it is: a row click must not pull you out of the scene.

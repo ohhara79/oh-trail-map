@@ -262,6 +262,7 @@ async function main(): Promise<void> {
         view3d = view;
         if (lastFix) view.setLocation({ lat: lastFix.lat, lon: lastFix.lng, accuracy: lastAccuracy });
         view.setHeading(lastHeading);
+        view.setFollowing(following);
         app.dataset.view = '3d';
         ui.set3dState('on');
         return view;
@@ -298,6 +299,7 @@ async function main(): Promise<void> {
     ui.setLocateState(
       blockedMessage !== null ? 'blocked' : !following ? 'off' : lastFix ? 'on' : 'searching',
     );
+    view3d?.setFollowing(following);
   }
 
   function refresh(): void {
