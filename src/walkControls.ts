@@ -10,17 +10,20 @@ const MOUSE_LOCKED_DEG_PER_PX = 0.15;
 const DRAG_DEG_PER_PX = 0.25;
 /** Arrow-key turning speed, in degrees per second. */
 export const KEY_TURN_RATE = 90;
+/** How many times walk speed Shift runs at. The joystick reaches it at the rim,
+ *  since a touch screen has no Shift. */
+const RUN_FACTOR = 4;
 /** A pointer that moves less than this between down and up was a click. */
 const CLICK_SLOP = 4;
 
 export type Intent = {
-  /** -1 (back) to 1 (forward); analogue from the joystick. */
+  /** Back (negative) or forward, in multiples of walk speed: 1 walks, RUN_FACTOR
+   *  runs. Analogue from the joystick. */
   forward: number;
-  /** -1 (left) to 1 (right). */
+  /** Left (negative) or right, in the same units. */
   right: number;
   /** -1 (left) to 1 (right), from the arrow keys: a rate, not a step. */
   turn: number;
-  run: boolean;
 };
 
 /** The phone's view direction: yaw in degrees clockwise from the device's own
@@ -235,11 +238,15 @@ export function createControls(opts: ControlsOptions): WalkControls {
       const forward = (held('KeyW', 'ArrowUp') ? 1 : 0) - (held('KeyS', 'ArrowDown') ? 1 : 0);
       const right = (held('KeyD') ? 1 : 0) - (held('KeyA') ? 1 : 0);
       const turn = (held('ArrowRight') ? 1 : 0) - (held('ArrowLeft') ? 1 : 0);
+      const keyScale = held('ShiftLeft', 'ShiftRight') ? RUN_FACTOR : 1;
+      // Speed grows with the square of the push: a half push is walk pace, the rim
+      // runs, and a light touch still creeps.
+      const stickScale = RUN_FACTOR * Math.hypot(stick.forward, stick.right);
+      const clamp = (v: number) => Math.max(-RUN_FACTOR, Math.min(RUN_FACTOR, v));
       return {
-        forward: Math.max(-1, Math.min(1, forward + stick.forward)),
-        right: Math.max(-1, Math.min(1, right + stick.right)),
+        forward: clamp(forward * keyScale + stick.forward * stickScale),
+        right: clamp(right * keyScale + stick.right * stickScale),
         turn,
-        run: held('ShiftLeft', 'ShiftRight'),
       };
     },
     consumeLook() {

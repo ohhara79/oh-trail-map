@@ -45,7 +45,7 @@ const MIN_CLEARANCE = 1.0;
 const DESCENT_TAU = 0.45;
 /** Playback looks slightly down, as you would walking a path. */
 const PLAYBACK_LOOK = -6;
-/** Free-walk speed in m/s, before Shift and height. Ten times a real walk: the
+/** Free-walk speed in m/s, before running and height. Ten times a real walk: the
  *  mountain is kilometres across, and real pace makes crossing it a chore. */
 const MOVE_SPEED = 14;
 /** Longest frame step, so a stall or a backgrounded tab cannot fling you across the map. */
@@ -223,7 +223,7 @@ export class FirstPerson {
 
     if (!playback) {
       // Faster the higher you are, so a drone is not stuck at walking pace.
-      const speed = MOVE_SPEED * (intent.run ? 4 : 1) * Math.max(1, this.eye / 20);
+      const speed = MOVE_SPEED * Math.max(1, this.eye / 20);
       const rad = this.pose.yaw * (Math.PI / 180);
       const f = intent.forward * speed * dt;
       const r = intent.right * speed * dt;
