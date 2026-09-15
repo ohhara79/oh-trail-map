@@ -77,8 +77,9 @@ export type View3dOptions = {
   start: View2d;
   /** main.ts's selectTrail: the one place selection changes. */
   onSelect: (id: string | null) => void;
-  /** A drag in orbit mode, which is how following your location stops. */
-  onDragStart: () => void;
+  /** A drag in orbit, walking with the keys or joystick, or starting a trail's
+   *  playback: how following your location stops. */
+  onStopFollowing: () => void;
   /** The GPU dropped the context — common on phones under memory pressure. */
   onContextLost: () => void;
   notify: (message: string, kind?: 'info' | 'error', timeout?: number) => void;
@@ -410,7 +411,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   }
 
   map.on('dragstart', () => {
-    if (mode === 'orbit') opts.onDragStart();
+    if (mode === 'orbit') opts.onStopFollowing();
   });
   map.on('webglcontextlost', () => opts.onContextLost());
 
@@ -461,9 +462,16 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       onSpace: () => walker?.playback?.toggle(),
       onTap: onSceneTap,
     });
+    const walkControls = controls;
     const next = new FirstPerson(map, controls, pose, height, groundGuess, () => {
       const playback = next.playback;
-      if (!playback) return;
+      if (!playback) {
+        // Walking away is how following stops here. Only moving: looking around
+        // leaves you where your location puts you.
+        const { forward, right } = walkControls.intent();
+        if (forward || right) opts.onStopFollowing();
+        return;
+      }
       const trail = getScene().trails.find((t) => t.id === playingId);
       hud.setPlayback({
         playing: playback.playing,
@@ -628,6 +636,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       const far = haversine(walker.pose, start) > FAR_JUMP;
       walker.jump(start, far ? JUMP_HEIGHT : null, ele);
     }
+    // Or the next fix would pull you off the trail.
+    opts.onStopFollowing();
     const playback = new Playback(path);
     playback.playing = true;
     playingId = id;
@@ -703,7 +713,25 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       });
     },
     panTo(lat, lon) {
-      if (mode === 'orbit') map.panTo([lon, lat]);
+      // A flight lands where following wants it anyway: into Walk from the map
+      // centre, back to orbit where you stood. The next fix carries on from there.
+      if (tween) return;
+      if (mode === 'orbit') {
+        map.panTo([lon, lat]);
+        return;
+      }
+      // Starting playback stops following, so only a click on locate gets here
+      // during playback, and it means leave the trail.
+      if (mode === 'playback') setMode('walk');
+      if (!walker) return;
+      const far = haversine(walker.pose, { lat, lon }) > FAR_JUMP;
+      const ground = map.queryTerrainElevation([lon, lat]) ?? walker.groundHeight;
+      walker.jump({ lat, lon }, far ? JUMP_HEIGHT : null, ground);
+      if (far) {
+        // The jump may leave the point it names far behind.
+        closePopup();
+        syncAim();
+      }
     },
     walkTrail,
     viewFor2d() {

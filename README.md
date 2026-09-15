@@ -41,6 +41,9 @@ npm run preview
     it; the selected trail's bar shows while walking too.
     Walking past a national point (within 25 m) opens its popup on its own, in
     playback too.
+    The locate button takes you to your location and keeps following as you
+    move, until you walk away or click it again. During playback it leaves the
+    trail first.
   - **▶ on a trail row**: plays that trail at eye height, with pause, speed
     (1×–50× walking pace) and a scrubber.
     While it plays, the buttons over the scene fade out after 3 s; tap or click

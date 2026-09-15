@@ -252,7 +252,7 @@ async function main(): Promise<void> {
           }),
           start: { lat: centre.lat, lon: centre.lng, zoom: map.getZoom() },
           onSelect: (id) => selectTrail(id),
-          onDragStart: stopFollowing,
+          onStopFollowing: stopFollowing,
           onContextLost: () => {
             ui.notify('The 3D view lost its graphics context and was closed.', 'error');
             close3d();
