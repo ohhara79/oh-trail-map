@@ -48,6 +48,7 @@ import {
   allOf,
   basemapSource,
   circlePolygon,
+  pointsFilter,
   selectedFilter,
   sky,
   style,
@@ -65,7 +66,9 @@ export type Scene = {
   trails: readonly Trail[];
   selectedId: string | null;
   basemapId: string;
-  showPoints: boolean;
+  /** The 지점번호 the panel list has hidden. Handed out live by main.ts, which
+   *  owns it — never a copy, so syncPoints() always reads the current one. */
+  hiddenPoints: ReadonlySet<string>;
 };
 
 /** A place and a zoom in Leaflet's terms, which is how the two views hand over. */
@@ -89,7 +92,10 @@ export type View3d = {
   setBasemap(id: string): void;
   /** Re-reads visibility and selection from getScene(). */
   syncTrails(): void;
-  setPointsVisible(show: boolean): void;
+  /** Re-reads the hidden national points from getScene(). */
+  syncPoints(): void;
+  /** A point picked from the panel list: go to it and open its popup. */
+  showPoint(point: NationalPoint): void;
   setLocation(fix: { lat: number; lon: number; accuracy: number } | null): void;
   setHeading(heading: Heading | null): void;
   /** Whether the locate button is following you: in Walk, you face your heading too. */
@@ -197,6 +203,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   let heading: number | null = null;
   let hinted = false;
   let popup: Popup | null = null;
+  /** The point `popup` describes, so hiding that point can take its popup with it. */
+  let popupPoint: NationalPoint | null = null;
   /** The camera flight between orbit and walk, while one is under way. */
   let tween: Tween | null = null;
 
@@ -230,14 +238,23 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     syncAim();
   }
 
-  function setPointsVisible(show: boolean): void {
-    map.setLayoutProperty(LAYER_POINTS, 'visibility', show ? 'visible' : 'none');
-    if (!show) popup?.remove();
+  /**
+   * A filter rather than a rebuilt source: setData would re-upload 272 features to
+   * say one thing, and — the reason it had to be a filter — a filtered-out feature
+   * keeps its position, so the `index` pointAt() reads stays valid whatever the
+   * panel list hides.
+   */
+  function syncPoints(): void {
+    const { hiddenPoints } = getScene();
+    map.setFilter(LAYER_POINTS, pointsFilter(hiddenPoints));
+    // The same rule as 2D: a popup whose pin is gone points at nothing.
+    if (popupPoint && hiddenPoints.has(popupPoint.code)) closePopup();
+    // Hiding the point under the crosshair changes what a tap would do.
     syncAim();
   }
 
   syncTrails();
-  setPointsVisible(scene.showPoints);
+  syncPoints();
 
   const locationEl = document.createElement('div');
   locationEl.className = 'locate-icon';
@@ -249,15 +266,38 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
 
   // -- clicks --------------------------------------------------------------------
 
-  function pointsShown(): boolean {
-    return map.getLayoutProperty(LAYER_POINTS, 'visibility') !== 'none';
-  }
-
-  /** The point drawn within `r` pixels of (x, y) on the canvas, if points are shown. */
+  /** The point drawn within `r` pixels of (x, y) on the canvas. A point the panel
+   *  list has hidden is filtered out of the layer, and queryRenderedFeatures
+   *  honours that, so there is nothing further to ask here. */
   function pointAt(x: number, y: number, r: number): NationalPoint | undefined {
-    if (!pointsShown()) return undefined;
     const hit = map.queryRenderedFeatures([[x - r, y - r], [x + r, y + r]], { layers: [LAYER_POINTS] })[0];
     return hit ? points[hit.properties.index as number] : undefined;
+  }
+
+  /**
+   * Moves you to a place, the way the locate button does.
+   *
+   * A flight lands where following wants it anyway: into Walk from the map centre,
+   * back to orbit where you stood. The next fix carries on from there.
+   */
+  function goTo(lat: number, lon: number): void {
+    if (tween) return;
+    if (mode === 'orbit') {
+      map.panTo([lon, lat]);
+      return;
+    }
+    // Starting playback stops following, so only a click on locate gets here
+    // during playback, and it means leave the trail.
+    if (mode === 'playback') setMode('walk');
+    if (!walker) return;
+    const far = haversine(walker.pose, { lat, lon }) > FAR_JUMP;
+    const ground = map.queryTerrainElevation([lon, lat]) ?? walker.groundHeight;
+    walker.jump({ lat, lon }, far ? JUMP_HEIGHT : null, ground);
+    if (far) {
+      // The jump may leave the point it names far behind.
+      closePopup();
+      syncAim();
+    }
   }
 
   function openPopup(point: NationalPoint): void {
@@ -266,11 +306,13 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       .setLngLat([point.lon, point.lat])
       .setDOMContent(popupContent(point))
       .addTo(map);
+    popupPoint = point;
   }
 
   function closePopup(): void {
     popup?.remove();
     popup = null;
+    popupPoint = null;
   }
 
   // Orbit only: walking uses the pointer to look, and aims with the crosshair instead.
@@ -359,8 +401,11 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   /** Opens the popup of the closest point you have walked up to, as a tap on it
    *  would. Only one in view: beside or behind you, it would close on the next frame. */
   function openNearby(): void {
-    if (!walker || tween || !pointsShown()) return;
+    if (!walker || tween) return;
     const { pose } = walker;
+    // The one place points are walked directly rather than queried off the map,
+    // so the one place the panel list's hidden set has to be asked about by hand.
+    const { hiddenPoints } = getScene();
     for (const point of opened) {
       if (haversine(pose, point) > NEARBY_RELEASE) opened.delete(point);
     }
@@ -368,7 +413,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     let nearestDistance = NEARBY;
     for (const point of points) {
       const d = haversine(pose, point);
-      if (d > nearestDistance || opened.has(point)) continue;
+      // Distance first: it is the cheap test, and it rejects almost every point.
+      if (d > nearestDistance || hiddenPoints.has(point.code) || opened.has(point)) continue;
       if (!inWalkView(new LngLat(point.lon, point.lat))) continue;
       nearest = point;
       nearestDistance = d;
@@ -690,7 +736,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       map.addLayer({ id: LAYER_BASEMAP, type: 'raster', source: SRC_BASEMAP }, LAYER_TRAILS);
     },
     syncTrails,
-    setPointsVisible,
+    syncPoints,
     setLocation(fix) {
       const source = map.getSource<GeoJSONSource>(SRC_LOCATION);
       if (!fix) {
@@ -735,26 +781,19 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
         bearing: map.getBearing(),
       });
     },
-    panTo(lat, lon) {
-      // A flight lands where following wants it anyway: into Walk from the map
-      // centre, back to orbit where you stood. The next fix carries on from there.
-      if (tween) return;
-      if (mode === 'orbit') {
-        map.panTo([lon, lat]);
-        return;
-      }
-      // Starting playback stops following, so only a click on locate gets here
-      // during playback, and it means leave the trail.
-      if (mode === 'playback') setMode('walk');
-      if (!walker) return;
-      const far = haversine(walker.pose, { lat, lon }) > FAR_JUMP;
-      const ground = map.queryTerrainElevation([lon, lat]) ?? walker.groundHeight;
-      walker.jump({ lat, lon }, far ? JUMP_HEIGHT : null, ground);
-      if (far) {
-        // The jump may leave the point it names far behind.
-        closePopup();
-        syncAim();
-      }
+    panTo: goTo,
+    showPoint(point) {
+      // Reuses the locate button's own move, so a row click lands you exactly
+      // where following would: orbit pans, and walking jumps — from far away, over
+      // the terrain, so it has a moment to load before you stand in it.
+      goTo(point.lat, point.lon);
+      // After goTo, which may have closed a popup of its own on a long jump. The
+      // point is the whole payload of a row click, so its popup is opened whether
+      // or not its pin is drawn — the popup is placed by coordinate, not bound to
+      // the marker, so it reads the same either way.
+      closePopup();
+      openPopup(point);
+      syncAim();
     },
     walkTrail,
     viewFor2d() {

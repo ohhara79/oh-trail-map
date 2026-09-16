@@ -73,10 +73,20 @@ export async function loadSettings(): Promise<Settings> {
     s.get(SETTINGS_KEY),
   );
   // Only the keys Settings still has: fields of removed features (uniform colour,
-  // trail width) are dropped here, and so vanish from storage on the next save.
+  // trail width, and now showPoints — the single National Point Number toggle the
+  // per-point list replaced) are dropped here, and so vanish from storage on the
+  // next save. A browser that had showPoints off therefore gets its pins back
+  // once: turning `false` into 272 codes needs the point list, which this module
+  // deliberately cannot see, and one click on the new master checkbox is the very
+  // affordance that replaced it.
   return {
     basemapId: stored?.basemapId ?? DEFAULT_SETTINGS.basemapId,
-    showPoints: stored?.showPoints ?? DEFAULT_SETTINGS.showPoints,
+    // Array.isArray rather than ??: the key is new, and a record written by a
+    // tampered or future build must not reach `new Set(...)` as something that
+    // is not one.
+    hiddenPoints: Array.isArray(stored?.hiddenPoints)
+      ? stored.hiddenPoints.filter((code): code is string => typeof code === 'string')
+      : DEFAULT_SETTINGS.hiddenPoints,
   };
 }
 

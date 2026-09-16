@@ -111,8 +111,11 @@ export function pointsGeoJson(points: readonly NationalPoint[]): GeoJSON.Feature
     features: points.map((point, index) => ({
       type: 'Feature',
       // The index leads back to the NationalPoint for the popup, so the popup is
-      // built from the same object the 2D view uses and never from a copy.
-      properties: { index, named: point.name !== '' },
+      // built from the same object the 2D view uses and never from a copy. The
+      // code joins a feature to its row in the panel list — and because pointsFilter
+      // below filters rather than drops features, the index stays valid whatever
+      // the list hides.
+      properties: { index, named: point.name !== '', code: point.code },
       geometry: { type: 'Point', coordinates: [point.lon, point.lat] },
     })),
   };
@@ -252,6 +255,18 @@ function trailsLatitude(trails: readonly Trail[]): number {
  *  selected trail can never leave its casing behind. */
 export function visibleFilter(trails: readonly Trail[]): FilterSpecification {
   return ['in', ['get', 'id'], ['literal', trails.filter((t) => t.visible).map((t) => t.id)]];
+}
+
+/**
+ * The national points the panel list has not hidden.
+ *
+ * Phrased as "not in the hidden set" rather than visibleFilter's "in the shown
+ * list": the hidden set is empty in the usual case, and this way the filter is
+ * built from the set alone and never needs the points themselves.
+ * `['in', x, ['literal', []]]` is false, so an empty set draws all of them.
+ */
+export function pointsFilter(hidden: ReadonlySet<string>): FilterSpecification {
+  return ['!', ['in', ['get', 'code'], ['literal', [...hidden]]]];
 }
 
 /** Only the selected trail, and nothing at all when there is no selection. */

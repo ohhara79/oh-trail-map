@@ -7,10 +7,14 @@
  * repo-root data/ would 404 in dist/; `?raw` makes it part of the bundle instead,
  * which also spares the app a loading state and an error path for 25 KB of text that
  * never changes at runtime.
+ *
+ * It also builds the panel list's rows (pointRows), because the named/unnamed colour
+ * split the swatches show is decided here and nowhere else.
  */
 import L from 'leaflet';
 import rawTsv from '../data/national_points_w_name.tsv?raw';
 import { parseNationalPoints, type NationalPoint } from './nationalPoint';
+import { fold } from './trails';
 
 /**
  * The marker is a dot with a white ring, the same in 2D and 3D: scene3d.ts feeds
@@ -63,6 +67,50 @@ let cached: NationalPoint[] | null = null;
 export function loadNationalPoints(): NationalPoint[] {
   cached ??= parseNationalPoints(rawTsv);
   return cached;
+}
+
+/** One point as the panel list draws and filters it. */
+export type PointRow = {
+  /**
+   * 지점번호: the row's identity, its primary line, and what Settings.hiddenPoints
+   * stores. Deliberately not normalised — it has to stay the same string as
+   * NationalPoint.code, or a hidden-set key would not match the point it hides.
+   */
+  code: string;
+  /** 이름 · 사물유형 · 시/도 시/군/구, with 이름 left out where the source has
+   *  none — the same filter(Boolean) join popupContent makes, for the same reason. */
+  detail: string;
+  /** Every column joined, for the panel filter. Built from the strings that are
+   *  actually drawn, so what a query matches is what gets a <mark> over it. */
+  haystack: string;
+  /** The pin's colour, so a row's swatch and its pin can never disagree. */
+  color: string;
+};
+
+/**
+ * The list's rows, built once at boot rather than per keystroke: normalising,
+ * joining and folding 272 rows on every character typed into the filter is work
+ * with a fixed answer.
+ *
+ * The NFC normalise is the same one renderTrails applies to a trail name before
+ * highlighting it — indices into the folded haystack have to address the string
+ * that is drawn. Measured: no cell in the file is decomposed today, so this is
+ * insurance against a future TSV rather than a fix.
+ */
+export function pointRows(points: readonly NationalPoint[]): PointRow[] {
+  return points.map((point) => {
+    const region = [point.province, point.district].filter(Boolean).join(' ');
+    const detail = [point.name, point.kind, region].filter(Boolean).join(' · ').normalize('NFC');
+    return {
+      code: point.code,
+      detail,
+      // The code as well as the detail line: it is the only handle on the 129
+      // rows the source gives no 이름, and the one thing a sign in the field
+      // actually shows you.
+      haystack: fold(`${point.code} ${detail}`),
+      color: point.name ? PIN_COLOR_NAMED : PIN_COLOR_UNNAMED,
+    };
+  });
 }
 
 /**
@@ -132,9 +180,17 @@ export function openPointPopup(map: L.Map, point: NationalPoint): L.Popup {
     .openOn(map);
 }
 
+export type PointsLayer = {
+  /** Added to the map once and never removed — see createPointsLayer. */
+  layer: L.LayerGroup;
+  /** Adds and removes markers until exactly the points not in `hidden` are drawn. */
+  sync(hidden: ReadonlySet<string>): void;
+};
+
 /**
- * The pins as one group, so main.ts can add and remove the whole layer with the
- * sidebar toggle.
+ * The pins as one group, added to the map once at boot and never removed: which
+ * pins are drawn is decided by what is in the group, which sync() sets from the
+ * panel list's hidden set.
  *
  * These markers are the one layer in the app that is deliberately interactive.
  * Everywhere else — the halo (selection.ts), the location marker (map.ts) — opts
@@ -149,7 +205,7 @@ export function createPointsLayer(
   map: L.Map,
   points: NationalPoint[],
   onPinClick: (point: NationalPoint) => void,
-): L.LayerGroup {
+): PointsLayer {
   map.createPane(PIN_PANE).style.zIndex = PIN_PANE_Z_INDEX;
   const group = L.layerGroup();
 
@@ -164,8 +220,12 @@ export function createPointsLayer(
   const namedHtml = iconHtml(PIN_COLOR_NAMED);
   const unnamedHtml = iconHtml(PIN_COLOR_UNNAMED);
 
+  // Keyed on 지점번호, which parseNationalPoints has already deduplicated, so it is
+  // unique by construction — and it is the same string Settings.hiddenPoints holds.
+  const markers = new Map<string, L.Marker>();
+
   for (const point of points) {
-    L.marker([point.lat, point.lon], {
+    const marker = L.marker([point.lat, point.lon], {
       pane: PIN_PANE,
       icon: L.divIcon({
         // Replaces Leaflet's own 'leaflet-div-icon', whose white box and grey
@@ -191,10 +251,22 @@ export function createPointsLayer(
       zIndexOffset: point.name ? 1000 : 0,
       riseOffset: 2000,
       title: point.name || point.code,
-    })
-      .on('click', () => onPinClick(point))
-      .addTo(group);
+    }).on('click', () => onPinClick(point));
+    markers.set(point.code, marker);
   }
 
-  return group;
+  return {
+    layer: group,
+    sync(hidden) {
+      for (const [code, marker] of markers) {
+        const show = !hidden.has(code);
+        // The same reason setVisible() in main.ts returns early: hiding one point
+        // must not pay to re-add the 271 markers that are already where they
+        // belong. What is left is 272 Set lookups and no DOM at all.
+        if (show === group.hasLayer(marker)) continue;
+        if (show) group.addLayer(marker);
+        else group.removeLayer(marker);
+      }
+    },
+  };
 }

@@ -4,7 +4,9 @@ import './style.css';
 import { basemapById } from './basemaps';
 import { compassNeedsPermission, requestCompassPermission, type Heading } from './heading';
 import { createMap, startLocating } from './map';
-import { loadNationalPoints, createPointsLayer, openPointPopup } from './points';
+import type { NationalPoint } from './nationalPoint';
+import { loadNationalPoints, createPointsLayer, openPointPopup, pointRows } from './points';
+import { PointsList } from './pointsList';
 import { Halo, trailAt } from './selection';
 import {
   buildTrail,
@@ -36,6 +38,9 @@ let settings: Settings;
  *  Settings describes how trails render; this describes what you are
  *  currently looking at. */
 let selectedId: string | null = null;
+/** How far in a row click from the National Points list zooms — close enough that
+ *  the pin is distinct from its neighbours, which stand as little as 50 m apart. */
+const POINT_ZOOM = 17;
 
 /**
  * The app name, with data/title.txt's area in brackets when the file has one:
@@ -98,14 +103,22 @@ async function main(): Promise<void> {
 
   // The National Point Number pins. They draw in their own pane (see points.ts), so this
   // can sit wherever it reads best rather than having to run before startLocating.
-  // The open point popup, if any. A pin opens one only when nothing is selected,
-  // like a trail click (see clearMapSelection).
+  // The open point popup, if any, and the point it describes. A pin opens one only
+  // when nothing is selected, like a trail click (see clearMapSelection).
+  const points = loadNationalPoints();
+  const pointByCode = new Map(points.map((point) => [point.code, point]));
+  /** The 지점번호 whose pins are off, as the app reads it. Settings holds the same
+   *  thing as an array, rebuilt from here whenever this changes. */
+  const hiddenPoints = new Set(settings.hiddenPoints);
   let pointPopup: L.Popup | null = null;
-  const pointsLayer = createPointsLayer(map, loadNationalPoints(), (point) => {
+  let popupPoint: NationalPoint | null = null;
+  const pointsLayer = createPointsLayer(map, points, (point) => {
     if (clearMapSelection()) return;
-    pointPopup = openPointPopup(map, point);
+    openPoint(point);
   });
-  if (settings.showPoints) pointsLayer.addTo(map);
+  // Added once and never removed: sync() below decides which pins are in it.
+  pointsLayer.layer.addTo(map);
+  pointsLayer.sync(hiddenPoints);
 
   // Follow state for the bottom-right locate button. lastFix is the only copy
   // of the current position outside startLocating's closure, and blockedMessage
@@ -156,16 +169,6 @@ async function main(): Promise<void> {
       view3d?.setBasemap(id);
       void saveSettings(settings);
     },
-    onPointsChange: (show) => {
-      settings = { ...settings, showPoints: show };
-      if (show) pointsLayer.addTo(map);
-      else {
-        map.removeLayer(pointsLayer);
-        map.closePopup();
-      }
-      view3d?.setPointsVisible(show);
-      void saveSettings(settings);
-    },
     onFilterChange: () => refresh(),
     onLocate: () => {
       if (blockedMessage) {
@@ -209,6 +212,40 @@ async function main(): Promise<void> {
     },
   });
 
+  const pointsList = new PointsList(pointRows(points), {
+    onToggle: (code, visible) => setPointsHidden([code], !visible),
+    onToggleAll: (visible, codes) => {
+      // Only the rows the list actually showed: a filter must not let one click
+      // reach the points it hid.
+      setPointsHidden(codes, !visible);
+    },
+    onFilterChange: () => pointsList.render(hiddenPoints),
+    onSelect: (code) => {
+      const point = pointByCode.get(code);
+      if (!point) return;
+      // Like a trail row, which zooms to a hidden trail without turning it on: a
+      // row click is you asking for this point now. Nothing is selected — a point
+      // is not a trail — so a trail already selected stays selected.
+      if (view3d) {
+        view3d.showPoint(point);
+      } else {
+        // Never zooms out: you may already be closer in than POINT_ZOOM. Capped
+        // for the reason close3d gives — a basemap that stops at z17 comes back
+        // blank above it.
+        const zoom = Math.min(
+          Math.max(map.getZoom(), POINT_ZOOM),
+          basemapById(settings.basemapId).maxZoom,
+        );
+        map.setView([point.lat, point.lon], zoom);
+        openPoint(point);
+      }
+      // The one place this diverges from a trail row: the drawer covers most of a
+      // phone screen and the popup is the whole payload of the click, where a
+      // trail row's zoom survives being looked at later.
+      ui.closeDrawer();
+    },
+  });
+
   ui.applySettings(settings);
 
   // Checked by constructor presence rather than by creating a context, which
@@ -248,7 +285,7 @@ async function main(): Promise<void> {
             trails,
             selectedId,
             basemapId: settings.basemapId,
-            showPoints: settings.showPoints,
+            hiddenPoints,
           }),
           start: { lat: centre.lat, lon: centre.lng, zoom: map.getZoom() },
           onSelect: (id) => selectTrail(id),
@@ -306,6 +343,55 @@ async function main(): Promise<void> {
     ui.renderTrails(trails, selectedId);
   }
 
+  /** Opens a point's popup and remembers whose it is, so hiding that point can
+   *  take the popup with it. The only place pointPopup is written. */
+  function openPoint(point: NationalPoint): void {
+    pointPopup = openPointPopup(map, point);
+    popupPoint = point;
+  }
+
+  function closePointPopup(): void {
+    if (pointPopup) map.closePopup(pointPopup);
+    pointPopup = null;
+    popupPoint = null;
+  }
+
+  /**
+   * The single place a national point's visibility changes: updates the set, syncs
+   * both views and persists once.
+   *
+   * Takes many codes rather than one so the master checkbox costs one saveSettings
+   * and one setFilter instead of 272 of each — the same reason setVisible above
+   * refuses to rewrite a record that already agrees.
+   */
+  function setPointsHidden(codes: Iterable<string>, hidden: boolean): void {
+    let changed = false;
+    for (const code of codes) {
+      if (hidden === hiddenPoints.has(code)) continue;
+      if (hidden) hiddenPoints.add(code);
+      else hiddenPoints.delete(code);
+      changed = true;
+    }
+    if (changed) {
+      syncPoints();
+      // The array is the shape IndexedDB stores, the Set the shape the app reads.
+      // Rebuilt here, in the only place the Set changes, so the two cannot drift.
+      settings = { ...settings, hiddenPoints: [...hiddenPoints] };
+      void saveSettings(settings);
+    }
+    // Outside the guard: the browser has already flipped the checkbox that was
+    // clicked, so the rows are re-read from the hidden set either way.
+    pointsList.render(hiddenPoints);
+  }
+
+  /** The 2D pins, a popup either view may have left pointing at a pin that is
+   *  gone, and the 3D layer. */
+  function syncPoints(): void {
+    pointsLayer.sync(hiddenPoints);
+    if (popupPoint && hiddenPoints.has(popupPoint.code)) closePointPopup();
+    view3d?.syncPoints();
+  }
+
   /**
    * The one place map styling is re-applied. Colour and selection both
    * land through it, so they can never be applied by different paths and drift.
@@ -337,7 +423,7 @@ async function main(): Promise<void> {
   function clearMapSelection(): boolean {
     const popupOpen = pointPopup?.isOpen() ?? false;
     const trailSelected = selectedId !== null;
-    if (popupOpen) map.closePopup(pointPopup!);
+    if (popupOpen) closePointPopup();
     if (trailSelected) selectTrail(null);
     return popupOpen || trailSelected;
   }
@@ -379,6 +465,7 @@ async function main(): Promise<void> {
   for (const id of saved.keys()) if (!present.has(id)) void deleteTrail(id);
 
   refresh();
+  pointsList.render(hiddenPoints);
 
   const restored = visibleBounds();
   const hadTrails = restored.isValid();

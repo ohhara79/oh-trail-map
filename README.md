@@ -24,9 +24,15 @@ npm run preview
 - Per-trail visibility toggle, a distinct colour, and distance / ascent / duration stats.
 - Basemap switcher: OSM Standard, OpenTopoMap, Esri satellite.
 - National Point Number emergency-location points from `data/national_points_w_name.tsv`, drawn as circles —
-  amber where the point has an 이름, grey where it does not; click one for its 지점번호, 사물유형, 시/도 · 시/군/구 and 이름. Toggled from the control panel.
+  amber where the point has an 이름, grey where it does not; click one for its 지점번호, 사물유형, 시/도 · 시/군/구 and 이름.
   The grid codes are decoded to lat/lon at runtime — see
   `docs/plans/2026-09-13-01-national-point-markers.md` for the derivation.
+- The control panel lists every point, one row per 지점번호 with the pin's colour
+  and `이름 · 사물유형 · 시/도 시/군/구` beneath it: a checkbox each, a master
+  checkbox that shows or hides exactly the rows on screen, and a filter that
+  matches every column — `관악 정자` finds the 정자 in 관악, `다사524` finds a
+  block of numbers, and a match is marked wherever it lands. Clicking a row goes
+  to that point and opens its popup, in 2D or 3D.
 - Click a trail on the map to select it, or a point to open its popup. While
   either is selected, a click anywhere on the map (2D or 3D orbit) only clears
   it, so a near miss never jumps to a neighbouring trail or point. A row in the
@@ -40,7 +46,7 @@ npm run preview
     Aim the crosshair at a point or a trail and click or tap to open or select
     it; the selected trail's bar shows while walking too.
     Walking past a national point (within 25 m) opens its popup on its own, in
-    playback too.
+    playback too; points hidden in the panel are skipped.
     The locate button takes you to your location and keeps following as you
     move, until you walk away or click it again. During playback it leaves the
     trail first. While following, you also face the way you are facing (the
@@ -60,7 +66,10 @@ npm run preview
   true shape but no cliffs or trees, and the ground near your feet is soft. 3D
   loads far more tiles than 2D does — worth keeping in mind with the OSM tile
   usage policy. MapLibre (~1.5 MB) is only downloaded the first time 3D is opened.
-- Each trail's visibility persists in IndexedDB across reloads.
+- Each trail's visibility persists in IndexedDB across reloads, and so does the
+  set of hidden national points. The single "Show National Point Numbers" toggle
+  the list replaced is not carried over, so a browser that had it switched off
+  gets its pins back once.
 - Works on a phone: the map stays full-width and the control panel becomes a
   drawer over it, opened with the ☰ button in the top-left.
 

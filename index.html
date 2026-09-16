@@ -19,14 +19,6 @@
             <div id="basemap-options" class="options"></div>
           </section>
 
-          <section class="block">
-            <label class="row">
-              <input id="points-toggle" type="checkbox" />
-              <span class="grow">Show National Point Numbers</span>
-            </label>
-            <p class="hint">Emergency location markers.</p>
-          </section>
-
           <section class="block grow-block">
             <div class="row trail-head">
               <input id="trail-all" type="checkbox" title="Show or hide every trail" aria-label="Show or hide every trail" />
@@ -37,6 +29,20 @@
                    aria-label="Filter trails by name" autocomplete="off" />
             <ul id="trail-list"></ul>
             <p id="trail-empty" class="hint">No GPX files in data/gpx.</p>
+          </section>
+
+          <!-- Last, and not above Trails where the old single toggle sat: there are
+               272 of these rows, and .panel-body is the panel's only scroller. -->
+          <section class="block grow-block">
+            <div class="row point-head">
+              <input id="point-all" type="checkbox" title="Show or hide every national point" aria-label="Show or hide every national point" />
+              <h2 class="grow"><label for="point-all">National Points <span id="point-count" class="muted"></span></label></h2>
+            </div>
+            <input id="point-search" type="search" placeholder="Filter by number, name or place"
+                   aria-label="Filter national points" autocomplete="off" />
+            <!-- lang, for the reason popupContent gives: every string here is Hangul. -->
+            <ul id="point-list" lang="ko"></ul>
+            <p id="point-empty" class="hint">No national points in data/national_points_w_name.tsv.</p>
           </section>
         </div>
       </aside>

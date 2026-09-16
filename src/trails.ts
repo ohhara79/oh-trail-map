@@ -15,13 +15,27 @@ export type Trail = {
 
 export type Settings = {
   basemapId: string;
-  /** Whether the National Point Number pins are drawn. */
-  showPoints: boolean;
+  /**
+   * The 지점번호 of every national point whose pin is not drawn.
+   *
+   * The off set rather than the on set: nothing hidden is the usual state and
+   * stores as an empty array, and a point added to a future TSV is drawn by
+   * default — the same default `record?.visible ?? true` gives a trail with no
+   * record. A code left here after a point leaves the TSV matches no row and is
+   * inert.
+   *
+   * One array on Settings rather than a record per point in its own store: run()
+   * in store.ts opens a transaction per request, so 272 records would be 272
+   * transactions every time the master checkbox is clicked. The trails store
+   * exists because trails are files whose set changes; the TSV is a bundled
+   * module constant with stable ten-character keys.
+   */
+  hiddenPoints: string[];
 };
 
 export const DEFAULT_SETTINGS: Settings = {
   basemapId: 'osm',
-  showPoints: true,
+  hiddenPoints: [],
 };
 
 /** Every trail's stroke width, in CSS pixels. The halo's casings are derived from it. */
@@ -68,7 +82,7 @@ export function mapOpacityOf(trailId: string, selectedId: string | null): number
  * never substring-match a stored ᄇ ᅮ ᆨ. toLowerCase() is a no-op for Hangul but
  * still carries the Latin names.
  */
-function fold(s: string): string {
+export function fold(s: string): string {
   return s.normalize('NFC').toLowerCase();
 }
 
@@ -82,7 +96,16 @@ export function searchTokens(query: string): string[] {
 
 /** Token-AND, so "bukhan 05" finds "Bukhansan Ridge Loop 2026-05-14". */
 export function matchesTokens(name: string, tokens: string[]): boolean {
-  const folded = fold(name);
+  return matchesFolded(fold(name), tokens);
+}
+
+/**
+ * The same test against text that has already been through fold(). The national
+ * point list folds its haystacks once at boot — 272 of them, five columns each —
+ * rather than on every character typed into the filter, and this is how it stays
+ * the *same* test rather than a second copy of the rule.
+ */
+export function matchesFolded(folded: string, tokens: string[]): boolean {
   return tokens.every((t) => folded.includes(t));
 }
 

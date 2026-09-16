@@ -1,5 +1,6 @@
 import { basemapById, BASEMAPS } from './basemaps';
 import { formatDistance, formatDuration } from './gpx';
+import { countLabel, highlightName, setTristate } from './listUi';
 import { matchesTokens, searchTokens, type Settings, type Trail } from './trails';
 
 export type UiCallbacks = {
@@ -10,8 +11,6 @@ export type UiCallbacks = {
   /** null clears the selection. */
   onSelect: (id: string | null) => void;
   onBasemapChange: (id: string) => void;
-  /** The National Point Number layer's on/off checkbox. */
-  onPointsChange: (show: boolean) => void;
   onFilterChange: () => void;
   /** The compass button. Only ever fires on iOS, which gates device
    *  orientation behind a grant that must come from a user gesture. */
@@ -51,7 +50,6 @@ export class Ui {
   private readonly expandAll = el<HTMLButtonElement>('trail-expand-all');
   private readonly empty = el('trail-empty');
   private readonly count = el('trail-count');
-  private readonly pointsToggle = el<HTMLInputElement>('points-toggle');
   private readonly notices = el('notices');
   private readonly compass = el<HTMLButtonElement>('compass');
   private readonly locate = el<HTMLButtonElement>('locate');
@@ -101,10 +99,6 @@ export class Ui {
       this.setAllNamesExpanded(this.expandedNames.size < this.list.children.length),
     );
 
-    this.pointsToggle.addEventListener('change', () =>
-      this.cb.onPointsChange(this.pointsToggle.checked),
-    );
-
     this.compass.addEventListener('click', () => this.cb.onCompass());
     this.locate.addEventListener('click', () => this.cb.onLocate());
     this.view3d.addEventListener('click', () => this.cb.onToggle3d());
@@ -151,7 +145,6 @@ export class Ui {
   }
 
   applySettings(settings: Settings): void {
-    this.pointsToggle.checked = settings.showPoints;
     // Resolved rather than read raw: a saved id whose basemap has since been
     // removed must check the radio for the fallback the map actually loaded.
     const radio = document.querySelector<HTMLInputElement>(
@@ -191,20 +184,11 @@ export class Ui {
       trails.length === 0
         ? 'No GPX files in data/gpx.'
         : `No trail matches “${this.search.value.trim()}”.`;
-    this.count.textContent = !trails.length
-      ? ''
-      : matches.length === trails.length
-        ? `(${trails.length})`
-        : `(${matches.length} of ${trails.length})`;
+    this.count.textContent = countLabel(matches.length, trails.length);
 
     // Derived here rather than tracked separately, so the master checkbox can
-    // never drift from the rows it summarises. `indeterminate` is a property,
-    // not an attribute: it must be cleared explicitly, since setting `checked`
-    // does not clear it.
-    const shown = matches.filter((t) => t.visible).length;
-    this.toggleAll.hidden = matches.length === 0;
-    this.toggleAll.checked = matches.length > 0 && shown === matches.length;
-    this.toggleAll.indeterminate = shown > 0 && shown < matches.length;
+    // never drift from the rows it summarises.
+    setTristate(this.toggleAll, matches.filter((t) => t.visible).length, matches.length);
 
     for (const trail of matches) {
       const li = document.createElement('li');
@@ -387,48 +371,4 @@ export class Ui {
     this.notices.append(notice);
     if (timeout > 0) setTimeout(() => notice.remove(), timeout);
   }
-}
-
-/**
- * Renders `display` with every query token wrapped in <mark>.
- *
- * Indices come from the lowercased copy, so it bails out in the rare case
- * lowercasing changes length (ẞ, İ) rather than slicing at shifted offsets.
- * NFC normalisation — the other half of the fold — is applied by the caller, so
- * what is measured here is exactly what is drawn.
- */
-function highlightName(display: string, tokens: string[]): Node {
-  const hay = display.toLowerCase();
-  if (!tokens.length || hay.length !== display.length) {
-    return document.createTextNode(display);
-  }
-
-  const ranges: Array<[number, number]> = [];
-  for (const token of tokens) {
-    for (let i = hay.indexOf(token); i >= 0; i = hay.indexOf(token, i + token.length)) {
-      ranges.push([i, i + token.length]);
-    }
-  }
-  ranges.sort((a, b) => a[0] - b[0]);
-
-  // Tokens that overlap or merely touch collapse into one range: emitting two
-  // adjacent <mark>s instead would draw a seam through contiguous text.
-  const merged: Array<[number, number]> = [];
-  for (const [start, end] of ranges) {
-    const last = merged[merged.length - 1];
-    if (last && start <= last[1]) last[1] = Math.max(last[1], end);
-    else merged.push([start, end]);
-  }
-
-  const frag = document.createDocumentFragment();
-  let cursor = 0;
-  for (const [start, end] of merged) {
-    if (start > cursor) frag.append(display.slice(cursor, start));
-    const mark = document.createElement('mark');
-    mark.textContent = display.slice(start, end);
-    frag.append(mark);
-    cursor = end;
-  }
-  if (cursor < display.length) frag.append(display.slice(cursor));
-  return frag;
 }
