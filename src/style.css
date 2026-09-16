@@ -467,9 +467,22 @@ button:hover { background: #f5f6f8; }
 .hud-bar button { border: 0; padding: 4px 10px; white-space: nowrap; }
 .hud-bar button[aria-pressed='true'] { background: var(--accent); color: #fff; }
 
+/* Walk stays where it is when walking starts: Eye height and Gyro appear on
+   either side of it, and the bar is placed by Walk's centre rather than its own.
+   Orbit shows Walk alone, so there the two are the same. The offset is border 2
+   + padding 3 + Eye height + gap 4 + half of Walk, which holds whether or not
+   Gyro is shown, hence the fixed widths. At 146px the widest bar, on touch, still
+   clears #expand and #view3d on a 320px screen. */
 #mode3d {
+  --icon-w: 30px;
+  --eye-w: 52px;
   top: calc(12px + env(safe-area-inset-top));
   left: 50%; transform: translateX(-50%);
+  width: max-content;
+}
+#app[data-mode3d='walk'] #mode3d,
+#app[data-mode3d='playback'] #mode3d {
+  transform: translateX(calc(-9px - var(--eye-w) - var(--icon-w) / 2));
 }
 /* The 34px of #view3d, so both bars match the floating buttons (#mode3d shares
    its top and bottom edges). The buttons fill what the border and padding
@@ -478,8 +491,10 @@ button:hover { background: #f5f6f8; }
 /* Outranks .hud-bar button, including its taller padding on touch below. */
 :is(#mode3d, #selection-bar) button { align-self: stretch; padding-block: 0; }
 /* Walk and Gyro as square icon buttons, so the bar stays narrow over the
-   scene. Outranks the rule above and the touch padding below. */
-#mode3d .hud-icon { width: 30px; padding: 0; }
+   scene, and Eye height as wide as its widest label, "1.7 m", so cycling it
+   moves nothing. Outrank the rule above and the touch padding below. */
+#mode3d .hud-icon { width: var(--icon-w); padding: 0; }
+#mode3d #eye3d { width: var(--eye-w); padding-inline: 0; text-align: center; }
 /* A button centres its content vertically on its own; margin: auto does the
    horizontal, with no display on the button that .walk-only would fight. */
 #mode3d .hud-icon svg { display: block; margin: 0 auto; }
@@ -644,8 +659,6 @@ button:hover { background: #f5f6f8; }
 
   /* Stop short of the bottom-right zoom control. */
   #notices { left: 12px; right: 56px; transform: none; }
-  /* Clear of #expand on the left and #view3d on the right. */
-  #mode3d { left: 58px; right: 58px; transform: none; justify-content: center; width: max-content; margin: 0 auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -686,6 +699,6 @@ button:hover { background: #f5f6f8; }
   /* 16px is the threshold below which iOS Safari zooms the page on focus. */
   #trail-search, #point-search { padding: 8px; font-size: 16px; }
   .hud-bar button { padding: 8px 12px; }
-  #mode3d .hud-icon { width: 36px; }
+  #mode3d { --icon-w: 36px; --eye-w: 56px; }
   .options label { padding: 6px 0; }
 }
