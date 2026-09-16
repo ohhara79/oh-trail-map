@@ -18,7 +18,6 @@ import type {
 } from 'maplibre-gl';
 import type { Basemap } from './basemaps';
 import { offset } from './geo';
-import { EARTH_RADIUS } from './gpx';
 import type { NationalPoint } from './nationalPoint';
 import { PIN_COLOR_NAMED, PIN_COLOR_UNNAMED, PIN_RADIUS, PIN_STROKE } from './points';
 import { HALO_RINGS } from './selection';
@@ -139,31 +138,18 @@ export function circlePolygon(
 export const EMPTY: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
 
 /**
- * A line width that is `px` screen pixels from above and `metres` wide on the
- * ground at eye height. From above, the 2D view's pixel widths are what keep a
- * trail readable. The walk camera sits at about z20, though, and a pixel width
- * there is a few centimetres of hairline under your feet — while a width that just
- * kept growing with the zoom turns the casings of a selected trail into a road.
- * So it holds `px` to z16, eases into `metres` by z19, and from there doubles with
- * every zoom, which is exactly what holds a width constant on the ground.
+ * The 2D trail stroke, one pixel heavier: a draped line is resampled with the
+ * terrain texture and loses some of its weight.
+ *
+ * A plain pixel width, at every zoom, exactly as in 2D. The widths here used to ease
+ * into a fixed width in metres so the walk camera saw a trail about as wide as a real
+ * path — but orbit climbs to z22 through the same expression, and zooming in fattened
+ * the line to a ribbon. A trail underfoot is a hairline now; a trail you zoom into is
+ * the one you drew.
  */
-function groundWidth(px: number, metres: number, lat: number): ExpressionSpecification {
-  const metresPerPx = (z: number) =>
-    (2 * Math.PI * EARTH_RADIUS * Math.cos((lat * Math.PI) / 180)) / (512 * 2 ** z);
-  const at19 = Math.max(px, metres / metresPerPx(19));
-  return ['interpolate', ['exponential', 2], ['zoom'], 16, px, 19, at19, 24, at19 * 32];
-}
-
-/** The 2D trail stroke, one pixel heavier: a draped line is resampled with the
- *  terrain texture and loses some of its weight. */
 const TRAIL_WIDTH_3D = TRAIL_WEIGHT + 1;
-/** On the ground: a trail about as wide as a real path, and casings that frame the
- *  selection without swallowing the ground beside it. */
-const TRAIL_METRES = 1;
-const HALO_METRES = [2.6, 1.8];
 
-/** `lat` is where the trails are, which sets how many metres a pixel covers. */
-export function layers(lat: number): LayerSpecification[] {
+export function layers(): LayerSpecification[] {
   const trailLayout = { 'line-join': 'round', 'line-cap': 'round' } as const;
   return [
     { id: LAYER_BASEMAP, type: 'raster', source: SRC_BASEMAP },
@@ -172,7 +158,7 @@ export function layers(lat: number): LayerSpecification[] {
       type: 'line',
       source: SRC_TRAILS,
       layout: trailLayout,
-      paint: { 'line-color': ['get', 'color'], 'line-width': groundWidth(TRAIL_WIDTH_3D, TRAIL_METRES, lat) },
+      paint: { 'line-color': ['get', 'color'], 'line-width': TRAIL_WIDTH_3D },
     },
     // The same order as the 2D view's z-order in Halo.show: every trail, then the
     // selection's casings above them, then the selected trail above its casings.
@@ -186,7 +172,7 @@ export function layers(lat: number): LayerSpecification[] {
         paint: {
           'line-color': ring.color,
           'line-opacity': ring.opacity,
-          'line-width': groundWidth(ring.weight - TRAIL_WEIGHT + TRAIL_WIDTH_3D, HALO_METRES[i], lat),
+          'line-width': ring.weight - TRAIL_WEIGHT + TRAIL_WIDTH_3D,
         },
       }),
     ),
@@ -196,7 +182,7 @@ export function layers(lat: number): LayerSpecification[] {
       source: SRC_TRAILS,
       layout: trailLayout,
       filter: selectedFilter(null),
-      paint: { 'line-color': ['get', 'color'], 'line-width': groundWidth(TRAIL_WIDTH_3D, TRAIL_METRES, lat) },
+      paint: { 'line-color': ['get', 'color'], 'line-width': TRAIL_WIDTH_3D },
     },
     {
       id: LAYER_LOCATION,
@@ -235,20 +221,12 @@ export function style(basemap: Basemap, trails: readonly Trail[], points: readon
       [SRC_POINTS]: { type: 'geojson', data: pointsGeoJson(points) },
       [SRC_LOCATION]: { type: 'geojson', data: EMPTY },
     },
-    layers: layers(trailsLatitude(trails)),
+    layers: layers(),
     // Exaggeration stays at 1: queryTerrainElevation scales by it, and the walk
     // camera's eye height is only 1.7 m if the ground it stands on is the real one.
     terrain: { source: SRC_DEM, exaggeration: 1 },
     sky: sky(0.5),
   };
-}
-
-/** The middle of every trail's bounds, or Seoul's latitude with no trails. Within
- *  one area the metres-per-pixel scale barely changes, so one value does. */
-function trailsLatitude(trails: readonly Trail[]): number {
-  const valid = trails.filter((t) => t.bounds.isValid());
-  if (!valid.length) return 37.5;
-  return valid.reduce((sum, t) => sum + t.bounds.getCenter().lat, 0) / valid.length;
 }
 
 /** The visible trails. Every trail layer takes this, halos included, so hiding the
