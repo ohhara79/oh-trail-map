@@ -1,5 +1,5 @@
 import L from 'leaflet';
-import { basemapById } from './basemaps';
+import { basemapById, MAX_ZOOM } from './basemaps';
 import { angleDelta } from './geo';
 import { startHeading, type Heading } from './heading';
 
@@ -29,7 +29,9 @@ export function createMap(container: HTMLElement, basemapId: string): MapHandle 
     // the control comes later in DOM order, so it won the paint and the button
     // was unreachable. Bottom-right also puts zoom in thumb reach on a phone.
     zoomControl: false,
-    // Integer zoom only, so tiles are always drawn at their native size.
+    // Integer zoom only. Up to a source's native limit that draws tiles at their
+    // own size; past it, where they are scaled up, it keeps the factor a whole
+    // number — a 2x or 4x tile is blocky but sharp, where 1.7x is mush.
     zoomSnap: 1,
     zoomDelta: 1,
     // No on-map credit box.
@@ -52,8 +54,13 @@ export function createMap(container: HTMLElement, basemapId: string): MapHandle 
   }).observe(container);
 
   let source = basemapById(basemapId);
+  // maxNativeZoom, not maxZoom: the latter is the whole map's ceiling, since the
+  // map sets none of its own and Leaflet takes the deepest of its layers. Handing
+  // it the source's limit stopped the camera dead at z19 — z17 on OpenTopoMap —
+  // where 3D has always carried on past it, scaling the last tiles up.
   let layer = L.tileLayer(source.url, {
-    maxZoom: source.maxZoom,
+    maxNativeZoom: source.maxZoom,
+    maxZoom: MAX_ZOOM,
     subdomains: source.subdomains ?? 'abc',
   }).addTo(map);
 
@@ -65,11 +72,13 @@ export function createMap(container: HTMLElement, basemapId: string): MapHandle 
       source = next;
       map.removeLayer(layer);
       layer = L.tileLayer(next.url, {
-        maxZoom: next.maxZoom,
+        maxNativeZoom: next.maxZoom,
+        maxZoom: MAX_ZOOM,
         subdomains: next.subdomains ?? 'abc',
       }).addTo(map);
-      // Zooming past the new source's limit would leave a blank canvas.
-      if (map.getZoom() > next.maxZoom) map.setZoom(next.maxZoom);
+      // No zoom clamp here: every source shares MAX_ZOOM, so coming from OSM at
+      // z22 to OpenTopoMap upscales its z17 tiles rather than blanking, and you
+      // keep the view you were looking at.
     },
   };
 

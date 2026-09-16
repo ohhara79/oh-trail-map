@@ -163,7 +163,14 @@ async function main(): Promise<void> {
         return;
       }
       const trail = findTrail(id);
-      if (trail?.bounds.isValid()) map.fitBounds(trail.bounds, { padding: [30, 30] });
+      // Capped at the source's native level: framing a trail is automatic, and
+      // a 200 m loop would otherwise land on upscaled tiles you never asked for.
+      // Zooming in by hand still goes deeper.
+      if (trail?.bounds.isValid())
+        map.fitBounds(trail.bounds, {
+          padding: [30, 30],
+          maxZoom: basemapById(settings.basemapId).maxZoom,
+        });
     },
     onSelect: (id) => selectTrail(id),
     onBasemapChange: (id) => {
@@ -233,13 +240,10 @@ async function main(): Promise<void> {
       if (view3d) {
         view3d.showPoint(point);
       } else {
-        // Never zooms out: you may already be closer in than POINT_ZOOM. Capped
-        // for the reason close3d gives — a basemap that stops at z17 comes back
-        // blank above it.
-        const zoom = Math.min(
-          Math.max(map.getZoom(), POINT_ZOOM),
-          basemapById(settings.basemapId).maxZoom,
-        );
+        // Never zooms out: you may already be closer in than POINT_ZOOM — as
+        // close as MAX_ZOOM, now that a basemap's native limit no longer stops
+        // the camera.
+        const zoom = Math.max(map.getZoom(), POINT_ZOOM);
         map.setView([point.lat, point.lon], zoom);
         openPoint(point);
       }
@@ -339,9 +343,9 @@ async function main(): Promise<void> {
     selectPoint(popupPoint);
     delete app.dataset.view;
     ui.set3dState('off');
-    // Capped, or a basemap that stops at z17 would come back blank.
-    const zoom = Math.min(back.zoom, basemapById(settings.basemapId).maxZoom);
-    map.setView([back.lat, back.lon], zoom, { animate: false });
+    // Uncapped: 2D reaches MAX_ZOOM, which is exactly what orbit tops out at, so
+    // however far in you were is a zoom 2D can hold.
+    map.setView([back.lat, back.lon], back.zoom, { animate: false });
   }
 
   /** The single place the locate button's appearance is derived. */
@@ -498,7 +502,11 @@ async function main(): Promise<void> {
 
   const restored = visibleBounds();
   const hadTrails = restored.isValid();
-  if (hadTrails) map.fitBounds(restored, { padding: [30, 30] });
+  if (hadTrails)
+    map.fitBounds(restored, {
+      padding: [30, 30],
+      maxZoom: basemapById(settings.basemapId).maxZoom,
+    });
 
   // iOS 13+ only. Everywhere else the compass either needs no permission or
   // does not exist, and an unusable button would be worse than none.

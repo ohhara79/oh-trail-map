@@ -26,7 +26,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 // pointing at nothing.
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 
-import { basemapById } from './basemaps';
+import { basemapById, MAX_ZOOM } from './basemaps';
 import { tweenCamera, type Tween } from './cameraTween';
 import { FirstPerson, WALK_FOV, eyeCamera, type Pose } from './firstPerson';
 import { angleDelta, bearing } from './geo';
@@ -120,7 +120,9 @@ const WALK_MAX_PITCH = 179;
 /** The walk camera sits at about z20–21 and must never be clamped: clamping the
  *  zoom would move it away from the eye. */
 const WALK_MAX_ZOOM = 24;
-const ORBIT_MAX_ZOOM = 22;
+/** Derived, not restated: 2D reaches MAX_ZOOM and orbit should reach the same
+ *  place, so closing 3D never has to pull you back out. */
+const ORBIT_MAX_ZOOM = MAX_ZOOM - ZOOM_OFFSET;
 /** Fog start (0 map centre, 1 horizon). See sky() in scene3d.ts. */
 const ORBIT_FOG = 0.5;
 const WALK_FOG = 0.9;
