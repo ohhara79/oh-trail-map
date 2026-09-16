@@ -57,6 +57,11 @@ npm run preview
     trail first. While following, you also face the way you are facing (the
     compass, or your GPS course while moving); looking around drifts back to it
     after 2 s.
+    A disc above the locate button, where orbit keeps its compass, shows which
+    way you are facing and whether you are looking up or down: the card turns to
+    north, and the horizon slides as you raise or lower your gaze. Click it to
+    swing back round to north and level — in playback that holds for 2 s before
+    the trail takes the direction back.
   - **▶ on a trail row**: plays that trail at eye height, with pause, speed
     (1×–50× walking pace) and a scrubber.
     While it plays, the buttons over the scene fade out after 3 s; tap or click

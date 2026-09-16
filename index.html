@@ -103,6 +103,34 @@
             <button id="close3d-playback" type="button" title="Stop walking the trail"
                     aria-label="Stop walking the trail">&times;</button>
           </div>
+          <!-- Which way you are facing, and whether you are looking up or down, in the
+               slot orbit's compass holds. The ball is the part that moves; the centre
+               reference is fixed, and the horizon is read against it. -->
+          <button id="attitude3d" type="button"
+                  title="Face north and level" aria-label="Face north and level">
+            <svg viewBox="-16 -16 32 32" width="26" height="26" aria-hidden="true">
+              <!-- The ball travels up to the face radius either way, so the two halves
+                   reach a little past twice that far: exactly twice would leave a hairline
+                   at the clamps.
+                   The card's triangles clear the rim rather than sit on it: touching it,
+                   the dark north one merges into the stroke and stops reading at a glance. -->
+              <clipPath id="attitude3d-face"><circle r="10" /></clipPath>
+              <g clip-path="url(#attitude3d-face)">
+                <g class="attitude-ball">
+                  <rect class="attitude-sky" x="-16" y="-22" width="32" height="22" />
+                  <rect class="attitude-ground" x="-16" y="0" width="32" height="22" />
+                  <line class="attitude-horizon" x1="-16" y1="0" x2="16" y2="0" />
+                </g>
+              </g>
+              <circle class="attitude-rim" r="10" />
+              <g class="attitude-card">
+                <path class="attitude-north" d="M0 -15.6 L-2.8 -11.4 L2.8 -11.4 Z" />
+                <path class="attitude-south" d="M0 15.6 L-2.8 11.4 L2.8 11.4 Z" />
+              </g>
+              <path class="attitude-ref" d="M-6.5 0h4M2.5 0h4" />
+              <circle class="attitude-ref-dot" r="1" />
+            </svg>
+          </button>
           <div id="joystick" aria-hidden="true"><div class="joystick-thumb"></div></div>
           <div id="crosshair3d" aria-hidden="true">
             <svg viewBox="0 0 28 28" width="28" height="28" fill="none" stroke="currentColor"

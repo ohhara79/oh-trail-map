@@ -22,6 +22,8 @@ export type HudCallbacks = {
   onClosePlayback: () => void;
   onEye: () => void;
   onGyro: () => void;
+  /** The attitude disc pressed: face north and level. */
+  onAttitude: () => void;
 };
 
 export type PlaybackState = { playing: boolean; speed: number; s: number; total: number; name: string };
@@ -38,7 +40,14 @@ const SCRUB_STEPS = 1000;
 const HIDE_DELAY = 3000;
 /** Everything over the scene that fades out during playback. Keep in sync with
  *  the data-chrome rules in style.css. */
-const CHROME = '#expand, #compass, #locate, #view3d, #mode3d, #playback3d';
+const CHROME = '#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d';
+
+/** The attitude face's radius, in the svg's user units — see the markup in index.html. */
+const FACE_RADIUS = 10;
+/** The tilt that fills that face. Past it the disc is solid sky or solid ground, which
+ *  is the right reading of looking that far up or down; the full −80..60 clamp would
+ *  flatten a few degrees off level to almost nothing. */
+const PITCH_SPAN = 45;
 
 export class Hud {
   private readonly app = el('app');
@@ -48,6 +57,7 @@ export class Hud {
   private readonly walk = el<HTMLButtonElement>('walk3d');
   private readonly eye = el<HTMLButtonElement>('eye3d');
   private readonly gyro = el<HTMLButtonElement>('gyro3d');
+  private readonly attitude = el<HTMLButtonElement>('attitude3d');
   private readonly play = el<HTMLButtonElement>('play3d');
   private readonly speed = el<HTMLButtonElement>('speed3d');
   private readonly scrub = el<HTMLInputElement>('scrub3d');
@@ -60,12 +70,15 @@ export class Hud {
   /** Whether the trail was playing at the last setPlayback, so a change can be told apart. */
   private playing = false;
   private hideTimer = 0;
+  /** The last attitude written, so a frame that changed nothing touches no style. */
+  private attitudeAt = '';
 
   constructor(cb: HudCallbacks) {
     const signal = this.abort.signal;
     this.walk.addEventListener('click', () => cb.onWalk(), { signal });
     this.eye.addEventListener('click', () => cb.onEye(), { signal });
     this.gyro.addEventListener('click', () => cb.onGyro(), { signal });
+    this.attitude.addEventListener('click', () => cb.onAttitude(), { signal });
     this.play.addEventListener('click', () => cb.onPlayToggle(), { signal });
     this.speed.addEventListener('click', () => cb.onSpeed(), { signal });
     el('close3d-playback').addEventListener('click', () => cb.onClosePlayback(), { signal });
@@ -112,6 +125,26 @@ export class Hud {
 
   setGyro(on: boolean): void {
     this.gyro.setAttribute('aria-pressed', String(on));
+  }
+
+  /**
+   * Where the view points, from the walk camera's pose. Called every frame, so it
+   * rounds and compares before writing, the way place() in firstPerson.ts does with
+   * its camera.
+   *
+   * The card turns against you — a compass card holds still while you turn under it —
+   * and the ball drops as you look up, since the horizon falls in view as your gaze
+   * rises and svg y grows downwards.
+   */
+  setAttitude(yaw: number, look: number): void {
+    const half = (n: number) => Math.round(n * 2) / 2;
+    const deg = half(-yaw);
+    const px = half(Math.max(-1, Math.min(1, look / PITCH_SPAN)) * FACE_RADIUS);
+    const next = `${deg} ${px}`;
+    if (next === this.attitudeAt) return;
+    this.attitudeAt = next;
+    this.attitude.style.setProperty('--yaw', `${deg}deg`);
+    this.attitude.style.setProperty('--tilt', `${px}px`);
   }
 
   setPlayback(state: PlaybackState): void {

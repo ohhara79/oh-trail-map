@@ -39,6 +39,13 @@ const HEADING_TAU = 0.3;
  *  leaves the view alone, then how quickly it drifts back. */
 const LOOK_HOLD_MS = 2000;
 const LOOK_RETURN_TAU = 0.8;
+/** Seconds for the attitude disc to swing the view round to north and level.
+ *  Quicker than the drift back, which you never asked for: this you did. */
+const RECENTRE_TAU = 0.35;
+/** How long that swing may run, in the loop's own seconds. Nearly six time
+ *  constants, so it arrives long before this; the limit is only there for a base
+ *  that never settles — the trail's tangent under a moving camera. */
+const RECENTRE_LIMIT = 2;
 /** The camera never goes nearer the ground than this, whatever the smoothing says.
  *  Well clear of the near plane (see the module comment): the smoothed ground lags
  *  behind a fast climb, and a floor inside the near plane lets the slope ahead be
@@ -103,6 +110,13 @@ export class FirstPerson {
   /** Where the phone was pointing when the gyroscope was switched on, since on
    *  some platforms its yaw has no fixed north. */
   private deviceRef: number | null = null;
+  /** True while a press on the attitude disc is swinging the view to north and level. */
+  private recentring = false;
+  /** When that press landed. It holds off the drift back for LOOK_HOLD_MS, the same
+   *  as looking around does — the button is not one of the inputs walkControls times. */
+  private recentredAt = -Infinity;
+  /** How far that swing has run, in the loop's seconds rather than the wall's. */
+  private recentreElapsed = 0;
 
   /** Smoothed ground height under the eye. Starts as a guess, see jump(). */
   private ground: number;
@@ -190,6 +204,24 @@ export class FirstPerson {
     this.lookOffset = on ? 0 : this.pose.look;
   }
 
+  /**
+   * Swings the view round to north and level — the attitude disc pressed.
+   *
+   * The base direction is not ours to change, so what eases is the offset, to
+   * whatever cancels the base. That is the same lever looking around by hand pulls,
+   * so the swing ends the same way: free walk stays at north, following your
+   * location drifts back to your heading, and playback drifts back to the trail
+   * ahead, each after LOOK_HOLD_MS. Only free walk has no base to be pulled back to.
+   *
+   * The tilt is yours in every mode, so that half always sticks — except under the
+   * gyroscope, where the phone owns both and there is nothing to hold the view at.
+   */
+  recentre(): void {
+    this.recentring = true;
+    this.recentredAt = performance.now();
+    this.recentreElapsed = 0;
+  }
+
   /** The smoothed ground height under the eye, in metres. */
   get groundHeight(): number {
     return this.ground;
@@ -231,6 +263,9 @@ export class FirstPerson {
     const { dyaw, dlook } = this.controls.consumeLook();
     this.yawOffset += dyaw + intent.turn * KEY_TURN_RATE * dt;
     this.lookOffset += dlook;
+    // Your own turning ends a recentre, so a drag stops the swing where it is rather
+    // than hauling against it.
+    if (dyaw || dlook || intent.turn) this.recentring = false;
 
     let baseYaw = 0;
     let baseLook = 0;
@@ -261,11 +296,36 @@ export class FirstPerson {
         baseYaw += angleDelta(this.deviceRef, device.yaw);
       }
       baseLook = device.look;
-    } else if ((playback || steering) && now - this.controls.lastInput() > LOOK_HOLD_MS) {
+    } else if (
+      (playback || steering) &&
+      // Never while a recentre is running, or the two pull opposite ways: this one
+      // back to the base, that one to north. The press also holds it off afterwards
+      // for the usual LOOK_HOLD_MS, the button not being one of the inputs
+      // walkControls times.
+      !this.recentring &&
+      now - Math.max(this.controls.lastInput(), this.recentredAt) > LOOK_HOLD_MS
+    ) {
       const k = smooth(LOOK_RETURN_TAU, dt);
       this.yawOffset -= angleDelta(0, this.yawOffset) * k;
       // Your heading says nothing about tilt, so walking keeps the one you chose.
       if (playback) this.lookOffset -= this.lookOffset * k;
+    }
+
+    if (this.recentring) {
+      if (device) {
+        this.recentring = false;
+      } else {
+        const instant = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const k = instant ? 1 : smooth(RECENTRE_TAU, dt);
+        this.yawOffset += angleDelta(this.yawOffset, -baseYaw) * k;
+        this.lookOffset += (-baseLook - this.lookOffset) * k;
+        // Counted in dt, not against the clock. smooth() is frame-rate independent
+        // only while dt is the real elapsed time, and below ten frames a second
+        // MAX_DT throws the rest away; a wall-clock limit would then cut the swing
+        // off part-way and leave the view pointing nowhere in particular.
+        this.recentreElapsed += dt;
+        if (instant || this.recentreElapsed > RECENTRE_LIMIT) this.recentring = false;
+      }
     }
 
     // Clamped as a total, and the offset pulled back to match, so looking past

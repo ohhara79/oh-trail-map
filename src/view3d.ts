@@ -224,6 +224,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       hud.setEye(EYE_HEIGHTS[eyeIndex]);
     },
     onGyro: () => toggleGyro(),
+    onAttitude: () => walker?.recentre(),
   });
   hud.setMode(mode);
   hud.setEye(EYE_HEIGHTS[eyeIndex]);
@@ -520,6 +521,9 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     });
     const walkControls = controls;
     const next = new FirstPerson(map, controls, pose, height, groundGuess, () => {
+      // Before the playback branch below, which returns early: the disc is read in
+      // plain walk too, and that is the mode with the least else to go on.
+      hud.setAttitude(next.pose.yaw, next.pose.look);
       const playback = next.playback;
       if (!playback) {
         // Walking away is how following stops here. Only moving: looking around
