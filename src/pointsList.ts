@@ -10,8 +10,9 @@
  * rebuild the list to change one checkbox, and a five-column haystack, which is
  * why a match is marked on both of a row's lines.
  *
- * It renders and reports; it owns no visibility state. main.ts holds the hidden
- * set and hands it back on every render, so a row can never disagree with the pin.
+ * It renders and reports; it owns neither the visibility nor the selection.
+ * main.ts holds the hidden set and the selected 지점번호 and hands both back on
+ * every render, so a row can never disagree with the pin it stands for.
  */
 import { highlightName, countLabel, setTristate } from './listUi';
 import type { PointRow } from './points';
@@ -39,6 +40,8 @@ export class PointsList {
   private readonly toggleAll = el<HTMLInputElement>('point-all');
   private readonly empty = el('point-empty');
   private readonly count = el('point-count');
+  /** What syncSelection last drew, so scrollIntoView only runs on a change. */
+  private lastSelected: string | null = null;
 
   constructor(
     private readonly rows: readonly PointRow[],
@@ -67,9 +70,10 @@ export class PointsList {
 
   /**
    * The one way this list is drawn. `hidden` is main.ts's live set of hidden
-   * 지점번호, re-read every time rather than remembered here.
+   * 지점번호 and `selected` the one whose popup is open, both re-read every time
+   * rather than remembered here.
    */
-  render(hidden: ReadonlySet<string>): void {
+  render(hidden: ReadonlySet<string>, selected: string | null): void {
     const tokens = searchTokens(this.search.value);
     const matches = tokens.length
       ? this.rows.filter((row) => matchesFolded(row.haystack, tokens))
@@ -86,16 +90,20 @@ export class PointsList {
         : `No point matches “${this.search.value.trim()}”.`;
     this.count.textContent = countLabel(matches.length, this.rows.length);
 
-    // Only the filter can change which rows exist. A checkbox changes what a row
-    // *says*, and rebuilding 272 rows to say it would throw the focus of whoever
-    // just pressed Space out to <body> — leaving them unable to carry on down the
-    // list — and discard the panel's scroll position for nothing. The trail list
-    // makes the same trade in setAllNamesExpanded, for the same second reason.
+    // Only the filter can change which rows exist. A checkbox or the selection
+    // changes what a row *says*, and rebuilding 272 rows to say it would throw the
+    // focus of whoever just pressed Space out to <body> — leaving them unable to
+    // carry on down the list — and discard the panel's scroll position for
+    // nothing. The trail list makes the same trade in setAllNamesExpanded, for the
+    // same second reason.
     if (!this.sameRows(matches)) this.rebuild(matches, tokens);
 
     // On both paths, so a freshly built row and a re-synced one are set from the
-    // hidden set by the same line and can never drift apart.
+    // hidden set and the selection by the same lines and can never drift apart.
     this.syncChecks(hidden, matches.length);
+    // After rebuild(), never before: it restores the panel's scroll offset, and a
+    // scrollIntoView run first would simply be undone by it.
+    this.syncSelection(selected);
   }
 
   /**
@@ -146,16 +154,17 @@ export class PointsList {
 
       const text = document.createElement('div');
       text.className = 'grow';
-      const code = document.createElement('div');
-      code.className = 'point-code';
-      code.replaceChildren(highlightName(row.code, tokens));
+      const title = document.createElement('div');
+      title.className = 'point-title';
+      title.replaceChildren(highlightName(row.title, tokens));
       const detail = document.createElement('div');
       detail.className = 'point-detail';
       detail.replaceChildren(highlightName(row.detail, tokens));
-      // The line is clipped to keep 272 rows scannable, so the full text has to be
-      // reachable: here on hover, and in the popup a click away.
+      // Both lines are clipped to keep 272 rows scannable, so the full text has to
+      // be reachable: here on hover, and in the popup a click away.
+      title.title = row.title;
       detail.title = row.detail;
-      text.append(code, detail);
+      text.append(title, detail);
 
       li.append(visible, swatch, text);
       this.list.append(li);
@@ -175,6 +184,33 @@ export class PointsList {
       if (box.checked) shown++;
     }
     setTristate(this.toggleAll, shown, total);
+  }
+
+  /**
+   * The tint on the row whose point has a popup open, and nothing else — the same
+   * `.selected` the trail list uses, so the two can never look like two things.
+   *
+   * Toggled per row rather than stamped at creation as ui.ts does, because this
+   * list does not rebuild to change what a row says (see render).
+   */
+  private syncSelection(selected: string | null): void {
+    for (const li of this.list.children) {
+      const on = (li as HTMLElement).dataset.pointCode === selected;
+      li.classList.toggle('selected', on);
+      if (on) li.setAttribute('aria-current', 'true');
+      else li.removeAttribute('aria-current');
+    }
+
+    // Only on a change, and only towards a point: a row already on screen is left
+    // alone by block: 'nearest', and a selection the filter is hiding simply has
+    // no row, which needs no special case.
+    const changed = selected !== this.lastSelected;
+    this.lastSelected = selected;
+    if (changed && selected) {
+      this.list
+        .querySelector(`li[data-point-code="${CSS.escape(selected)}"]`)
+        ?.scrollIntoView({ block: 'nearest' });
+    }
   }
 
   /** The codes on screen, read back off the rows rather than cached alongside them. */

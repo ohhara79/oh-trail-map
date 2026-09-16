@@ -117,7 +117,10 @@ button:hover { background: #f5f6f8; }
   padding: 6px 8px; margin: 0 -8px;
   border-bottom: 1px solid #f1f3f5;
 }
-#trail-list li.selected {
+/* One rule for both lists: a selected trail and the point whose popup is open
+   are the same idea, and two rules would eventually drift apart. */
+#trail-list li.selected,
+#point-list li.selected {
   background: #eaf2fd;
   box-shadow: inset 3px 0 0 var(--accent);
   border-radius: 4px;
@@ -125,7 +128,7 @@ button:hover { background: #f5f6f8; }
 #trail-list li:last-child,
 #point-list li:last-child { border-bottom: 0; }
 #trail-list li:not(.selected):hover,
-#point-list li:hover { background: #f7f8fa; border-radius: 4px; }
+#point-list li:not(.selected):hover { background: #f7f8fa; border-radius: 4px; }
 .trail-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Clicking a name drops the clamp so the whole thing is readable; anywhere
    covers the filename fallback, which is often one unbroken token. */
@@ -143,11 +146,14 @@ button:hover { background: #f5f6f8; }
 .trail-head h2, .point-head h2 { margin: 0; }
 .trail-head button { font-size: 12px; padding: 2px 6px; color: var(--muted); }
 
-/* A point row is the 지점번호 over one muted line of everything else. The detail
-   line is clipped rather than wrapped: 272 rows have to stay scannable, and the
+/* A point row is 이름 - 지점번호 over one muted line of everything else. Both
+   lines are clipped rather than wrapped: 272 rows have to stay scannable, and the
    full text is on the row's title and, a click away, in the popup — which is why
-   this list has no Expand all where the trail list needs one. */
-#point-list .point-code {
+   this list has no Expand all where the trail list needs one.
+
+   Not .point-code: that class keeps the tabular figures the popup's code-only
+   line wants, which are wrong under a title that is mostly Hangul. */
+#point-list .point-title {
   font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .point-detail {

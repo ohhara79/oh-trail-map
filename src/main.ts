@@ -112,6 +112,9 @@ async function main(): Promise<void> {
   const hiddenPoints = new Set(settings.hiddenPoints);
   let pointPopup: L.Popup | null = null;
   let popupPoint: NationalPoint | null = null;
+  /** The 지점번호 the panel list draws as selected: whichever point has a popup
+   *  open in the view you are looking at. View state, like selectedId. */
+  let selectedPointCode: string | null = null;
   const pointsLayer = createPointsLayer(map, points, (point) => {
     if (clearMapSelection()) return;
     openPoint(point);
@@ -219,13 +222,14 @@ async function main(): Promise<void> {
       // reach the points it hid.
       setPointsHidden(codes, !visible);
     },
-    onFilterChange: () => pointsList.render(hiddenPoints),
+    onFilterChange: () => pointsList.render(hiddenPoints, selectedPointCode),
     onSelect: (code) => {
       const point = pointByCode.get(code);
       if (!point) return;
       // Like a trail row, which zooms to a hidden trail without turning it on: a
-      // row click is you asking for this point now. Nothing is selected — a point
-      // is not a trail — so a trail already selected stays selected.
+      // row click is you asking for this point now. It selects the point, not the
+      // trail — a trail already selected stays selected — and the highlight comes
+      // from the popup either branch below opens, never from here.
       if (view3d) {
         view3d.showPoint(point);
       } else {
@@ -289,6 +293,7 @@ async function main(): Promise<void> {
           }),
           start: { lat: centre.lat, lon: centre.lng, zoom: map.getZoom() },
           onSelect: (id) => selectTrail(id),
+          onPointPopup: (point) => selectPoint(point),
           onStopFollowing: stopFollowing,
           onContextLost: () => {
             ui.notify('The 3D view lost its graphics context and was closed.', 'error');
@@ -297,6 +302,10 @@ async function main(): Promise<void> {
           notify: (message, kind, timeout) => ui.notify(message, kind, timeout),
         });
         view3d = view;
+        // The 2D popup is left open behind the switch — close3d comes back to it —
+        // but nothing is open in the view you are now looking at, so nothing is
+        // highlighted either.
+        selectPoint(null);
         if (lastFix) view.setLocation({ lat: lastFix.lat, lon: lastFix.lng, accuracy: lastAccuracy });
         view.setHeading(lastHeading);
         view.setFollowing(following);
@@ -324,6 +333,10 @@ async function main(): Promise<void> {
     const back = view3d.viewFor2d();
     view3d.destroy();
     view3d = null;
+    // destroy() takes its popup down with the GL context rather than through
+    // closePopup, so the highlight is set back here — to the 2D popup that was
+    // still open underneath, if there was one.
+    selectPoint(popupPoint);
     delete app.dataset.view;
     ui.set3dState('off');
     // Capped, or a basemap that stops at z17 would come back blank.
@@ -348,12 +361,28 @@ async function main(): Promise<void> {
   function openPoint(point: NationalPoint): void {
     pointPopup = openPointPopup(map, point);
     popupPoint = point;
+    selectPoint(point);
   }
 
   function closePointPopup(): void {
     if (pointPopup) map.closePopup(pointPopup);
     pointPopup = null;
     popupPoint = null;
+    selectPoint(null);
+  }
+
+  /**
+   * The single place the panel list's highlight changes, as selectTrail is for a
+   * trail. Every 2D path reaches it through openPoint and closePointPopup above —
+   * a row click, a pin click, clearMapSelection, and syncPoints taking the popup
+   * of a point you just hid — and the 3D view reports its own popup through
+   * onPointPopup.
+   */
+  function selectPoint(point: NationalPoint | null): void {
+    const code = point?.code ?? null;
+    if (code === selectedPointCode) return;
+    selectedPointCode = code;
+    pointsList.render(hiddenPoints, selectedPointCode);
   }
 
   /**
@@ -381,7 +410,7 @@ async function main(): Promise<void> {
     }
     // Outside the guard: the browser has already flipped the checkbox that was
     // clicked, so the rows are re-read from the hidden set either way.
-    pointsList.render(hiddenPoints);
+    pointsList.render(hiddenPoints, selectedPointCode);
   }
 
   /** The 2D pins, a popup either view may have left pointing at a pin that is
@@ -465,7 +494,7 @@ async function main(): Promise<void> {
   for (const id of saved.keys()) if (!present.has(id)) void deleteTrail(id);
 
   refresh();
-  pointsList.render(hiddenPoints);
+  pointsList.render(hiddenPoints, selectedPointCode);
 
   const restored = visibleBounds();
   const hadTrails = restored.isValid();

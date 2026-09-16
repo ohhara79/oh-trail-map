@@ -80,6 +80,9 @@ export type View3dOptions = {
   start: View2d;
   /** main.ts's selectTrail: the one place selection changes. */
   onSelect: (id: string | null) => void;
+  /** The point this view has a popup open on, or null when it has none. The panel
+   *  list's highlight follows the open popup, and 3D owns its own. */
+  onPointPopup: (point: NationalPoint | null) => void;
   /** A drag in orbit, walking with the keys or joystick, or starting a trail's
    *  playback: how following your location stops. */
   onStopFollowing: () => void;
@@ -307,12 +310,14 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       .setDOMContent(popupContent(point))
       .addTo(map);
     popupPoint = point;
+    opts.onPointPopup(point);
   }
 
   function closePopup(): void {
     popup?.remove();
     popup = null;
     popupPoint = null;
+    opts.onPointPopup(null);
   }
 
   // Orbit only: walking uses the pointer to look, and aims with the crosshair instead.
@@ -484,7 +489,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
    *  clamps it. */
   function walkLimits(): void {
     for (const h of HANDLERS) h.disable();
-    popup?.remove();
+    closePopup();
     map.stop();
     map.setMaxZoom(WALK_MAX_ZOOM);
     map.setMaxPitch(WALK_MAX_PITCH);

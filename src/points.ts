@@ -72,16 +72,24 @@ export function loadNationalPoints(): NationalPoint[] {
 /** One point as the panel list draws and filters it. */
 export type PointRow = {
   /**
-   * 지점번호: the row's identity, its primary line, and what Settings.hiddenPoints
-   * stores. Deliberately not normalised — it has to stay the same string as
+   * 지점번호: the row's identity and what Settings.hiddenPoints stores.
+   * Deliberately not normalised — it has to stay the same string as
    * NationalPoint.code, or a hidden-set key would not match the point it hides.
    */
   code: string;
-  /** 이름 · 사물유형 · 시/도 시/군/구, with 이름 left out where the source has
-   *  none — the same filter(Boolean) join popupContent makes, for the same reason. */
+  /**
+   * The row's primary line: 이름 - 지점번호, falling back to 지점번호 - 지점번호
+   * for the 128 rows the source gives no 이름. The code is repeated rather than
+   * left alone so every row has the same two-part shape, and the 지점번호 — the
+   * one thing a sign in the field actually shows you — is always in the same
+   * place for the eye running down the list.
+   */
+  title: string;
+  /** 사물유형 · 시/도 시/군/구. 이름 leads the title now, and an 11px line clipped
+   *  to one row of a 272-row list should not spend its width repeating it. */
   detail: string;
-  /** Every column joined, for the panel filter. Built from the strings that are
-   *  actually drawn, so what a query matches is what gets a <mark> over it. */
+  /** Both drawn lines joined, for the panel filter. Built from the strings that
+   *  are actually drawn, so what a query matches is what gets a <mark> over it. */
   haystack: string;
   /** The pin's colour, so a row's swatch and its pin can never disagree. */
   color: string;
@@ -100,14 +108,16 @@ export type PointRow = {
 export function pointRows(points: readonly NationalPoint[]): PointRow[] {
   return points.map((point) => {
     const region = [point.province, point.district].filter(Boolean).join(' ');
-    const detail = [point.name, point.kind, region].filter(Boolean).join(' · ').normalize('NFC');
+    const title = `${point.name || point.code} - ${point.code}`.normalize('NFC');
+    const detail = [point.kind, region].filter(Boolean).join(' · ').normalize('NFC');
     return {
       code: point.code,
+      title,
       detail,
-      // The code as well as the detail line: it is the only handle on the 129
-      // rows the source gives no 이름, and the one thing a sign in the field
-      // actually shows you.
-      haystack: fold(`${point.code} ${detail}`),
+      // The two lines as drawn, so a match is always somewhere a <mark> can go.
+      // An unnamed row carries its code twice, which costs nothing: matchesFolded
+      // only asks whether a token occurs.
+      haystack: fold(`${title} ${detail}`),
       color: point.name ? PIN_COLOR_NAMED : PIN_COLOR_UNNAMED,
     };
   });
