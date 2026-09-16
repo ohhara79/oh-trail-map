@@ -209,6 +209,10 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   let popupPoint: NationalPoint | null = null;
   /** The camera flight between orbit and walk, while one is under way. */
   let tween: Tween | null = null;
+  /** The zoom orbit had when you last left it, so the flight back up lands on the view
+   *  you left rather than a fixed one. MapLibre's zoom, as map.getZoom() gives it.
+   *  Only a floor under the first frame here: both ways out of orbit set it fresh. */
+  let orbitZoom = map.getZoom();
 
   const hud = new Hud({
     // A toggle: pressed while walking or playing, so a press from either is back to orbit.
@@ -601,7 +605,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
           map,
           {
             center: new LngLat(pose.lon, pose.lat),
-            zoom: 16,
+            // The view you left orbit from, over the spot you stood on.
+            zoom: orbitZoom,
             // Flat, like the view 3D opens with and the one the compass button gives.
             // The bearing still holds the way you walked.
             pitch: 0,
@@ -624,6 +629,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       } else {
         // Keep in sync with #crosshair3d, which marks this spot in orbit mode.
         const centre = map.getCenter();
+        // Before walkLimits() lifts the ceiling to WALK_MAX_ZOOM.
+        orbitZoom = map.getZoom();
         const pose: Pose = { lat: centre.lat, lon: centre.lng, yaw: map.getBearing(), look: 0 };
         const ground = map.getCenterElevation();
         const eye = EYE_HEIGHTS[eyeIndex];
@@ -703,6 +710,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     const ele = trail.segments[0]?.[0]?.ele ?? 0;
     const pose: Pose = { ...start, yaw: 0, look: 0 };
     if (!walker) {
+      // Straight from orbit, so this is the view Esc comes back to.
+      orbitZoom = map.getZoom();
       walker = startWalking(pose, JUMP_HEIGHT, ele);
     } else {
       const far = haversine(walker.pose, start) > FAR_JUMP;
