@@ -138,17 +138,13 @@ export function circlePolygon(
 export const EMPTY: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
 
 /**
- * The 2D trail stroke, one pixel heavier: a draped line is resampled with the
- * terrain texture and loses some of its weight.
- *
- * A plain pixel width, at every zoom, exactly as in 2D. The widths here used to ease
+ * Trails and their casings take the 2D view's widths as they are: TRAIL_WEIGHT and
+ * each ring's weight, plain CSS pixels at every zoom. The widths here used to ease
  * into a fixed width in metres so the walk camera saw a trail about as wide as a real
  * path — but orbit climbs to z22 through the same expression, and zooming in fattened
  * the line to a ribbon. A trail underfoot is a hairline now; a trail you zoom into is
  * the one you drew.
  */
-const TRAIL_WIDTH_3D = TRAIL_WEIGHT + 1;
-
 export function layers(): LayerSpecification[] {
   const trailLayout = { 'line-join': 'round', 'line-cap': 'round' } as const;
   return [
@@ -158,7 +154,7 @@ export function layers(): LayerSpecification[] {
       type: 'line',
       source: SRC_TRAILS,
       layout: trailLayout,
-      paint: { 'line-color': ['get', 'color'], 'line-width': TRAIL_WIDTH_3D },
+      paint: { 'line-color': ['get', 'color'], 'line-width': TRAIL_WEIGHT },
     },
     // The same order as the 2D view's z-order in Halo.show: every trail, then the
     // selection's casings above them, then the selected trail above its casings.
@@ -172,7 +168,7 @@ export function layers(): LayerSpecification[] {
         paint: {
           'line-color': ring.color,
           'line-opacity': ring.opacity,
-          'line-width': ring.weight - TRAIL_WEIGHT + TRAIL_WIDTH_3D,
+          'line-width': ring.weight,
         },
       }),
     ),
@@ -182,7 +178,7 @@ export function layers(): LayerSpecification[] {
       source: SRC_TRAILS,
       layout: trailLayout,
       filter: selectedFilter(null),
-      paint: { 'line-color': ['get', 'color'], 'line-width': TRAIL_WIDTH_3D },
+      paint: { 'line-color': ['get', 'color'], 'line-width': TRAIL_WEIGHT },
     },
     {
       id: LAYER_LOCATION,
