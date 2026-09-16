@@ -112,9 +112,6 @@ export type View3d = {
 
 /** MapLibre's tiles are 512px to Leaflet's 256, so the same view is one zoom lower. */
 const ZOOM_OFFSET = 1;
-/** The orbit camera's tilt when coming back from walking, enough that the terrain
- *  reads as terrain and you still face the way you walked. */
-const ORBIT_PITCH = 60;
 const ORBIT_MAX_PITCH = 85;
 /** MapLibre's own default field of view, restored when leaving walk mode. */
 const ORBIT_FOV = 36.87;
@@ -603,7 +600,9 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
           {
             center: new LngLat(pose.lon, pose.lat),
             zoom: 16,
-            pitch: ORBIT_PITCH,
+            // Flat, like the view 3D opens with and the one the compass button gives.
+            // The bearing still holds the way you walked.
+            pitch: 0,
             bearing: pose.yaw,
             elevation: ground,
             fov: ORBIT_FOV,
