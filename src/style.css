@@ -120,6 +120,7 @@ button:hover { background: #f5f6f8; }
 #trail-list li,
 #point-list li {
   display: flex; align-items: center; gap: 8px;
+  cursor: pointer;
   /* The negative margin cancels the padding, so unselected rows look exactly as
      they did — but a selected row's tint can then bleed out to the edge of the
      block's own padding instead of leaving a white stripe beside it. */
@@ -139,7 +140,7 @@ button:hover { background: #f5f6f8; }
 #trail-list li:not(.selected):hover,
 #point-list li:not(.selected):hover { background: #f7f8fa; border-radius: 4px; }
 .trail-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Clicking a name drops the clamp so the whole thing is readable; anywhere
+/* Clicking a row drops the clamp so the whole thing is readable; anywhere
    covers the filename fallback, which is often one unbroken token. */
 .trail-name.expanded { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
 .trail-name mark,
@@ -166,13 +167,12 @@ button:hover { background: #f5f6f8; }
    line wants, which are wrong under a title that is mostly Hangul. */
 #point-list .point-title {
   font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  cursor: pointer;
 }
 .point-detail {
   font-size: 11px; color: var(--muted);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-/* Clicking a title, or Expand all, drops the clamp on both of a row's lines; one
+/* Clicking a row, or Expand all, drops the clamp on both of a row's lines; one
    class on the <li> so the two can never disagree. `anywhere` because a 지점번호
    and a 시/군/구 are single unbroken tokens with nowhere else to break. */
 #point-list li.expanded :is(.point-title, .point-detail) {

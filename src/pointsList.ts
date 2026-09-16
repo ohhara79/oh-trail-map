@@ -150,11 +150,20 @@ export class PointsList {
       // One class on the row, so the CSS reaches both of its lines and the title
       // and the detail under it can never end up half-expanded.
       li.classList.toggle('expanded', this.expanded.has(row.code));
-      // The whole row goes to the point, so there is something to aim at besides
-      // a 13px dot on the map. Guarded rather than scoped to a sub-element: the
-      // checkbox and the colour swatch keep their own meaning.
+      // The whole row expands and goes to the point, so there is something to aim
+      // at besides a 13px dot on the map, and the title and the detail under it
+      // never answer the same click differently. Guarded rather than scoped to a
+      // sub-element: the checkbox keeps its own meaning.
       li.addEventListener('click', (e) => {
         if ((e.target as HTMLElement).closest('input, button')) return;
+        // Toggled unconditionally rather than only when the text overflows:
+        // unclamping a row that already fits changes nothing on screen, and
+        // measuring scrollWidth here would force a layout on every click.
+        const open = !this.expanded.has(row.code);
+        if (open) this.expanded.add(row.code);
+        else this.expanded.delete(row.code);
+        li.classList.toggle('expanded', open);
+        this.syncExpandAll();
         this.cb.onSelect(row.code);
       });
 
@@ -180,20 +189,9 @@ export class PointsList {
       detail.className = 'point-detail';
       detail.replaceChildren(highlightName(row.detail, tokens));
       // Both lines are clipped to keep 272 rows scannable, so the full text has to
-      // be reachable: by clicking the title, on hover, and in the popup a click away.
+      // be reachable: by clicking the row, on hover, and in the popup a click away.
       title.title = `${row.title} — click to go there and show the full text`;
-      detail.title = row.detail;
-      title.addEventListener('click', () => {
-        // Toggled unconditionally rather than only when the text overflows:
-        // unclamping a row that already fits changes nothing on screen, and
-        // measuring scrollWidth here would force a layout on every click.
-        const open = !this.expanded.has(row.code);
-        if (open) this.expanded.add(row.code);
-        else this.expanded.delete(row.code);
-        li.classList.toggle('expanded', open);
-        this.syncExpandAll();
-        // Going to the point is the row's job; the click bubbles to it.
-      });
+      detail.title = `${row.detail} — click to go there and show the full text`;
       text.append(title, detail);
 
       li.append(visible, swatch, text);

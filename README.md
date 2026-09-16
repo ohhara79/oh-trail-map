@@ -36,9 +36,9 @@ npm run preview
   master checkbox that shows or hides exactly the rows on screen, and a filter
   that matches every column — `관악 정자` finds the 정자 in 관악, `다사524` finds a
   block of numbers, and a match is marked wherever it lands. Both lines are
-  clipped to one row; click a title, or **Expand all** in the heading, to show
-  them in full. Clicking a row goes
-  to that point and opens its popup, in 2D or 3D. Whichever point has a popup
+  clipped to one row; clicking a row shows them in full — or **Expand all** in
+  the heading does every row — and goes to that point and opens its popup, in
+  2D or 3D. Whichever point has a popup
   open — from a row, a pin in 2D, a tap in 3D, or walking up to one — is the row
   the list highlights, the same light blue as a selected trail.
 - Click a trail on the map to select it, or a point to open its popup. While

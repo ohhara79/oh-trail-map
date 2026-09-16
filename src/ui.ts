@@ -196,12 +196,20 @@ export class Ui {
         li.className = 'selected';
         li.setAttribute('aria-current', 'true');
       }
-      // The whole row selects and zooms, so there is something to aim at besides
-      // the name — a name click reaches this through bubbling, which keeps the
-      // zoom in one place. Guarded rather than scoped to a sub-element: the
-      // checkbox and colour swatch keep their own meaning.
+      // The whole row expands, selects and zooms, so there is something to aim at
+      // besides the name, and the name and the stats under it never answer the
+      // same click differently. Guarded rather than scoped to a sub-element: the
+      // checkbox and the ▶ button keep their own meaning.
       li.addEventListener('click', (e) => {
         if ((e.target as HTMLElement).closest('input, button')) return;
+        // Toggled unconditionally rather than only when the name overflows:
+        // unclamping a name that already fits changes nothing on screen, and
+        // measuring scrollWidth here would force a layout on every click.
+        const open = !this.expandedNames.has(trail.id);
+        if (open) this.expandedNames.add(trail.id);
+        else this.expandedNames.delete(trail.id);
+        name.classList.toggle('expanded', open);
+        this.syncExpandAll();
         this.cb.onSelect(trail.id);
         this.cb.onZoomTo(trail.id);
       });
@@ -225,20 +233,8 @@ export class Ui {
       name.className = 'trail-name';
       name.replaceChildren(highlightName(trail.name.normalize('NFC'), tokens));
       name.title = `${trail.name} — click to zoom and show the full name`;
-      name.style.cursor = 'pointer';
       name.dataset.trailId = trail.id;
       name.classList.toggle('expanded', this.expandedNames.has(trail.id));
-      name.addEventListener('click', () => {
-        // Toggled unconditionally rather than only when the text overflows:
-        // unclamping a name that already fits changes nothing on screen, and
-        // measuring scrollWidth here would force a layout on every click.
-        const open = !this.expandedNames.has(trail.id);
-        if (open) this.expandedNames.add(trail.id);
-        else this.expandedNames.delete(trail.id);
-        name.classList.toggle('expanded', open);
-        this.syncExpandAll();
-        // Selecting and zooming is the row's job; the click bubbles to it.
-      });
       const stats = document.createElement('div');
       stats.className = 'trail-stats';
       stats.textContent = this.statsLine(trail);
