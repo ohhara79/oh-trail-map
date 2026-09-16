@@ -29,10 +29,11 @@ export function createMap(container: HTMLElement, basemapId: string): MapHandle 
     // the control comes later in DOM order, so it won the paint and the button
     // was unreachable. Bottom-right also puts zoom in thumb reach on a phone.
     zoomControl: false,
-    // Integer zoom only. Up to a source's native limit that draws tiles at their
-    // own size; past it, where they are scaled up, it keeps the factor a whole
-    // number — a 2x or 4x tile is blocky but sharp, where 1.7x is mush.
-    zoomSnap: 1,
+    // Fractional zoom, as in 3D: a pinch keeps the zoom your fingers left rather
+    // than easing to the nearest whole level on release. The cost is tiles drawn
+    // a little soft between levels (1.3x rather than 1x or 2x). The +/- buttons
+    // still step a whole level, like MapLibre's.
+    zoomSnap: 0,
     zoomDelta: 1,
     // A pinch stops at MAX_ZOOM, as it does in 3D. Leaflet's default lets the map
     // scale past the limit under your fingers and spring back on release; MapLibre

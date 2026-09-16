@@ -820,7 +820,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       settle();
       if (walker) return { lat: walker.pose.lat, lon: walker.pose.lon, zoom: 17 };
       const c = map.getCenter();
-      return { lat: c.lat, lon: c.lng, zoom: Math.round(map.getZoom() + ZOOM_OFFSET) };
+      return { lat: c.lat, lon: c.lng, zoom: map.getZoom() + ZOOM_OFFSET };
     },
     destroy() {
       settle();
