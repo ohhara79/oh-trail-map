@@ -34,6 +34,10 @@ export function createMap(container: HTMLElement, basemapId: string): MapHandle 
     // number — a 2x or 4x tile is blocky but sharp, where 1.7x is mush.
     zoomSnap: 1,
     zoomDelta: 1,
+    // A pinch stops at MAX_ZOOM, as it does in 3D. Leaflet's default lets the map
+    // scale past the limit under your fingers and spring back on release; MapLibre
+    // just holds there, at the bottom end as well as the top.
+    bounceAtZoomLimits: false,
     // No on-map credit box.
     attributionControl: false,
   }).setView([20, 0], 2);
