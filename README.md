@@ -12,7 +12,8 @@ npm run preview
 
 ## Features
 
-- OSM basemap with your current location (marker + accuracy circle), zoom/pan.
+- OSM basemap with your current location (marker + accuracy circle), zoom/pan,
+  and a metric scale bar in the bottom-left, in 2D and 3D orbit.
 - A locate button in the bottom-right: click to centre on yourself and keep
   following as you move, until you drag the map away or click it again.
 - Trails are the `.gpx` files in `data/gpx/`, bundled at build time (one lazy

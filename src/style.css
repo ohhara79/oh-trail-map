@@ -419,8 +419,29 @@ button:hover { background: #f5f6f8; }
 #map3d .maplibregl-ctrl-group:has(> .maplibregl-ctrl-compass) {
   margin-bottom: calc(54px + env(safe-area-inset-bottom));
 }
-#app[data-mode3d='walk'] #map3d .maplibregl-ctrl-bottom-right,
-#app[data-mode3d='playback'] #map3d .maplibregl-ctrl-bottom-right { display: none; }
+/* The scale bar goes too: at eye height there is no one distance per pixel, and
+   the touch joystick holds its corner. */
+#app[data-mode3d='walk'] #map3d :is(.maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left),
+#app[data-mode3d='playback'] #map3d :is(.maplibregl-ctrl-bottom-right, .maplibregl-ctrl-bottom-left) { display: none; }
+
+/* The scale bar (see map.ts and view3d.ts). Leaflet's line in both views, like
+   the zoom buttons above, and at the zoom control's 10px margin rather than
+   Leaflet's 5px, so the bottom corners line up. */
+#map .leaflet-control-scale,
+#map3d .maplibregl-ctrl-scale { margin: 0 0 10px 10px; }
+#map3d .maplibregl-ctrl-scale {
+  border: 2px solid #777;
+  border-top: none;
+  padding: 2px 5px 1px;
+  background: rgba(255, 255, 255, .8);
+  font-size: 12px; line-height: 1.1;
+  text-shadow: 1px 1px #fff;
+}
+/* Above the selection bar, which spans 10–44px up and on a narrow map reaches
+   this corner: the same 10px gap #notices keeps. */
+#app[data-selection] :is(#map .leaflet-control-scale, #map3d .maplibregl-ctrl-scale) {
+  margin-bottom: calc(54px + env(safe-area-inset-bottom));
+}
 
 /* The attitude disc fills the gap the rule above leaves. Hiding that group takes
    the compass out along with the zoom buttons, and at eye height there is nothing

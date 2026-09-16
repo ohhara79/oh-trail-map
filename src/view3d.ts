@@ -16,6 +16,7 @@ import {
   Marker,
   NavigationControl,
   Popup,
+  ScaleControl,
   setWorkerUrl,
   type GeoJSONSource,
   type MapMouseEvent,
@@ -186,6 +187,10 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right');
   const compass = new NavigationControl({ showZoom: false, visualizePitch: true });
   map.addControl(compass, 'bottom-right');
+  // 2D's scale bar, in the same corner. It measures across the middle of the
+  // screen, so tilted it is only true at that depth; style.css hides it at eye
+  // height, where it would mean nothing.
+  map.addControl(new ScaleControl({ unit: 'metric' }), 'bottom-left');
   // The compass is a button, not a joystick: MapLibre also lets you drag it to turn
   // and tilt the map, so a press that slid off still moved the camera. Without that,
   // only a press and release on the button fires its click (reset north and pitch).

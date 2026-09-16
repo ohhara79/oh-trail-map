@@ -44,6 +44,10 @@ export function createMap(container: HTMLElement, basemapId: string): MapHandle 
   }).setView([20, 0], 2);
 
   L.control.zoom({ position: 'bottomright' }).addTo(map);
+  // How far things are, which nothing else on the map says. Metric only: the
+  // trails are Korean. Bottom-left is the one corner no button holds. The 3D
+  // view adds MapLibre's own, styled to match in style.css.
+  L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
 
   // Leaflet caches its container size and only recomputes it on a window
   // resize, so it never learned about the panel collapsing (a 310px width
