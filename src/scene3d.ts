@@ -20,7 +20,7 @@ import type { Basemap } from './basemaps';
 import { offset } from './geo';
 import type { NationalPoint } from './nationalPoint';
 import { PIN_COLOR_NAMED, PIN_COLOR_UNNAMED, PIN_RADIUS, PIN_STROKE } from './points';
-import { HALO_RINGS } from './selection';
+import { HALO_RINGS, HOVER_RING } from './selection';
 import { DIM_OPACITY, TRAIL_WEIGHT, type Trail } from './trails';
 
 export const SRC_BASEMAP = 'basemap';
@@ -31,10 +31,12 @@ export const SRC_LOCATION = 'location';
 
 export const LAYER_BASEMAP = 'basemap';
 export const LAYER_TRAILS = 'trails';
+export const LAYER_TRAIL_HOVER = 'trail-hover';
 export const LAYER_TRAIL_SELECTED = 'trail-selected';
 export const LAYER_HALOS = ['trail-halo-outer', 'trail-halo'] as const;
 export const LAYER_LOCATION = 'location-accuracy';
 export const LAYER_POINTS = 'points';
+export const LAYER_POINT_HOVER = 'point-hover';
 
 /**
  * AWS Terrain Tiles: global, keyless, CORS-open, encoded as terrarium PNGs. Around
@@ -149,6 +151,20 @@ export function layers(): LayerSpecification[] {
   const trailLayout = { 'line-join': 'round', 'line-cap': 'round' } as const;
   return [
     { id: LAYER_BASEMAP, type: 'raster', source: SRC_BASEMAP },
+    // The trail a click would pick, while the mouse hovers near it. Under every
+    // trail, as HoverHalo draws it in 2D.
+    {
+      id: LAYER_TRAIL_HOVER,
+      type: 'line',
+      source: SRC_TRAILS,
+      layout: trailLayout,
+      filter: selectedFilter(null),
+      paint: {
+        'line-color': HOVER_RING.color,
+        'line-opacity': HOVER_RING.opacity,
+        'line-width': HOVER_RING.weight,
+      },
+    },
     {
       id: LAYER_TRAILS,
       type: 'line',
@@ -186,6 +202,23 @@ export function layers(): LayerSpecification[] {
       source: SRC_LOCATION,
       // The accuracy circle from startLocating in map.ts.
       paint: { 'fill-color': '#1a73e8', 'fill-opacity': 0.12, 'fill-outline-color': '#1a73e8' },
+    },
+    // The point a click would open: a wider white disc behind its dot, edged dark
+    // for the same two-basemap reason as the trail halo, and matching the ring the
+    // 2D pin gets in style.css.
+    {
+      id: LAYER_POINT_HOVER,
+      type: 'circle',
+      source: SRC_POINTS,
+      filter: hoveredPointFilter(null),
+      paint: {
+        'circle-pitch-scale': 'viewport',
+        'circle-radius': PIN_RADIUS + PIN_STROKE + 2,
+        'circle-color': '#ffffff',
+        'circle-stroke-color': '#1f2328',
+        'circle-stroke-opacity': 0.5,
+        'circle-stroke-width': 1,
+      },
     },
     {
       id: LAYER_POINTS,
@@ -241,6 +274,11 @@ export function visibleFilter(trails: readonly Trail[]): FilterSpecification {
  */
 export function pointsFilter(hidden: ReadonlySet<string>): FilterSpecification {
   return ['!', ['in', ['get', 'code'], ['literal', [...hidden]]]];
+}
+
+/** Only the point at `index` in pointsGeoJson, or none for null. */
+export function hoveredPointFilter(index: number | null): FilterSpecification {
+  return index === null ? ['literal', false] : ['==', ['get', 'index'], index];
 }
 
 /** Only the selected trail, and nothing at all when there is no selection. */

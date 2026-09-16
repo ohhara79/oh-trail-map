@@ -21,6 +21,7 @@ import {
   type MapMouseEvent,
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import L from 'leaflet';
 // ?worker&url has Vite bundle the worker as its own entry and hand back its URL.
 // A bare ?url would copy the file as-is, with its import of the shared chunk left
 // pointing at nothing.
@@ -33,6 +34,7 @@ import { angleDelta, bearing } from './geo';
 import { compassNeedsPermission, requestCompassPermission, type Heading } from './heading';
 import { Hud, type Mode3d } from './hud3d';
 import { haversine } from './gpx';
+import { canHover, createHoverLabel } from './hoverLabel';
 import { LOCATE_ICON_HTML } from './map';
 import type { NationalPoint } from './nationalPoint';
 import { loadNationalPoints, popupContent } from './points';
@@ -40,14 +42,17 @@ import {
   EMPTY,
   LAYER_BASEMAP,
   LAYER_HALOS,
+  LAYER_POINT_HOVER,
   LAYER_POINTS,
   LAYER_TRAILS,
+  LAYER_TRAIL_HOVER,
   LAYER_TRAIL_SELECTED,
   SRC_BASEMAP,
   SRC_LOCATION,
   allOf,
   basemapSource,
   circlePolygon,
+  hoveredPointFilter,
   pointsFilter,
   selectedFilter,
   sky,
@@ -213,6 +218,15 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
    *  you left rather than a fixed one. MapLibre's zoom, as map.getZoom() gives it.
    *  Only a floor under the first frame here: both ways out of orbit set it fresh. */
   let orbitZoom = map.getZoom();
+  /** The hover preview's inputs and what it last drew; see syncHover. */
+  const hoverLabel = createHoverLabel(container);
+  /** Where the mouse is over the canvas, or null when it is not. */
+  let hoverAt: { x: number; y: number } | null = null;
+  let hoverFrame = 0;
+  /** What the hover layers' filters were last set to, so a mouse move that stays on
+   *  the same thing does not restyle the map. */
+  let hoveredTrail: string | null = null;
+  let hoveredPoint: number | null = null;
 
   const hud = new Hud({
     // A toggle: pressed while walking or playing, so a press from either is back to orbit.
@@ -243,6 +257,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     map.setPaintProperty(LAYER_TRAILS, 'line-opacity', trailOpacity(selectedId));
     // A trail hidden, or the one aimed at now selected, changes what a tap would do.
     syncAim();
+    scheduleHover();
   }
 
   /**
@@ -258,6 +273,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     if (popupPoint && hiddenPoints.has(popupPoint.code)) closePopup();
     // Hiding the point under the crosshair changes what a tap would do.
     syncAim();
+    scheduleHover();
   }
 
   syncTrails();
@@ -313,8 +329,11 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       .setLngLat([point.lon, point.lat])
       .setDOMContent(popupContent(point))
       .addTo(map);
+    // Its own ✕ closes it without closePopup, and lets the preview back.
+    popup.on('close', scheduleHover);
     popupPoint = point;
     opts.onPointPopup(point);
+    scheduleHover();
   }
 
   function closePopup(): void {
@@ -322,6 +341,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     popup = null;
     popupPoint = null;
     opts.onPointPopup(null);
+    scheduleHover();
   }
 
   // Orbit only: walking uses the pointer to look, and aims with the crosshair instead.
@@ -336,25 +356,61 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       if (trailSelected) opts.onSelect(null);
       return;
     }
-    // A point first, as in 2D, where a pin swallows the click.
-    const point = pointAt(e.point.x, e.point.y, 6);
-    if (point) {
-      openPopup(point);
-      return;
-    }
-    const t = tolerance();
-    const box: [[number, number], [number, number]] = [
-      [e.point.x - t, e.point.y - t],
-      [e.point.x + t, e.point.y + t],
-    ];
-    const id = trailIn(box);
-    if (id) opts.onSelect(id);
+    const pick = pickAt(e.point.x, e.point.y);
+    if (pick?.point) openPopup(pick.point);
+    else if (pick?.trail) opts.onSelect(pick.trail);
   });
 
-  /** The id of the visible trail drawn inside `box` on the canvas. */
-  function trailIn(box: [[number, number], [number, number]]): string | undefined {
-    const hit = map.queryRenderedFeatures(box, { layers: [LAYER_TRAILS] })[0];
-    return hit?.properties.id as string | undefined;
+  /** What an orbit click at (x, y) on the canvas opens or selects, once nothing is
+   *  selected. The click and the hover preview both ask here, so they agree. */
+  function pickAt(x: number, y: number): { point?: NationalPoint; trail?: string } | null {
+    // A point first, as in 2D, where a pin swallows the click.
+    const point = pointAt(x, y, 6);
+    if (point) return { point };
+    const trail = trailIn(x, y, tolerance());
+    return trail ? { trail } : null;
+  }
+
+  /**
+   * The id of the visible trail drawn nearest (x, y) on the canvas, within `r`
+   * pixels either way. Nearest, as trailAt() picks in 2D, rather than whichever the
+   * query happens to list first — which the hover preview would otherwise show
+   * flipping between two trails that run close together.
+   *
+   * Measured against the geometry the query returns, which is only the tiles in
+   * the box, so a long trail costs no more than a short one.
+   */
+  function trailIn(x: number, y: number, r: number): string | undefined {
+    const hits = map.queryRenderedFeatures([[x - r, y - r], [x + r, y + r]], { layers: [LAYER_TRAILS] });
+    if (hits.length <= 1) return hits[0]?.properties.id as string | undefined;
+    const at = L.point(x, y);
+    let best: string | undefined;
+    let bestDistance = Infinity;
+    for (const hit of hits) {
+      const { geometry } = hit;
+      const lines =
+        geometry.type === 'LineString'
+          ? [geometry.coordinates]
+          : geometry.type === 'MultiLineString'
+            ? geometry.coordinates
+            : [];
+      for (const line of lines) {
+        let previous: L.Point | null = null;
+        for (const [lon, lat] of line) {
+          const p = map.project([lon, lat]);
+          const current = L.point(p.x, p.y);
+          const d = previous
+            ? L.LineUtil.pointToSegmentDistance(at, previous, current)
+            : at.distanceTo(current);
+          if (d < bestDistance) {
+            bestDistance = d;
+            best = hit.properties.id as string;
+          }
+          previous = current;
+        }
+      }
+    }
+    return best;
   }
 
   // While walking, the pointer looks around and a captured mouse has no cursor, so
@@ -370,10 +426,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
    *  inside the crosshair's ticks counts, not only its ring. */
   function aimedTrail(): string | undefined {
     const canvas = map.getCanvas();
-    const x = canvas.clientWidth / 2;
-    const y = canvas.clientHeight / 2;
-    const r = 12;
-    const id = trailIn([[x - r, y - r], [x + r, y + r]]);
+    const id = trailIn(canvas.clientWidth / 2, canvas.clientHeight / 2, 12);
     return id === getScene().selectedId ? undefined : id;
   }
 
@@ -463,12 +516,65 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     return hud.tap();
   }
 
-  for (const layer of [LAYER_POINTS, LAYER_TRAILS]) {
-    map.on('mouseenter', layer, () => {
-      if (mode === 'orbit') map.getCanvas().style.cursor = 'pointer';
+  // -- hover preview -------------------------------------------------------------
+
+  // What an orbit click at the mouse would pick, shown before the click: the same
+  // preview as 2D (see syncHover in main.ts), drawn with two filtered layers. Its
+  // state is declared with the rest, above: the first syncTrails() already asks.
+
+  /** Coalesces the mouse moves and state changes of one frame into one syncHover. */
+  function scheduleHover(): void {
+    if (hoverFrame) return;
+    hoverFrame = requestAnimationFrame(() => {
+      hoverFrame = 0;
+      syncHover();
     });
-    map.on('mouseleave', layer, () => (map.getCanvas().style.cursor = ''));
   }
+
+  /** The single place the 3D hover preview is derived, by the orbit click's rules:
+   *  nothing new while a popup is open or a trail is selected, then pickAt(). Walking
+   *  aims with the crosshair instead, and a moving camera is not about to click. */
+  function syncHover(): void {
+    const quiet =
+      mode !== 'orbit' ||
+      tween !== null ||
+      map.isMoving() ||
+      !canHover() ||
+      (popup?.isOpen() ?? false) ||
+      getScene().selectedId !== null;
+    const at = quiet ? null : hoverAt;
+    const pick = at ? pickAt(at.x, at.y) : null;
+    const trail = pick?.trail ?? null;
+    const pointIndex = pick?.point ? points.indexOf(pick.point) : null;
+    if (trail !== hoveredTrail) {
+      hoveredTrail = trail;
+      map.setFilter(LAYER_TRAIL_HOVER, selectedFilter(trail));
+    }
+    if (pointIndex !== hoveredPoint) {
+      hoveredPoint = pointIndex;
+      map.setFilter(LAYER_POINT_HOVER, hoveredPointFilter(pointIndex));
+    }
+    // Walking owns the cursor while in walk or playback (style.css).
+    if (mode === 'orbit') map.getCanvas().style.cursor = pick ? 'pointer' : '';
+    const name = pick?.point
+      ? pick.point.name || pick.point.code
+      : getScene().trails.find((t) => t.id === pick?.trail)?.name;
+    if (at && name) hoverLabel.show(name, at.x, at.y);
+    else hoverLabel.hide();
+  }
+
+  map.on('mousemove', (e: MapMouseEvent) => {
+    // Only the canvas: over a popup or a marker there is nothing to pick through.
+    hoverAt = e.originalEvent.target === map.getCanvas() ? { x: e.point.x, y: e.point.y } : null;
+    scheduleHover();
+  });
+  map.on('mouseout', () => {
+    hoverAt = null;
+    scheduleHover();
+  });
+  map.on('movestart', scheduleHover);
+  // The mouse has not moved, but the terrain has under it.
+  map.on('moveend', scheduleHover);
 
   map.on('dragstart', () => {
     if (mode === 'orbit') opts.onStopFollowing();
@@ -499,6 +605,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     map.setMaxPitch(WALK_MAX_PITCH);
     map.setCenterClampedToGround(false);
     map.getCanvas().style.cursor = '';
+    scheduleHover();
   }
 
   function orbitLimits(): void {
@@ -661,6 +768,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     // A popup opened while walking would otherwise stay behind in orbit.
     closePopup();
     syncAim();
+    scheduleHover();
   }
 
   function toggleGyro(): void {
@@ -752,7 +860,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       map.removeSource(SRC_BASEMAP);
       map.addSource(SRC_BASEMAP, basemapSource(basemapById(id)));
       // Back underneath everything else.
-      map.addLayer({ id: LAYER_BASEMAP, type: 'raster', source: SRC_BASEMAP }, LAYER_TRAILS);
+      map.addLayer({ id: LAYER_BASEMAP, type: 'raster', source: SRC_BASEMAP }, LAYER_TRAIL_HOVER);
     },
     syncTrails,
     syncPoints,
@@ -830,6 +938,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       hud.destroy();
       resizer.disconnect();
       cancelAnimationFrame(pending);
+      cancelAnimationFrame(hoverFrame);
       locationMarker.remove();
       // Frees the GL context and its tile textures. The module stays cached, so
       // opening 3D again costs no download.

@@ -195,6 +195,8 @@ export type PointsLayer = {
   layer: L.LayerGroup;
   /** Adds and removes markers until exactly the points not in `hidden` are drawn. */
   sync(hidden: ReadonlySet<string>): void;
+  /** Rings the pin a click would open, or no pin for null. */
+  setHovered(code: string | null): void;
 };
 
 /**
@@ -215,6 +217,9 @@ export function createPointsLayer(
   map: L.Map,
   points: NationalPoint[],
   onPinClick: (point: NationalPoint) => void,
+  /** The pin under the mouse, or null once it leaves. Needed apart from the map's
+   *  mousemove, which cannot tell a pin from the map beneath it. */
+  onPinHover: (point: NationalPoint | null) => void,
 ): PointsLayer {
   map.createPane(PIN_PANE).style.zIndex = PIN_PANE_Z_INDEX;
   const group = L.layerGroup();
@@ -233,6 +238,7 @@ export function createPointsLayer(
   // Keyed on 지점번호, which parseNationalPoints has already deduplicated, so it is
   // unique by construction — and it is the same string Settings.hiddenPoints holds.
   const markers = new Map<string, L.Marker>();
+  let hoveredCode: string | null = null;
 
   for (const point of points) {
     const marker = L.marker([point.lat, point.lon], {
@@ -260,8 +266,11 @@ export function createPointsLayer(
       // to the front: Leaflet's default riseOffset is only 250.
       zIndexOffset: point.name ? 1000 : 0,
       riseOffset: 2000,
-      title: point.name || point.code,
-    }).on('click', () => onPinClick(point));
+      // No title: the hover label main.ts shows names the pin already, sooner.
+    })
+      .on('click', () => onPinClick(point))
+      .on('mouseover', () => onPinHover(point))
+      .on('mouseout', () => onPinHover(null));
     markers.set(point.code, marker);
   }
 
@@ -277,6 +286,16 @@ export function createPointsLayer(
         if (show) group.addLayer(marker);
         else group.removeLayer(marker);
       }
+    },
+    setHovered(code) {
+      if (code === hoveredCode) return;
+      const ring = (c: string | null, on: boolean) => {
+        const el = c === null ? undefined : markers.get(c)?.getElement();
+        el?.classList.toggle('is-hovered', on);
+      };
+      ring(hoveredCode, false);
+      ring(code, true);
+      hoveredCode = code;
     },
   };
 }

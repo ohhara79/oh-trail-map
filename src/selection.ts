@@ -17,6 +17,17 @@ export const HALO_RINGS = [
 ] as const;
 
 /**
+ * The casing drawn under the trail a click would pick, while the mouse hovers
+ * near it: the selection's white ring, fainter and without the pulse, so a
+ * preview never reads as a selection. Shared with the 3D view's hover layer.
+ */
+export const HOVER_RING = {
+  color: '#ffffff',
+  weight: TRAIL_WEIGHT + CASING_PAD,
+  opacity: 0.6,
+} as const;
+
+/**
  * How close a click has to land, in CSS pixels. Generous compared to the 2px
  * a trail is actually drawn at: the line is what you aim for, not what you can
  * realistically hit.
@@ -82,13 +93,66 @@ export class Halo {
 }
 
 /**
+ * The faint casing under the trail a click would pick. Its own group, apart from
+ * Halo, so hovering can never disturb the selection's casings or their pulse.
+ */
+export class HoverHalo {
+  private readonly group = L.layerGroup();
+  private trail: Trail | null = null;
+
+  constructor(map: L.Map) {
+    this.group.addTo(map);
+  }
+
+  /** Draws the casing under `trail`, or clears it for null. Called on every
+   *  mouse move, so the same trail again costs nothing. */
+  show(trail: Trail | null): void {
+    if (trail === this.trail) return;
+    this.trail = trail;
+    this.group.clearLayers();
+    if (!trail) return;
+    for (const seg of trail.segments) {
+      L.polyline(
+        seg.map((p) => [p.lat, p.lon] as L.LatLngExpression),
+        { ...HOVER_RING, lineJoin: 'round', lineCap: 'round', interactive: false },
+      ).addTo(this.group);
+    }
+    // Beneath every trail, not just the hovered one: bringing that trail forward
+    // instead would reorder the trails themselves, and leave them reordered after
+    // the mouse moved on.
+    this.group.eachLayer((l) => (l as L.Polyline).bringToBack());
+  }
+}
+
+/**
+ * Each trail's points in absolute pixels at one zoom. Hovering runs trailAt on
+ * every mouse move, and projecting ~100k points from lat/lon each time would cost
+ * a frame; at a fixed zoom they only need projecting once, and panning moves the
+ * pointer across them rather than them across the screen.
+ */
+const projected = new WeakMap<Trail, { zoom: number; segments: L.Point[][] }>();
+
+function projectedSegments(map: L.Map, trail: Trail, zoom: number): L.Point[][] {
+  let cached = projected.get(trail);
+  if (!cached || cached.zoom !== zoom) {
+    cached = {
+      zoom,
+      segments: trail.segments.map((seg) => seg.map((p) => map.project([p.lat, p.lon], zoom))),
+    };
+    projected.set(trail, cached);
+  }
+  return cached.segments;
+}
+
+/**
  * The visible trail nearest `point`, or null past the tolerance.
  *
  * A geometric test rather than a listener per polyline: the strokes are 2px
  * wide, so hit-testing them exactly is a poor target, and widening one with an
  * invisible
  * hit line per segment would permanently double the SVG node count — a cost
- * paid on every pan and zoom to save arithmetic that only runs on click.
+ * paid on every pan and zoom to save arithmetic that only runs on click and
+ * hover.
  * Nearest-wins also settles overlapping trails by proximity rather than by
  * whichever happens to be drawn last.
  */
@@ -96,6 +160,10 @@ export function trailAt(map: L.Map, point: L.Point, trails: Trail[]): Trail | nu
   const limit = tolerance();
   let best: Trail | null = null;
   let bestDistance = limit;
+  // The same pixels the projected trails are in. Distances come out the same as in
+  // container pixels: the two differ only by an offset.
+  const zoom = map.getZoom();
+  const pixel = map.project(map.containerPointToLatLng(point), zoom);
 
   for (const trail of trails) {
     if (!trail.visible || !trail.bounds.isValid()) continue;
@@ -118,19 +186,18 @@ export function trailAt(map: L.Map, point: L.Point, trails: Trail[]): Trail | nu
       continue;
     }
 
-    for (const seg of trail.segments) {
+    for (const seg of projectedSegments(map, trail, zoom)) {
       let previous: L.Point | null = null;
-      for (const p of seg) {
-        const current = map.latLngToContainerPoint([p.lat, p.lon]);
+      for (const current of seg) {
         if (previous) {
-          const d = L.LineUtil.pointToSegmentDistance(point, previous, current);
+          const d = L.LineUtil.pointToSegmentDistance(pixel, previous, current);
           if (d < bestDistance) {
             bestDistance = d;
             best = trail;
           }
         } else if (seg.length === 1) {
           // A one-point segment has no line to measure against.
-          const d = point.distanceTo(current);
+          const d = pixel.distanceTo(current);
           if (d < bestDistance) {
             bestDistance = d;
             best = trail;

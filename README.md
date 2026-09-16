@@ -45,6 +45,11 @@ npm run preview
   either is selected, a click anywhere on the map (2D or 3D orbit) only clears
   it, so a near miss never jumps to a neighbouring trail or point. A row in the
   trail list still selects its trail directly.
+- With a mouse, hovering shows what a click would pick before you click, in 2D
+  and 3D orbit: a faint white casing under the trail, or a ring around the
+  point, with its name beside the pointer. It follows the click's own rules —
+  the nearest trail within reach, a point over a trail, and nothing while
+  something is selected, since that click only clears.
 - A **3D** button (top-right) turns the map into a MapLibre GL terrain view with
   the same basemap, trails and points:
   - It opens in orbit, to tilt and rotate from above.

@@ -363,6 +363,39 @@ button:hover { background: #f5f6f8; }
   paint-order: stroke;
 }
 
+/* The pin a click would open, while the mouse is on it (see syncHover in
+   main.ts): its white ring widened past the icon box, which is why the <svg> may
+   overflow, and edged dark so it reads on a pale basemap too. The 3D view draws the
+   same ring as the point-hover layer. */
+.point-pin.is-hovered svg {
+  overflow: visible;
+  filter: drop-shadow(0 0 1px rgba(31, 35, 40, .8));
+}
+.point-pin.is-hovered .point-pin-body { stroke-width: 7px; }
+
+/* A trail within a click's reach, which Leaflet cannot know to give a pointer: the
+   hit test is geometric (trailAt), not the polyline's own. Two classes, to beat
+   leaflet.css's .leaflet-grab. */
+.leaflet-container.map-pick { cursor: pointer; }
+
+/* The name of what a click would pick, beside the mouse, in both views. Placed by
+   transform from hoverLabel.ts. Dark, so it reads on satellite as well as on the
+   pale basemaps. Above the pins and trails, below Leaflet's popups (700) and its
+   controls; never in the way, since the mouse passes straight through it. */
+.map-hover-label {
+  position: absolute; left: 0; top: 0; z-index: 650;
+  /* Trail names run to a dozen waypoints, so a long one wraps rather than being
+     cut to the part every trail from the same car park shares. */
+  width: max-content; max-width: 320px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(31, 35, 40, .88);
+  color: #fff;
+  font-size: 12px; line-height: 1.4;
+  pointer-events: none;
+}
+.map-hover-label[hidden] { display: none; }
+
 /* Leaflet's popup at the app's own weight: its default is a 12px radius and a
    heavy shadow, against 6px and a hairline border everywhere else here. */
 .leaflet-popup-content-wrapper {
