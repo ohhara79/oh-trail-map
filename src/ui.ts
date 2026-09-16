@@ -47,7 +47,6 @@ export class Ui {
   private readonly list = el<HTMLUListElement>('trail-list');
   private readonly search = el<HTMLInputElement>('trail-search');
   private readonly toggleAll = el<HTMLInputElement>('trail-all');
-  private readonly expandAll = el<HTMLButtonElement>('trail-expand-all');
   private readonly empty = el('trail-empty');
   private readonly count = el('trail-count');
   private readonly notices = el('notices');
@@ -58,10 +57,6 @@ export class Ui {
   private readonly selectionName = el('selection-name');
   private readonly selectionStats = el('selection-stats');
   private readonly selectionWalk = el<HTMLButtonElement>('selection-walk');
-
-  /** Trail ids whose name is shown in full rather than clipped to one line.
-   *  renderTrails() rebuilds every row, so this cannot live on the elements. */
-  private readonly expandedNames = new Set<string>();
 
   /** Last rendered selection, so a row is only scrolled into view when the
    *  selection actually changed — not on every unrelated re-render. */
@@ -94,10 +89,6 @@ export class Ui {
     );
 
     this.search.addEventListener('input', () => this.cb.onFilterChange());
-
-    this.expandAll.addEventListener('click', () =>
-      this.setAllNamesExpanded(this.expandedNames.size < this.list.children.length),
-    );
 
     this.compass.addEventListener('click', () => this.cb.onCompass());
     this.locate.addEventListener('click', () => this.cb.onLocate());
@@ -161,12 +152,6 @@ export class Ui {
     const scroll = this.panelBody.scrollTop;
     this.list.replaceChildren();
 
-    // Expanded names outlive a rebuild, but not the trail itself. Pruned
-    // against every trail rather than the matches: a name expanded and then
-    // filtered out must still be expanded once the query is cleared.
-    const ids = new Set(trails.map((t) => t.id));
-    for (const id of this.expandedNames) if (!ids.has(id)) this.expandedNames.delete(id);
-
     // The query lives in the input and nowhere else, so a render never needs to
     // be told about it. The filter narrows the list only — every trail stays on
     // the map.
@@ -196,20 +181,12 @@ export class Ui {
         li.className = 'selected';
         li.setAttribute('aria-current', 'true');
       }
-      // The whole row expands, selects and zooms, so there is something to aim at
-      // besides the name, and the name and the stats under it never answer the
-      // same click differently. Guarded rather than scoped to a sub-element: the
-      // checkbox and the ▶ button keep their own meaning.
+      // The whole row selects and zooms, so there is something to aim at besides
+      // the name, and the name and the stats under it never answer the same click
+      // differently. Guarded rather than scoped to a sub-element: the checkbox and
+      // the ▶ button keep their own meaning.
       li.addEventListener('click', (e) => {
         if ((e.target as HTMLElement).closest('input, button')) return;
-        // Toggled unconditionally rather than only when the name overflows:
-        // unclamping a name that already fits changes nothing on screen, and
-        // measuring scrollWidth here would force a layout on every click.
-        const open = !this.expandedNames.has(trail.id);
-        if (open) this.expandedNames.add(trail.id);
-        else this.expandedNames.delete(trail.id);
-        name.classList.toggle('expanded', open);
-        this.syncExpandAll();
         this.cb.onSelect(trail.id);
         this.cb.onZoomTo(trail.id);
       });
@@ -232,9 +209,8 @@ export class Ui {
       const name = document.createElement('div');
       name.className = 'trail-name';
       name.replaceChildren(highlightName(trail.name.normalize('NFC'), tokens));
-      name.title = `${trail.name} — click to zoom and show the full name`;
+      name.title = `${trail.name} — click to zoom`;
       name.dataset.trailId = trail.id;
-      name.classList.toggle('expanded', this.expandedNames.has(trail.id));
       const stats = document.createElement('div');
       stats.className = 'trail-stats';
       stats.textContent = this.statsLine(trail);
@@ -253,7 +229,6 @@ export class Ui {
       this.list.append(li);
     }
 
-    this.syncExpandAll();
     this.panelBody.scrollTop = scroll;
     this.renderSelection(trails.find((t) => t.id === selectedId) ?? null);
 
@@ -290,34 +265,11 @@ export class Ui {
     this.selectionWalk.setAttribute('aria-label', `Walk ${trail.name} in 3D`);
   }
 
-  /**
-   * Label and visibility are derived from the rows, like the master checkbox
-   * above: a partly expanded list offers "Expand all" and finishes the job.
-   */
-  private syncExpandAll(): void {
-    const total = this.list.children.length;
-    this.expandAll.hidden = total === 0;
-    this.expandAll.textContent =
-      total > 0 && this.expandedNames.size >= total ? 'Collapse all' : 'Expand all';
-  }
-
   /** The ids on screen, read back off the rows rather than cached alongside them. */
   private renderedIds(): string[] {
     return Array.from(this.list.querySelectorAll<HTMLElement>('.trail-name'))
       .map((node) => node.dataset.trailId ?? '')
       .filter(Boolean);
-  }
-
-  /** Walks the rendered rows instead of re-rendering, so the panel does not scroll. */
-  private setAllNamesExpanded(open: boolean): void {
-    this.expandedNames.clear();
-    for (const node of this.list.querySelectorAll<HTMLElement>('.trail-name')) {
-      const id = node.dataset.trailId;
-      if (!id) continue;
-      if (open) this.expandedNames.add(id);
-      node.classList.toggle('expanded', open);
-    }
-    this.syncExpandAll();
   }
 
   private statsLine(trail: Trail): string {

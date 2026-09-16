@@ -139,10 +139,7 @@ button:hover { background: #f5f6f8; }
 #point-list li:last-child { border-bottom: 0; }
 #trail-list li:not(.selected):hover,
 #point-list li:not(.selected):hover { background: #f7f8fa; border-radius: 4px; }
-.trail-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Clicking a row drops the clamp so the whole thing is readable; anywhere
-   covers the filename fallback, which is often one unbroken token. */
-.trail-name.expanded { white-space: normal; overflow: visible; overflow-wrap: anywhere; }
+.trail-name { font-weight: 500; overflow-wrap: anywhere; }
 .trail-name mark,
 #point-list mark { background: #fff3a3; color: inherit; border-radius: 2px; }
 .trail-stats { font-size: 11px; color: var(--muted); }
@@ -154,30 +151,19 @@ button:hover { background: #f5f6f8; }
 .trail-walk:hover { color: var(--accent); background: #eaf2fd; }
 .trail-head, .point-head { margin-bottom: 8px; }
 .trail-head h2, .point-head h2 { margin: 0; }
-.trail-head button,
-.point-head button { font-size: 12px; padding: 2px 6px; color: var(--muted); }
 
 /* A point row is 이름 - 지점번호 over one muted line of everything else. Both are
-   clipped by default, because 272 rows have to stay scannable, and both unclamp on
-   demand. A bare 지점번호 never needed that — it is fixed-width — but a title with
-   an 이름 in front of it overruns a 320px drawer, and that drawer is a phone, where
-   the hover tooltip carrying the full text cannot be reached at all.
+   always drawn in full, wrapping where they must: a title with an 이름 in front of
+   it overruns a 320px drawer, and that drawer is a phone, where a hover tooltip
+   carrying the full text cannot be reached at all.
 
    Not .point-code: that class keeps the tabular figures the popup's code-only
-   line wants, which are wrong under a title that is mostly Hangul. */
-#point-list .point-title {
-  font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.point-detail {
-  font-size: 11px; color: var(--muted);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-/* Clicking a row, or Expand all, drops the clamp on both of a row's lines; one
-   class on the <li> so the two can never disagree. `anywhere` because a 지점번호
-   and a 시/군/구 are single unbroken tokens with nowhere else to break. */
-#point-list li.expanded :is(.point-title, .point-detail) {
-  white-space: normal; overflow: visible; overflow-wrap: anywhere;
-}
+   line wants, which are wrong under a title that is mostly Hangul.
+
+   `anywhere` on both lines because a 지점번호 and a 시/군/구 are single unbroken
+   tokens with nowhere else to break. */
+#point-list .point-title { font-weight: 500; overflow-wrap: anywhere; }
+.point-detail { font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
 
 .options { display: flex; flex-direction: column; gap: 4px; }
 .options label { display: flex; align-items: center; gap: 8px; cursor: pointer; }

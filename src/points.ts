@@ -85,8 +85,8 @@ export type PointRow = {
    * spent is the width the title now runs out of.
    */
   title: string;
-  /** 사물유형 · 시/도 시/군/구. 이름 leads the title now, and an 11px line that is
-   *  clipped until the row is expanded should not spend its width repeating it. */
+  /** 사물유형 · 시/도 시/군/구. 이름 leads the title now, and an 11px line under it
+   *  should not spend its width repeating it. */
   detail: string;
   /** Both drawn lines joined, for the panel filter. Built from the strings that
    *  are actually drawn, so what a query matches is what gets a <mark> over it. */

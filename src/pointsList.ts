@@ -40,17 +40,8 @@ export class PointsList {
   private readonly toggleAll = el<HTMLInputElement>('point-all');
   private readonly empty = el('point-empty');
   private readonly count = el('point-count');
-  private readonly expandAll = el<HTMLButtonElement>('point-expand-all');
   /** What syncSelection last drew, so scrollIntoView only runs on a change. */
   private lastSelected: string | null = null;
-  /**
-   * 지점번호 of every row drawn in full rather than clipped to two lines. Here and
-   * not on the elements because rebuild() replaces every <li> when the filter changes.
-   *
-   * Never pruned, unlike ui.ts's expandedNames: trails are files that come and go,
-   * while `rows` is fixed at boot, so a code in here always still names a row.
-   */
-  private readonly expanded = new Set<string>();
 
   constructor(
     private readonly rows: readonly PointRow[],
@@ -63,10 +54,6 @@ export class PointsList {
     );
 
     this.search.addEventListener('input', () => this.cb.onFilterChange());
-
-    this.expandAll.addEventListener('click', () =>
-      this.setAllExpanded(this.expandedRowCount() < this.list.children.length),
-    );
 
     // Escape is handled here rather than in ui.ts's window listener, which knows
     // about one filter and should not have to learn about a second. Stopping the
@@ -107,16 +94,12 @@ export class PointsList {
     // changes what a row *says*, and rebuilding 272 rows to say it would throw the
     // focus of whoever just pressed Space out to <body> — leaving them unable to
     // carry on down the list — and discard the panel's scroll position for
-    // nothing. The trail list makes the same trade in setAllNamesExpanded, for the
-    // same second reason.
+    // nothing.
     if (!this.sameRows(matches)) this.rebuild(matches, tokens);
 
     // On both paths, so a freshly built row and a re-synced one are set from the
     // hidden set and the selection by the same lines and can never drift apart.
     this.syncChecks(hidden, matches.length);
-    // On both paths too: the filter changes how many rows are on screen, so the
-    // button's label has to be re-derived even when sameRows skipped the rebuild.
-    this.syncExpandAll();
     // After rebuild(), never before: it restores the panel's scroll offset, and a
     // scrollIntoView run first would simply be undone by it.
     this.syncSelection(selected);
@@ -147,23 +130,12 @@ export class PointsList {
     for (const row of matches) {
       const li = document.createElement('li');
       li.dataset.pointCode = row.code;
-      // One class on the row, so the CSS reaches both of its lines and the title
-      // and the detail under it can never end up half-expanded.
-      li.classList.toggle('expanded', this.expanded.has(row.code));
-      // The whole row expands and goes to the point, so there is something to aim
+      // The whole row goes to the point, so there is something to aim
       // at besides a 13px dot on the map, and the title and the detail under it
       // never answer the same click differently. Guarded rather than scoped to a
       // sub-element: the checkbox keeps its own meaning.
       li.addEventListener('click', (e) => {
         if ((e.target as HTMLElement).closest('input, button')) return;
-        // Toggled unconditionally rather than only when the text overflows:
-        // unclamping a row that already fits changes nothing on screen, and
-        // measuring scrollWidth here would force a layout on every click.
-        const open = !this.expanded.has(row.code);
-        if (open) this.expanded.add(row.code);
-        else this.expanded.delete(row.code);
-        li.classList.toggle('expanded', open);
-        this.syncExpandAll();
         this.cb.onSelect(row.code);
       });
 
@@ -188,10 +160,8 @@ export class PointsList {
       const detail = document.createElement('div');
       detail.className = 'point-detail';
       detail.replaceChildren(highlightName(row.detail, tokens));
-      // Both lines are clipped to keep 272 rows scannable, so the full text has to
-      // be reachable: by clicking the row, on hover, and in the popup a click away.
-      title.title = `${row.title} — click to go there and show the full text`;
-      detail.title = `${row.detail} — click to go there and show the full text`;
+      title.title = `${row.title} — click to go there`;
+      detail.title = `${row.detail} — click to go there`;
       text.append(title, detail);
 
       li.append(visible, swatch, text);
@@ -239,41 +209,6 @@ export class PointsList {
         .querySelector(`li[data-point-code="${CSS.escape(selected)}"]`)
         ?.scrollIntoView({ block: 'nearest' });
     }
-  }
-
-  /**
-   * Rendered rows drawn in full, counted off the DOM like renderedCodes() rather
-   * than taken from `expanded.size`. The button acts on the rows on screen, so it
-   * has to be labelled from them: expanding three rows and then filtering to a
-   * fourth would otherwise offer "Collapse all" over a row that is still clipped.
-   */
-  private expandedRowCount(): number {
-    return Array.from(this.list.children).filter((li) => li.classList.contains('expanded'))
-      .length;
-  }
-
-  private syncExpandAll(): void {
-    const total = this.list.children.length;
-    this.expandAll.hidden = total === 0;
-    this.expandAll.textContent =
-      total > 0 && this.expandedRowCount() >= total ? 'Collapse all' : 'Expand all';
-  }
-
-  /**
-   * Walks the rendered rows instead of re-rendering, so the panel does not scroll.
-   *
-   * Scoped to those rows rather than clearing the set first, which is what keeps a
-   * row that was expanded, filtered away and then brought back still expanded.
-   */
-  private setAllExpanded(open: boolean): void {
-    for (const li of this.list.children) {
-      const code = (li as HTMLElement).dataset.pointCode;
-      if (!code) continue;
-      if (open) this.expanded.add(code);
-      else this.expanded.delete(code);
-      li.classList.toggle('expanded', open);
-    }
-    this.syncExpandAll();
   }
 
   /** The codes on screen, read back off the rows rather than cached alongside them. */

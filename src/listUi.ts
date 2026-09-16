@@ -8,11 +8,6 @@
  * rebuild-only-when-the-rows-change path are the point list's — and a class general
  * enough to cover both would take more parameters than either has code. What is here
  * instead is the part where a second implementation would be subtly, invisibly wrong.
- *
- * Expand all is the near miss: both lists have one, but the trail list clamps one
- * line and prunes a changing set of ids, while the point list clamps two lines off
- * one class and never prunes a fixed one. What they share is the label, and a label
- * is not worth a function.
  */
 
 /**
