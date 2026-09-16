@@ -46,8 +46,6 @@ const LOOK_RETURN_TAU = 0.8;
 const MIN_CLEARANCE = 1.0;
 /** Seconds for the descent from a jump's height down to eye height. */
 const DESCENT_TAU = 0.45;
-/** Playback looks slightly down, as you would walking a path. */
-const PLAYBACK_LOOK = -6;
 /** Free-walk speed in m/s, before running and height. Ten times a real walk: the
  *  mountain is kilometres across, and real pace makes crossing it a chore. */
 const MOVE_SPEED = 14;
@@ -140,11 +138,11 @@ export class FirstPerson {
       // Kept as an offset from the trail, so the view swings round to it smoothly
       // rather than snapping.
       this.yawOffset = angleDelta(this.followYaw, yaw);
-      this.lookOffset = look - PLAYBACK_LOOK;
     } else {
       this.rebaseYaw();
-      this.lookOffset = look;
     }
+    // The tilt is yours either way: only the gyroscope ever sets a base for it.
+    this.lookOffset = look;
     this.deviceRef = null;
   }
 
@@ -188,9 +186,8 @@ export class FirstPerson {
     // Whatever the phone reported is no longer part of the view, so the offsets
     // take over the whole direction and nothing jumps.
     const baseYaw = this.playback ? this.followYaw : this.steering ? this.headingYaw : 0;
-    const baseLook = this.playback ? PLAYBACK_LOOK : 0;
     this.yawOffset = angleDelta(baseYaw, this.pose.yaw);
-    this.lookOffset = on ? 0 : this.pose.look - baseLook;
+    this.lookOffset = on ? 0 : this.pose.look;
   }
 
   /** The smoothed ground height under the eye, in metres. */
@@ -223,10 +220,11 @@ export class FirstPerson {
   /**
    * The view direction is always base + offset. The base is what something other
    * than you says: nothing while walking, your heading while following your
-   * location, the trail ahead during playback, the phone's orientation when the
-   * gyroscope is on. The offset is your own turning
-   * from drags and keys. Keeping the two apart is what lets playback steer while
-   * you look around, and lets it drift back once you stop.
+   * location, the way the trail runs during playback, the phone's orientation when
+   * the gyroscope is on. Only the phone ever sets a base tilt — level is the view
+   * everything else starts from. The offset is your own turning from drags and
+   * keys. Keeping the two apart is what lets playback steer while you look around,
+   * and lets it drift back once you stop.
    */
   private frame(dt: number, now: number): void {
     const intent = this.controls.intent();
@@ -245,7 +243,6 @@ export class FirstPerson {
       const tangent = tangentBearing(playback.path, playback.s);
       this.followYaw += angleDelta(this.followYaw, tangent) * smooth(FOLLOW_TAU, dt);
       baseYaw = this.followYaw;
-      baseLook = PLAYBACK_LOOK;
     }
     const steering = this.steering && !playback;
     if (steering) {

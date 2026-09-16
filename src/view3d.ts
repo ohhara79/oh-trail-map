@@ -619,7 +619,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       } else {
         // Keep in sync with #crosshair3d, which marks this spot in orbit mode.
         const centre = map.getCenter();
-        const pose: Pose = { lat: centre.lat, lon: centre.lng, yaw: map.getBearing(), look: -10 };
+        const pose: Pose = { lat: centre.lat, lon: centre.lng, yaw: map.getBearing(), look: 0 };
         const ground = map.getCenterElevation();
         const eye = EYE_HEIGHTS[eyeIndex];
         walkLimits();
@@ -696,7 +696,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     }
     const start = sampleAt(path, 0);
     const ele = trail.segments[0]?.[0]?.ele ?? 0;
-    const pose: Pose = { ...start, yaw: 0, look: -10 };
+    const pose: Pose = { ...start, yaw: 0, look: 0 };
     if (!walker) {
       walker = startWalking(pose, JUMP_HEIGHT, ele);
     } else {
