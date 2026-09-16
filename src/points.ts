@@ -78,15 +78,15 @@ export type PointRow = {
    */
   code: string;
   /**
-   * The row's primary line: 이름 - 지점번호, falling back to 지점번호 - 지점번호
-   * for the 128 rows the source gives no 이름. The code is repeated rather than
-   * left alone so every row has the same two-part shape, and the 지점번호 — the
-   * one thing a sign in the field actually shows you — is always in the same
-   * place for the eye running down the list.
+   * The row's primary line: 이름 - 지점번호, or the 지점번호 alone for the 128 rows
+   * the source gives no 이름. The code was once repeated on those rows to give every
+   * row the same two-part shape, but a row with nothing before the dash has no two
+   * parts to line up — and since the 이름 moved in front, the width that repeat
+   * spent is the width the title now runs out of.
    */
   title: string;
-  /** 사물유형 · 시/도 시/군/구. 이름 leads the title now, and an 11px line clipped
-   *  to one row of a 272-row list should not spend its width repeating it. */
+  /** 사물유형 · 시/도 시/군/구. 이름 leads the title now, and an 11px line that is
+   *  clipped until the row is expanded should not spend its width repeating it. */
   detail: string;
   /** Both drawn lines joined, for the panel filter. Built from the strings that
    *  are actually drawn, so what a query matches is what gets a <mark> over it. */
@@ -108,15 +108,15 @@ export type PointRow = {
 export function pointRows(points: readonly NationalPoint[]): PointRow[] {
   return points.map((point) => {
     const region = [point.province, point.district].filter(Boolean).join(' ');
-    const title = `${point.name || point.code} - ${point.code}`.normalize('NFC');
+    // Outside the ternary, so both arms get it: the indices highlightName computes
+    // have to address the string that is drawn, whichever arm produced it.
+    const title = (point.name ? `${point.name} - ${point.code}` : point.code).normalize('NFC');
     const detail = [point.kind, region].filter(Boolean).join(' · ').normalize('NFC');
     return {
       code: point.code,
       title,
       detail,
       // The two lines as drawn, so a match is always somewhere a <mark> can go.
-      // An unnamed row carries its code twice, which costs nothing: matchesFolded
-      // only asks whether a token occurs.
       haystack: fold(`${title} ${detail}`),
       color: point.name ? PIN_COLOR_NAMED : PIN_COLOR_UNNAMED,
     };

@@ -28,11 +28,13 @@ npm run preview
   The grid codes are decoded to lat/lon at runtime — see
   `docs/plans/2026-09-13-01-national-point-markers.md` for the derivation.
 - The control panel lists every point, one row per 지점번호 titled
-  `이름 - 지점번호` — `지점번호 - 지점번호` where the source has no 이름 — with the
+  `이름 - 지점번호` — just the 지점번호 where the source has no 이름 — with the
   pin's colour and `사물유형 · 시/도 시/군/구` beneath it: a checkbox each, a
   master checkbox that shows or hides exactly the rows on screen, and a filter
   that matches every column — `관악 정자` finds the 정자 in 관악, `다사524` finds a
-  block of numbers, and a match is marked wherever it lands. Clicking a row goes
+  block of numbers, and a match is marked wherever it lands. Both lines are
+  clipped to one row; click a title, or **Expand all** in the heading, to show
+  them in full. Clicking a row goes
   to that point and opens its popup, in 2D or 3D. Whichever point has a popup
   open — from a row, a pin in 2D, a tap in 3D, or walking up to one — is the row
   the list highlights, the same light blue as a selected trail.
