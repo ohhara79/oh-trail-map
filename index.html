@@ -31,8 +31,9 @@
             <p id="trail-empty" class="hint">No GPX files in data/gpx.</p>
           </section>
 
-          <!-- Last, and not above Trails where the old single toggle sat: there are
-               272 of these rows, and .panel-body is the panel's only scroller. -->
+          <!-- The last list, and not above Trails where the old single toggle sat: there
+               are 272 of these rows, and .panel-body is the panel's only scroller. Only
+               the short author footer follows it. -->
           <section class="block grow-block">
             <div class="row point-head">
               <input id="point-all" type="checkbox" title="Show or hide every national point" aria-label="Show or hide every national point" />
@@ -45,6 +46,13 @@
             <ul id="point-list" lang="ko"></ul>
             <p id="point-empty" class="hint">No national points in data/national_points_w_name.tsv.</p>
           </section>
+
+          <!-- Filled from data/name.txt, email.txt and homepage.txt by applyAbout(). -->
+          <footer id="about" class="block about" hidden>
+            <p id="about-name"></p>
+            <p><a id="about-email"></a></p>
+            <p><a id="about-homepage" target="_blank" rel="noopener"></a></p>
+          </footer>
         </div>
       </aside>
 

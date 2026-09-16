@@ -31,6 +31,9 @@ import { loadTrailFiles } from './trailFiles';
 import type { View3d } from './view3d';
 // Imported rather than fetched, for the same reason as the TSV in points.ts.
 import rawTitle from '../data/title.txt?raw';
+import rawName from '../data/name.txt?raw';
+import rawEmail from '../data/email.txt?raw';
+import rawHomepage from '../data/homepage.txt?raw';
 
 const trails: Trail[] = [];
 let settings: Settings;
@@ -54,6 +57,32 @@ function applyTitle(): void {
   document.title = name;
   const heading = document.querySelector('.panel-head h1');
   if (heading) heading.textContent = name.replace('oh-trail-map', 'oh\u2011trail\u2011map');
+}
+
+/**
+ * The author, from data/name.txt, email.txt and homepage.txt, at the end of the
+ * panel. An empty file hides its line; all three empty leave the footer hidden.
+ */
+function applyAbout(): void {
+  const name = rawName.trim();
+  const email = rawEmail.trim();
+  const homepage = rawHomepage.trim();
+
+  const nameEl = document.getElementById('about-name')!;
+  nameEl.textContent = name;
+  nameEl.hidden = !name;
+
+  const emailEl = document.getElementById('about-email') as HTMLAnchorElement;
+  emailEl.textContent = email;
+  emailEl.href = `mailto:${email}`;
+  emailEl.parentElement!.hidden = !email;
+
+  const homepageEl = document.getElementById('about-homepage') as HTMLAnchorElement;
+  homepageEl.textContent = homepage;
+  homepageEl.href = homepage;
+  homepageEl.parentElement!.hidden = !homepage;
+
+  document.getElementById('about')!.hidden = !(name || email || homepage);
 }
 
 function findTrail(id: string): Trail | undefined {
@@ -95,6 +124,7 @@ function visibleBounds(): L.LatLngBounds {
 
 async function main(): Promise<void> {
   applyTitle();
+  applyAbout();
   settings = await loadSettings().catch(() => DEFAULT_SETTINGS);
 
   const handle = createMap(document.getElementById('map')!, settings.basemapId);

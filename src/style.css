@@ -65,13 +65,16 @@ body {
    ever scrolls. */
 .block { padding: 12px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .block:last-child { border-bottom: 0; }
+/* With no author footer, National Points is the last thing shown. */
+.block:has(+ .about[hidden]) { border-bottom: 0; }
 /* .panel-body is the one scroller in the panel, at every width: the trails
    section renders at its natural height and the panel scrolls past it. A nested
    scroller here only ever showed the row or two of spare height the other
    blocks left over, and emptying it in renderTrails discarded its scroll
    position on every re-render. The National Points block is last in the panel
    for exactly this reason: its 272 rows can run on as long as they like without
-   a scroller of their own, because there is nothing below them to push away. */
+   a scroller of their own, because there is nothing below them to push away but
+   the few lines of the author footer. */
 .grow-block { flex: 0 0 auto; display: flex; flex-direction: column; }
 .block h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; }
 
@@ -79,6 +82,12 @@ body {
 .grow { flex: 1; min-width: 0; }
 .muted { color: var(--muted); font-weight: 400; }
 .hint { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+/* anywhere, so a long homepage URL wraps rather than widening a 320px drawer. */
+.about { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.about p { margin: 0; }
+.about p + p { margin-top: 2px; }
+.about a { color: var(--accent); text-decoration: none; }
+.about a:hover { text-decoration: underline; }
 
 button {
   font: inherit;

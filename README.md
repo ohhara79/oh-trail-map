@@ -21,6 +21,9 @@ npm run preview
 - `data/title.txt` names the area, shown after the app name in the tab title and
   panel heading — `oh-trail-map (관악산)`. Bundled at build time; an
   empty file leaves just `oh-trail-map`.
+- `data/name.txt`, `data/email.txt` and `data/homepage.txt` are shown at the end of
+  the panel, the email as a mailto link and the homepage opening in a new tab.
+  Bundled at build time; an empty file drops its line.
 - Per-trail visibility toggle, a distinct colour, and distance / ascent / duration stats.
 - Basemap switcher: OSM Standard, OpenTopoMap, Esri satellite.
 - National Point Number emergency-location points from `data/national_points_w_name.tsv`, drawn as circles —
