@@ -255,8 +255,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     map.setFilter(LAYER_TRAILS, visible);
     for (const id of [...LAYER_HALOS, LAYER_TRAIL_SELECTED]) map.setFilter(id, selected);
     map.setPaintProperty(LAYER_TRAILS, 'line-opacity', trailOpacity(selectedId));
-    // A trail hidden, or the one aimed at now selected, changes what a tap would do.
-    syncAim();
+    // A trail hidden, or the one aimed at now selected, changes what a click or tap
+    // would do.
     scheduleHover();
   }
 
@@ -271,8 +271,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     map.setFilter(LAYER_POINTS, pointsFilter(hiddenPoints));
     // The same rule as 2D: a popup whose pin is gone points at nothing.
     if (popupPoint && hiddenPoints.has(popupPoint.code)) closePopup();
-    // Hiding the point under the crosshair changes what a tap would do.
-    syncAim();
+    // Hiding the point under the mouse or crosshair changes what a tap would do.
     scheduleHover();
   }
 
@@ -316,11 +315,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     const far = haversine(walker.pose, { lat, lon }) > FAR_JUMP;
     const ground = map.queryTerrainElevation([lon, lat]) ?? walker.groundHeight;
     walker.jump({ lat, lon }, far ? JUMP_HEIGHT : null, ground);
-    if (far) {
-      // The jump may leave the point it names far behind.
-      closePopup();
-      syncAim();
-    }
+    // The jump may leave the point it names far behind.
+    if (far) closePopup();
   }
 
   function openPopup(point: NationalPoint): void {
@@ -430,8 +426,17 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     return id === getScene().selectedId ? undefined : id;
   }
 
-  function syncAim(): void {
-    hud.setAimed(mode !== 'orbit' && (aimedPoint() !== undefined || aimedTrail() !== undefined));
+  /** What a tap while walking would open or select: the crosshair's aim, by
+   *  onSceneTap's rules. It and the hover preview both ask here, so they agree. */
+  function walkPickAt(): { point?: NationalPoint; trail?: string } | null {
+    // A tap only clears these, as in orbit. Not the selection during playback,
+    // where the trail playing is the selection.
+    if (popup?.isOpen()) return null;
+    if (mode === 'walk' && getScene().selectedId !== null) return null;
+    const point = aimedPoint();
+    if (point) return { point };
+    const trail = aimedTrail();
+    return trail ? { trail } : null;
   }
 
   /** Whether a popup at `lngLat` is still on screen from where you stand. MapLibre
@@ -450,7 +455,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   // The walk camera only jumps when it actually moves, so standing still costs no query.
   map.on('move', () => {
     if (mode === 'orbit') return;
-    syncAim();
+    scheduleHover();
     // Walked or looked away from the point: its popup has nothing left to point at.
     if (popup && !inWalkView(popup.getLngLat())) closePopup();
     openNearby();
@@ -501,16 +506,15 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       opts.onSelect(null);
       return true;
     }
-    const point = aimedPoint();
-    if (point) {
-      openPopup(point);
+    const pick = walkPickAt();
+    if (pick?.point) {
+      openPopup(pick.point);
       return true;
     }
     // Selected, the trail's name shows on the selection bar, with the ▶ that the
     // free mouse has to be able to reach.
-    const trail = aimedTrail();
-    if (trail) {
-      opts.onSelect(trail);
+    if (pick?.trail) {
+      opts.onSelect(pick.trail);
       return true;
     }
     return hud.tap();
@@ -518,9 +522,11 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
 
   // -- hover preview -------------------------------------------------------------
 
-  // What an orbit click at the mouse would pick, shown before the click: the same
-  // preview as 2D (see syncHover in main.ts), drawn with two filtered layers. Its
-  // state is declared with the rest, above: the first syncTrails() already asks.
+  // What a click would pick, shown before the click: the same preview as 2D (see
+  // syncHover in main.ts), drawn with two filtered layers. In orbit it follows the
+  // mouse; walking, it follows the crosshair, which is what a click or tap aims
+  // with there. Its state is declared with the rest, above: the first syncTrails()
+  // already asks.
 
   /** Coalesces the mouse moves and state changes of one frame into one syncHover. */
   function scheduleHover(): void {
@@ -531,19 +537,30 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     });
   }
 
-  /** The single place the 3D hover preview is derived, by the orbit click's rules:
-   *  nothing new while a popup is open or a trail is selected, then pickAt(). Walking
-   *  aims with the crosshair instead, and a moving camera is not about to click. */
+  /**
+   * The single place the 3D hover preview is derived, and the crosshair's aimed
+   * look with it. In orbit, by the click's rules: nothing new while a popup is open
+   * or a trail is selected, then pickAt() at the mouse, and nothing while the map
+   * moves, since a drag is not about to click. Walking, walkPickAt() at the
+   * crosshair: no mouse is needed, so a phone gets it too, and moving is exactly
+   * when the aim changes.
+   */
   function syncHover(): void {
-    const quiet =
-      mode !== 'orbit' ||
-      tween !== null ||
-      map.isMoving() ||
-      !canHover() ||
-      (popup?.isOpen() ?? false) ||
-      getScene().selectedId !== null;
-    const at = quiet ? null : hoverAt;
-    const pick = at ? pickAt(at.x, at.y) : null;
+    let at: { x: number; y: number } | null = null;
+    let pick: { point?: NationalPoint; trail?: string } | null = null;
+    if (tween) {
+      // Nothing to pick mid-flight.
+    } else if (mode === 'orbit') {
+      const quiet =
+        map.isMoving() || !canHover() || (popup?.isOpen() ?? false) || getScene().selectedId !== null;
+      at = quiet ? null : hoverAt;
+      pick = at ? pickAt(at.x, at.y) : null;
+    } else {
+      const canvas = map.getCanvas();
+      at = { x: canvas.clientWidth / 2, y: canvas.clientHeight / 2 };
+      pick = walkPickAt();
+    }
+    hud.setAimed(mode !== 'orbit' && pick !== null);
     const trail = pick?.trail ?? null;
     const pointIndex = pick?.point ? points.indexOf(pick.point) : null;
     if (trail !== hoveredTrail) {
@@ -724,6 +741,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
           () => {
             tween = null;
             orbitLimits();
+            scheduleHover();
           },
         );
       } else {
@@ -757,6 +775,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
           () => {
             tween = null;
             walker = startWalking(pose, eye, ground);
+            // The preview held off during the flight, both ways.
+            scheduleHover();
           },
         );
       }
@@ -767,7 +787,6 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     syncSteering();
     // A popup opened while walking would otherwise stay behind in orbit.
     closePopup();
-    syncAim();
     scheduleHover();
   }
 
@@ -838,7 +857,6 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     syncSteering();
     // The jump may leave the point it names far behind.
     closePopup();
-    syncAim();
   }
 
   // Escape undoes the most local thing first: playback back to walking, walking
@@ -920,7 +938,6 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       // the marker, so it reads the same either way.
       closePopup();
       openPopup(point);
-      syncAim();
     },
     walkTrail,
     viewFor2d() {

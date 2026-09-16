@@ -600,8 +600,10 @@ button:hover { background: #f5f6f8; }
 
 /* In orbit, where Walk will put you: walking starts at the map centre, facing
    screen-up (see setMode in view3d.ts), so the longer tick is the way you will face.
-   While walking, what a tap aims at: data-aimed lights it up over a point (see
-   onSceneTap in view3d.ts). Clicks pass through to the scene under it. */
+   While walking, what a tap aims at: data-aimed lights it up over a point or
+   trail a tap would pick, along with the hover preview and its name, and not
+   while a tap would only clear (see syncHover in view3d.ts). Clicks pass through
+   to the scene under it. */
 #crosshair3d {
   display: none;
   position: absolute; z-index: 900;

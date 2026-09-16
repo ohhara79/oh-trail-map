@@ -49,7 +49,9 @@ npm run preview
   and 3D orbit: a faint white casing under the trail, or a ring around the
   point, with its name beside the pointer. It follows the click's own rules —
   the nearest trail within reach, a point over a trail, and nothing while
-  something is selected, since that click only clears.
+  something is selected, since that click only clears. While walking, the
+  crosshair does the same for what it aims at, with a mouse or on a phone,
+  since that is what a click or tap picks there.
 - A **3D** button (top-right) turns the map into a MapLibre GL terrain view with
   the same basemap, trails and points:
   - It opens in orbit, to tilt and rotate from above.
