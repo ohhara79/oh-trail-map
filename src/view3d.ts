@@ -15,6 +15,7 @@ import {
   Map as MlMap,
   Marker,
   NavigationControl,
+  Point,
   Popup,
   ScaleControl,
   setWorkerUrl,
@@ -139,11 +140,13 @@ const ORBIT_FOG = 0.5;
 const WALK_FOG = 0.9;
 /** Eye heights the HUD cycles through: standing, a tree top, a drone. */
 const EYE_HEIGHTS = [1.7, 20, 80];
-/** How far the walking crosshair reaches, in metres, per eye height. Near the
- *  horizon a few pixels span kilometres, so without it the crosshair picks a
- *  hairline across the valley over the trail in front of you. Higher up you look
- *  down at ground further off, so the reach grows with the eye. */
-const REACH = [50, 100, 200];
+/** How far the walking crosshair reaches for a trail, in metres, per eye height.
+ *  A trail far off is under a pixel tall, and what picks it is the crosshair's
+ *  12px tolerance — which, once its top edge passes the horizon, spans kilometres
+ *  of ground, so a tap on bare ground would pick a trail across the valley. From
+ *  eye height h that happens about 70·h metres out. A ball needs no reach: the ray
+ *  itself picks it, as long as the ground does not hide it (inSight). */
+const TRAIL_REACH = [150, 1000, 5000];
 /** A jump to a trail further away than this descends from above, so the terrain
  *  there has a moment to load before you are standing in it. */
 const FAR_JUMP = 200;
@@ -469,13 +472,30 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     const { pose } = walker;
     const halfHeight = map.getCanvas().clientHeight / 2;
     const pad = Math.atan((8 * Math.tan((WALK_FOV * Math.PI) / 360)) / halfHeight);
-    return balls.pick({ ...pose, alt: walker.altitude }, pose.yaw, pose.look, pad, inReach);
+    return balls.pick({ ...pose, alt: walker.altitude }, pose.yaw, pose.look, pad, inSight);
   }
 
-  /** Whether a spot is within the crosshair's reach: see REACH. Measured from where
-   *  you stand on the ground, so a jump's descent does not change it. */
-  function inReach(lat: number, lon: number): boolean {
-    return !walker || haversine(walker.pose, { lat, lon }) <= REACH[eyeIndex];
+  /** Whether the ball centred `alt` metres up over (lat, lon) can be seen: a ray cast
+   *  through the terrain at it meets no ground more than a ball's radius short of
+   *  it. The same tiles drawn are the ones cast against, so a ridge that hides the
+   *  ball on screen blocks it here too, however far off. The centre floats over its
+   *  spot, so on open ground the ray passes over it and meets the slope behind. */
+  function inSight(lat: number, lon: number, alt: number): boolean {
+    const p = balls.project(lon, lat, alt);
+    if (!walker || !p || !map.terrain) return true;
+    const ground = map._camera.transform
+      .screenTerrainPointToMercatorCoordinate(new Point(p.x, p.y), map.terrain)
+      ?.toLngLat();
+    if (!ground) return true;
+    const { pose } = walker;
+    return haversine(pose, { lat: ground.lat, lon: ground.lng }) >= haversine(pose, { lat, lon }) - BALL_RADIUS;
+  }
+
+  /** Whether a spot is within the crosshair's reach for a trail: see TRAIL_REACH.
+   *  Measured from where you stand on the ground, so a jump's descent does not
+   *  change it. */
+  function inTrailReach(lat: number, lon: number): boolean {
+    return !walker || haversine(walker.pose, { lat, lon }) <= TRAIL_REACH[eyeIndex];
   }
 
   /** The trail under the crosshair and within reach, unless it is already the
@@ -483,7 +503,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
    *  hairline, so anywhere inside the crosshair's ticks counts, not only its ring. */
   function aimedTrail(): string | undefined {
     const canvas = map.getCanvas();
-    const id = trailIn(canvas.clientWidth / 2, canvas.clientHeight / 2, 12, inReach);
+    const id = trailIn(canvas.clientWidth / 2, canvas.clientHeight / 2, 12, inTrailReach);
     return id === getScene().selectedId ? undefined : id;
   }
 

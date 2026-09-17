@@ -23,14 +23,15 @@ export type PointBalls = CustomLayerInterface & {
    * The nearest point whose ball the ray from `from` hits, looking along `yaw` and
    * `look` in degrees — a walker's pose. `pad` widens each ball by that angle in
    * radians, so aiming just off its edge still counts. Only the balls drawn last
-   * frame, among those `keep` allows.
+   * frame, among those `keep` allows; it is asked only of a ball the ray hits,
+   * nearer than any hit so far, with the height of its centre.
    */
   pick(
     from: { lat: number; lon: number; alt: number },
     yaw: number,
     look: number,
     pad: number,
-    keep: (lat: number, lon: number) => boolean,
+    keep: (lat: number, lon: number, alt: number) => boolean,
   ): NationalPoint | undefined;
   /** Where on the canvas, in CSS pixels, a spot `alt` metres above sea level was
    *  drawn last frame, or null before the first frame or behind the camera. */
@@ -222,8 +223,9 @@ export function createPointBalls(
     },
 
     pick(from, yaw, look, pad, keep) {
-      // Local metres east, north and up of the eye, flat: the reach is a few hundred
-      // metres at most.
+      // Local metres east, north and up of the eye, flat: MapLibre's terrain is flat
+      // in mercator too, and cos(lat) barely moves over the few kilometres you can
+      // see a ball across.
       const rad = Math.PI / 180;
       const dir = [
         Math.cos(look * rad) * Math.sin(yaw * rad),
@@ -236,7 +238,7 @@ export function createPointBalls(
       let bestT = Infinity;
       for (let i = 0; i < points.length; i++) {
         const point = points[i];
-        if (Number.isNaN(grounds[i]) || skip.has(point.code) || !keep(point.lat, point.lon)) continue;
+        if (Number.isNaN(grounds[i]) || skip.has(point.code)) continue;
         const c = [
           (point.lon - from.lon) * METRES_PER_DEG * Math.cos(from.lat * rad),
           (point.lat - from.lat) * METRES_PER_DEG,
@@ -245,7 +247,7 @@ export function createPointBalls(
         const t = c[0] * dir[0] + c[1] * dir[1] + c[2] * dir[2];
         if (t <= 0 || t >= bestT) continue;
         const off = Math.sqrt(Math.max(0, c[0] ** 2 + c[1] ** 2 + c[2] ** 2 - t * t));
-        if (off <= BALL_RADIUS + t * slack) {
+        if (off <= BALL_RADIUS + t * slack && keep(point.lat, point.lon, grounds[i] + BALL_HEIGHT)) {
           best = point;
           bestT = t;
         }
