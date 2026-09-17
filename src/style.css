@@ -648,6 +648,11 @@ button:hover { background: #f5f6f8; }
   #app[data-mode3d='walk'] #joystick { display: block; }
   /* Clear of the joystick, which spans 24–144px up. */
   #app[data-mode3d='walk'] #selection-bar { bottom: calc(154px + env(safe-area-inset-bottom)); }
+  /* Likewise the notices: they take touches, so over the stick they blocked it
+     until they went. With a selection, above the lifted bar (154 + 34 + 10px gap);
+     that rule's extra attribute outranks #app[data-selection] #notices below. */
+  #app[data-mode3d='walk'] #notices { bottom: calc(154px + env(safe-area-inset-bottom)); }
+  #app[data-mode3d='walk'][data-selection] #notices { bottom: calc(198px + env(safe-area-inset-bottom)); }
 }
 
 #notices {
