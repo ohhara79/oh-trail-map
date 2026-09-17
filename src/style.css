@@ -437,10 +437,11 @@ button:hover { background: #f5f6f8; }
   font-size: 12px; line-height: 1.1;
   text-shadow: 1px 1px #fff;
 }
-/* Above the selection bar, which spans 10–44px up and on a narrow map reaches
-   this corner: the same 10px gap #notices keeps. */
+/* Above the selection bar, which rises from 10px up by its own height
+   (--selection-h, see ui.ts) and on a narrow map reaches this corner: the same
+   10px gap #notices keeps. */
 #app[data-selection] :is(#map .leaflet-control-scale, #map3d .maplibregl-ctrl-scale) {
-  margin-bottom: calc(54px + env(safe-area-inset-bottom));
+  margin-bottom: calc(20px + var(--selection-h, 34px) + env(safe-area-inset-bottom));
 }
 
 /* The attitude disc fills the gap the rule above leaves. Hiding that group takes
@@ -535,8 +536,10 @@ button:hover { background: #f5f6f8; }
 }
 /* The 34px of #view3d, so both bars match the floating buttons (#mode3d shares
    its top and bottom edges). The buttons fill what the border and padding
-   leave: 34 − 2×2 − 2×3 = 24px. */
-#mode3d, #selection-bar { height: 34px; }
+   leave: 34 − 2×2 − 2×3 = 24px. #selection-bar only starts there: a long name
+   wraps, and the bar and its buttons grow with it. */
+#mode3d { height: 34px; }
+#selection-bar { min-height: 34px; }
 /* Outranks .hud-bar button, including its taller padding on touch below. */
 :is(#mode3d, #selection-bar) button { align-self: stretch; padding-block: 0; }
 /* Walk and Gyro as square icon buttons, so the bar stays narrow over the
@@ -593,7 +596,7 @@ button:hover { background: #f5f6f8; }
   /* Clears the locate button's column. */
   right: 56px;
   /* As wide as its contents, like #mode3d, centred between the insets. The
-     100% − 68px keeps a long name inside them, where it ellipsizes. */
+     100% − 68px keeps a long name inside them, where it wraps. */
   width: max-content;
   max-width: min(560px, 100% - 68px);
   margin: 0 auto;
@@ -601,8 +604,10 @@ button:hover { background: #f5f6f8; }
 /* .hud-bar's display: flex would otherwise outrank the hidden attribute. */
 #selection-bar[hidden],
 #app[data-mode3d='playback'] #selection-bar { display: none; }
-.selection-text { display: flex; align-items: baseline; gap: 8px; min-width: 0; padding: 0 6px; font-size: 13px; }
-.selection-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+/* Name over stats, in full, like a row in the Trails list. */
+.selection-text { display: flex; flex-direction: column; min-width: 0; padding: 2px 6px; font-size: 13px; }
+.selection-name { font-weight: 500; overflow-wrap: anywhere; }
+.selection-stats { font-size: 11px; overflow-wrap: anywhere; }
 #selection-walk { color: #fff; background: var(--accent); }
 
 /* In orbit, where Walk will put you: walking starts at the map centre, facing
@@ -668,8 +673,8 @@ button:hover { background: #f5f6f8; }
   display: flex; gap: 10px; align-items: flex-start;
 }
 .notice.error { background: #a4262c; }
-/* Above the selection bar rather than over it. */
-#app[data-selection] #notices { bottom: calc(54px + env(safe-area-inset-bottom)); }
+/* Above the selection bar rather than over it, however tall its name makes it. */
+#app[data-selection] #notices { bottom: calc(20px + var(--selection-h, 34px) + env(safe-area-inset-bottom)); }
 .notice button { background: none; border: 0; color: inherit; opacity: .7; padding: 0 2px; }
 .notice button:hover { background: none; opacity: 1; }
 

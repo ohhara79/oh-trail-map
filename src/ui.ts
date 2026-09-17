@@ -97,6 +97,11 @@ export class Ui {
       if (this.lastSelectedId !== null) this.cb.onWalkTrail(this.lastSelectedId);
     });
     el('selection-clear').addEventListener('click', () => this.cb.onSelect(null));
+    // A long name wraps and makes the bar taller; style.css lifts the notices
+    // and the scale bar clear of it by this.
+    new ResizeObserver(() => {
+      this.app.style.setProperty('--selection-h', `${this.selectionBar.offsetHeight}px`);
+    }).observe(this.selectionBar);
 
     el('collapse').addEventListener('click', () => this.setPanel(false));
     el('expand').addEventListener('click', () => this.setPanel(true));
@@ -248,6 +253,7 @@ export class Ui {
   /**
    * The bar over the map that names the selected trail and plays it, so a trail
    * clicked on the map can be walked without opening the panel to find its row.
+   * Name and stats in full, the same as its row in the list.
    * Found among every trail, not the filter's matches: the query narrows the
    * list, never the map.
    */
@@ -261,7 +267,7 @@ export class Ui {
     this.app.dataset.selection = '';
     this.selectionName.textContent = trail.name.normalize('NFC');
     this.selectionName.title = trail.name;
-    this.selectionStats.textContent = formatDistance(trail.stats.distance);
+    this.selectionStats.textContent = this.statsLine(trail);
     this.selectionWalk.setAttribute('aria-label', `Walk ${trail.name} in 3D`);
   }
 
