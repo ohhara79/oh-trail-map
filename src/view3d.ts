@@ -134,6 +134,11 @@ const ORBIT_FOG = 0.5;
 const WALK_FOG = 0.9;
 /** Eye heights the HUD cycles through: standing, a tree top, a drone. */
 const EYE_HEIGHTS = [1.7, 20, 80];
+/** How far the walking crosshair reaches, in metres, per eye height. Near the
+ *  horizon a few pixels span kilometres, so without it the crosshair picks a
+ *  hairline across the valley over the trail in front of you. Higher up you look
+ *  down at ground further off, so the reach grows with the eye. */
+const REACH = [300, 600, 1200];
 /** A jump to a trail further away than this descends from above, so the terrain
  *  there has a moment to load before you are standing in it. */
 const FAR_JUMP = 200;
@@ -237,6 +242,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       eyeIndex = (eyeIndex + 1) % EYE_HEIGHTS.length;
       if (walker) walker.eye = EYE_HEIGHTS[eyeIndex];
       hud.setEye(EYE_HEIGHTS[eyeIndex]);
+      // The reach changes with it, while nothing else may be moving.
+      scheduleHover();
     },
     onGyro: () => toggleGyro(),
     onAttitude: () => walker?.recentre(),
@@ -286,12 +293,19 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
 
   // -- clicks --------------------------------------------------------------------
 
-  /** The point drawn within `r` pixels of (x, y) on the canvas. A point the panel
-   *  list has hidden is filtered out of the layer, and queryRenderedFeatures
-   *  honours that, so there is nothing further to ask here. */
-  function pointAt(x: number, y: number, r: number): NationalPoint | undefined {
-    const hit = map.queryRenderedFeatures([[x - r, y - r], [x + r, y + r]], { layers: [LAYER_POINTS] })[0];
-    return hit ? points[hit.properties.index as number] : undefined;
+  /** The point drawn within `r` pixels of (x, y) on the canvas, among those `keep`
+   *  allows. A point the panel list has hidden is filtered out of the layer, and
+   *  queryRenderedFeatures honours that, so there is nothing further to ask here. */
+  function pointAt(
+    x: number,
+    y: number,
+    r: number,
+    keep: (lat: number, lon: number) => boolean = () => true,
+  ): NationalPoint | undefined {
+    return map
+      .queryRenderedFeatures([[x - r, y - r], [x + r, y + r]], { layers: [LAYER_POINTS] })
+      .map((hit) => points[hit.properties.index as number])
+      .find((point) => keep(point.lat, point.lon));
   }
 
   /**
@@ -373,10 +387,18 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
    *
    * Measured against the geometry the query returns, which is only the tiles in
    * the box, so a long trail costs no more than a short one.
+   *
+   * With `keep`, only the segments with an end it allows count. The track's
+   * points are metres apart, so that is as good as cutting the segment.
    */
-  function trailIn(x: number, y: number, r: number): string | undefined {
+  function trailIn(
+    x: number,
+    y: number,
+    r: number,
+    keep?: (lat: number, lon: number) => boolean,
+  ): string | undefined {
     const hits = map.queryRenderedFeatures([[x - r, y - r], [x + r, y + r]], { layers: [LAYER_TRAILS] });
-    if (hits.length <= 1) return hits[0]?.properties.id as string | undefined;
+    if (!keep && hits.length <= 1) return hits[0]?.properties.id as string | undefined;
     const at = L.point(x, y);
     let best: string | undefined;
     let bestDistance = Infinity;
@@ -390,17 +412,22 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
             : [];
       for (const line of lines) {
         let previous: L.Point | null = null;
+        let previousKept = false;
         for (const [lon, lat] of line) {
           const p = map.project([lon, lat]);
           const current = L.point(p.x, p.y);
-          const d = previous
-            ? L.LineUtil.pointToSegmentDistance(at, previous, current)
-            : at.distanceTo(current);
+          const kept = !keep || keep(lat, lon);
+          const d = !kept && !previousKept
+            ? Infinity
+            : previous
+              ? L.LineUtil.pointToSegmentDistance(at, previous, current)
+              : at.distanceTo(current);
           if (d < bestDistance) {
             bestDistance = d;
             best = hit.properties.id as string;
           }
           previous = current;
+          previousKept = kept;
         }
       }
     }
@@ -412,15 +439,21 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   // with. Just wider than its 7px ring, so anything inside the ring counts.
   function aimedPoint(): NationalPoint | undefined {
     const canvas = map.getCanvas();
-    return pointAt(canvas.clientWidth / 2, canvas.clientHeight / 2, 8);
+    return pointAt(canvas.clientWidth / 2, canvas.clientHeight / 2, 8, inReach);
   }
 
-  /** The trail under the crosshair, unless it is already the selected one, which a
-   *  tap has nothing more to do with. A trail far off is a hairline, so anywhere
-   *  inside the crosshair's ticks counts, not only its ring. */
+  /** Whether a spot is within the crosshair's reach: see REACH. Measured from where
+   *  you stand on the ground, so a jump's descent does not change it. */
+  function inReach(lat: number, lon: number): boolean {
+    return !walker || haversine(walker.pose, { lat, lon }) <= REACH[eyeIndex];
+  }
+
+  /** The trail under the crosshair and within reach, unless it is already the
+   *  selected one, which a tap has nothing more to do with. A trail a way off is a
+   *  hairline, so anywhere inside the crosshair's ticks counts, not only its ring. */
   function aimedTrail(): string | undefined {
     const canvas = map.getCanvas();
-    const id = trailIn(canvas.clientWidth / 2, canvas.clientHeight / 2, 12);
+    const id = trailIn(canvas.clientWidth / 2, canvas.clientHeight / 2, 12, inReach);
     return id === getScene().selectedId ? undefined : id;
   }
 
