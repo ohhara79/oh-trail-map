@@ -138,7 +138,7 @@ const EYE_HEIGHTS = [1.7, 20, 80];
  *  horizon a few pixels span kilometres, so without it the crosshair picks a
  *  hairline across the valley over the trail in front of you. Higher up you look
  *  down at ground further off, so the reach grows with the eye. */
-const REACH = [300, 600, 1200];
+const REACH = [50, 100, 200];
 /** A jump to a trail further away than this descends from above, so the terrain
  *  there has a moment to load before you are standing in it. */
 const FAR_JUMP = 200;

@@ -58,8 +58,8 @@ npm run preview
   - **Walk** (a toggle; off again is back to orbit): stand at eye height (1.7 m, or 20 m / 80 m) and move with
     W A S D or the arrows, Shift to run. Drag, or click to capture the mouse,
     to look around.
-    Aim the crosshair at a point or a trail within reach (300 m standing, 600 m
-    at 20 m, 1.2 km at 80 m) and click or tap to open or select it; the selected trail's bar shows while walking too.
+    Aim the crosshair at a point or a trail within reach (50 m standing, 100 m
+    at 20 m, 200 m at 80 m) and click or tap to open or select it; the selected trail's bar shows while walking too.
     The locate button takes you to your location and keeps following as you
     move, until you walk away or click it again. During playback it leaves the
     trail first. While following, you also face the way you are facing (the
