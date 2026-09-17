@@ -440,7 +440,8 @@ async function main(): Promise<void> {
     profileTrail = trail;
     // A point number means nothing on another trail.
     cursorIndex = null;
-    profilePanel.show(trail ? buildProfile(trail) : null);
+    // A trail's id is its file name in data/gpx/ (see trailFiles.ts).
+    profilePanel.show(trail ? buildProfile(trail) : null, trail?.id);
     applyCursor();
   }
 

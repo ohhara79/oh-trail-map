@@ -1,7 +1,8 @@
 /**
  * The selected trail's elevation over distance, with a cursor that picks one GPX
  * point and a readout of that point: its number, lat/lon, elevation, time, and how
- * far and how long into the trail it is.
+ * far and how long into the trail it is. A corner of the chart names the .gpx file
+ * the points come from.
  *
  * It renders and reports, like pointsList.ts: main.ts owns which point the cursor
  * is on, hears about every move through onCursor, and hands the answer back with
@@ -42,6 +43,7 @@ export class ProfilePanel {
   private readonly eleMax = el<HTMLElement>('profile-ele-max');
   private readonly eleMin = el<HTMLElement>('profile-ele-min');
   private readonly total = el<HTMLElement>('profile-total');
+  private readonly file = el<HTMLElement>('profile-file');
   private readonly lines = [el<HTMLElement>('profile-line1'), el<HTMLElement>('profile-line2'), el<HTMLElement>('profile-line3')];
   private readonly prev = el<HTMLButtonElement>('profile-prev');
   private readonly next = el<HTMLButtonElement>('profile-next');
@@ -100,15 +102,20 @@ export class ProfilePanel {
     this.next.addEventListener('click', () => this.step(1));
   }
 
-  /** Shows the panel for `profile`, or hides it for null. The same profile again
-   *  keeps everything as it is. */
-  show(profile: Profile | null): void {
+  /** Shows the panel for `profile`, read from `fileName`, or hides it for null. The
+   *  same profile again keeps everything as it is. */
+  show(profile: Profile | null, fileName = ''): void {
     if (profile === this.profile) return;
     this.profile = profile;
     this.cursor = null;
     this.root.hidden = !profile;
     if (!profile) return;
     const n = profile.s.length;
+    this.file.textContent = fileName;
+    this.file.title = fileName;
+    // The label takes no pointer, so a screen reader and a cut-short name both need
+    // the full name here.
+    this.chart.setAttribute('aria-label', fileName ? `GPX point along ${fileName}` : 'GPX point along the trail');
     this.chart.setAttribute('aria-valuemax', String(n));
     this.draw();
     this.syncCursor();

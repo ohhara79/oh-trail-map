@@ -652,6 +652,15 @@ button:hover { background: #f5f6f8; }
 #profile-ele-min { bottom: 3px; left: 4px; }
 /* Top right: a trail mostly starts and ends low, at the car park. */
 #profile-total { top: 3px; right: 4px; }
+/* Which .gpx the points are read from. Bottom right, the one corner left; cut
+   short rather than run into the minimum elevation on a narrow phone. */
+#profile-file {
+  /* The clip would take the underscore at line-height 1: 2px lower, 2px taller. */
+  bottom: 1px; right: 4px;
+  padding-bottom: 2px;
+  max-width: 60%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .profile-foot { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
 .profile-readout {
   min-width: 0;

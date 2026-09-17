@@ -46,7 +46,8 @@ npm run preview
   it, so a near miss never jumps to a neighbouring trail or point. A row in the
   trail list still selects its trail directly.
 - The selection bar's profile button opens the selected trail's elevation
-  profile above it, in 2D and 3D. Hover or drag along it — or focus it and use
+  profile above it, in 2D and 3D, with the name of its GPX file in the chart's
+  bottom-right corner. Hover or drag along it — or focus it and use
   ←/→ (Shift for 10, Home/End), or ◀ ▶ — to pick one GPX point: a dot marks it
   on the map, and the panel reads out its lat/lon, elevation, time (in the
   browser's time zone), its number, how far along the trail and how long after
