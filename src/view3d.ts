@@ -43,6 +43,7 @@ import {
   EMPTY,
   LAYER_BASEMAP,
   LAYER_HALOS,
+  LAYER_POINT_DISCS,
   LAYER_POINT_HOVER,
   LAYER_POINTS,
   LAYER_TRAILS,
@@ -59,6 +60,7 @@ import {
   sky,
   style,
   trailOpacity,
+  trailWidths,
   visibleFilter,
 } from './scene3d';
 import { tolerance } from './selection';
@@ -269,7 +271,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
    */
   function syncPoints(): void {
     const { hiddenPoints } = getScene();
-    map.setFilter(LAYER_POINTS, pointsFilter(hiddenPoints));
+    for (const id of [LAYER_POINTS, ...LAYER_POINT_DISCS]) map.setFilter(id, pointsFilter(hiddenPoints));
     // The same rule as 2D: a popup whose pin is gone points at nothing.
     if (popupPoint && hiddenPoints.has(popupPoint.code)) closePopup();
     scheduleHover();
@@ -288,17 +290,18 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
 
   // -- clicks --------------------------------------------------------------------
 
-  /** The point drawn within `r` pixels of (x, y) on the canvas, among those `keep`
-   *  allows. A point the panel list has hidden is filtered out of the layer, and
-   *  queryRenderedFeatures honours that, so there is nothing further to ask here. */
+  /** The point `layer` draws within `r` pixels of (x, y) on the canvas, among those
+   *  `keep` allows. A point the panel list has hidden is filtered out of the layer,
+   *  and queryRenderedFeatures honours that, so there is nothing further to ask here. */
   function pointAt(
+    layer: string,
     x: number,
     y: number,
     r: number,
     keep: (lat: number, lon: number) => boolean = () => true,
   ): NationalPoint | undefined {
     return map
-      .queryRenderedFeatures([[x - r, y - r], [x + r, y + r]], { layers: [LAYER_POINTS] })
+      .queryRenderedFeatures([[x - r, y - r], [x + r, y + r]], { layers: [layer] })
       .map((hit) => points[hit.properties.index as number])
       .find((point) => keep(point.lat, point.lon));
   }
@@ -370,7 +373,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
    *  selected. The click and the hover preview both ask here, so they agree. */
   function pickAt(x: number, y: number): { point?: NationalPoint; trail?: string } | null {
     // A point first, as in 2D, where a pin swallows the click.
-    const point = pointAt(x, y, 6);
+    const point = pointAt(LAYER_POINTS, x, y, 6);
     if (point) return { point };
     const trail = trailIn(x, y, tolerance());
     return trail ? { trail } : null;
@@ -433,10 +436,11 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
 
   // While walking, the pointer looks around and a captured mouse has no cursor, so
   // the crosshair at the screen centre, where the camera looks, is what you aim
-  // with. Just wider than its 7px ring, so anything inside the ring counts.
+  // with. A point is a disc on the ground by then, and anywhere on it counts, or
+  // just off it: the box is a little wider than the crosshair's 7px ring.
   function aimedPoint(): NationalPoint | undefined {
     const canvas = map.getCanvas();
-    return pointAt(canvas.clientWidth / 2, canvas.clientHeight / 2, 8, inReach);
+    return pointAt(LAYER_POINT_DISCS[0], canvas.clientWidth / 2, canvas.clientHeight / 2, 8, inReach);
   }
 
   /** Whether a spot is within the crosshair's reach: see REACH. Measured from where
@@ -676,6 +680,26 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
 
   let playingId: string | null = null;
 
+  /** Whether the trails and points are drawn for the ground, as syncGround last set. */
+  let groundOn = false;
+
+  /**
+   * Walking and playback draw for a camera at eye height: trails a fixed width on
+   * the ground rather than a hairline, and points as discs painted on the terrain in
+   * place of the dots. Orbit gets back what it had. Run on every mode change, which
+   * is when a camera flight starts, so the swap happens while everything moves.
+   */
+  function syncGround(): void {
+    const on = mode !== 'orbit';
+    if (on === groundOn) return;
+    groundOn = on;
+    for (const [id, width] of trailWidths(on ? map.getCenter().lat : null)) {
+      map.setPaintProperty(id, 'line-width', width);
+    }
+    for (const id of LAYER_POINT_DISCS) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
+    map.setLayoutProperty(LAYER_POINTS, 'visibility', on ? 'none' : 'visible');
+  }
+
   /** Walk faces your heading while following your location. Playback steers along
    *  its trail instead, and starting one stops following anyway. */
   function syncSteering(): void {
@@ -750,6 +774,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     // 'playback' is only ever entered through walkTrail, which sets it up first.
     mode = next;
     hud.setMode(mode);
+    syncGround();
     syncSteering();
     // A popup opened while walking would otherwise stay behind in orbit.
     closePopup();
@@ -818,6 +843,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     walker.setPlayback(playback);
     mode = 'playback';
     hud.setMode(mode);
+    syncGround();
     syncSteering();
     // The jump may leave the point it names far behind.
     closePopup();

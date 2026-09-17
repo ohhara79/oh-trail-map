@@ -18,6 +18,7 @@ import type {
 } from 'maplibre-gl';
 import type { Basemap } from './basemaps';
 import { offset } from './geo';
+import { EARTH_RADIUS } from './gpx';
 import type { NationalPoint } from './nationalPoint';
 import { PIN_COLOR_NAMED, PIN_COLOR_UNNAMED, PIN_RADIUS, PIN_STROKE } from './points';
 import { HALO_RINGS, HOVER_RING } from './selection';
@@ -28,6 +29,8 @@ export const SRC_DEM = 'dem';
 export const SRC_TRAILS = 'trails';
 export const SRC_POINTS = 'points';
 export const SRC_LOCATION = 'location';
+export const SRC_POINT_EDGES = 'point-edges';
+export const SRC_POINT_DISCS = 'point-discs';
 
 export const LAYER_BASEMAP = 'basemap';
 export const LAYER_TRAILS = 'trails';
@@ -37,6 +40,9 @@ export const LAYER_HALOS = ['trail-halo-outer', 'trail-halo'] as const;
 export const LAYER_LOCATION = 'location-accuracy';
 export const LAYER_POINTS = 'points';
 export const LAYER_POINT_HOVER = 'point-hover';
+/** The white edge, then the coloured disc on top of it. The edge covers the whole
+ *  disc, so it is the one to query for what the crosshair is on. */
+export const LAYER_POINT_DISCS = ['point-disc-edge', 'point-disc'] as const;
 
 /**
  * AWS Terrain Tiles: global, keyless, CORS-open, encoded as terrarium PNGs. Around
@@ -106,18 +112,34 @@ export function trailsGeoJson(trails: readonly Trail[]): GeoJSON.FeatureCollecti
   };
 }
 
+/**
+ * The index leads back to the NationalPoint for the popup, so the popup is built
+ * from the same object the 2D view uses and never from a copy. The code joins a
+ * feature to its row in the panel list — and because pointsFilter below filters
+ * rather than drops features, the index stays valid whatever the list hides.
+ */
+function pointProperties(point: NationalPoint, index: number) {
+  return { index, named: point.name !== '', code: point.code };
+}
+
 export function pointsGeoJson(points: readonly NationalPoint[]): GeoJSON.FeatureCollection {
   return {
     type: 'FeatureCollection',
     features: points.map((point, index) => ({
       type: 'Feature',
-      // The index leads back to the NationalPoint for the popup, so the popup is
-      // built from the same object the 2D view uses and never from a copy. The
-      // code joins a feature to its row in the panel list — and because pointsFilter
-      // below filters rather than drops features, the index stays valid whatever
-      // the list hides.
-      properties: { index, named: point.name !== '', code: point.code },
+      properties: pointProperties(point, index),
       geometry: { type: 'Point', coordinates: [point.lon, point.lat] },
+    })),
+  };
+}
+
+/** Each point as a disc of `radius` metres, for the draped layers walking shows. */
+export function pointDiscsGeoJson(points: readonly NationalPoint[], radius: number): GeoJSON.FeatureCollection {
+  return {
+    type: 'FeatureCollection',
+    features: points.map((point, index) => ({
+      ...circlePolygon(point.lat, point.lon, radius),
+      properties: pointProperties(point, index),
     })),
   };
 }
@@ -140,13 +162,52 @@ export function circlePolygon(
 export const EMPTY: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
 
 /**
- * Trails and their casings take the 2D view's widths as they are: TRAIL_WEIGHT and
- * each ring's weight, plain CSS pixels at every zoom. The widths here used to ease
- * into a fixed width in metres so the walk camera saw a trail about as wide as a real
- * path — but orbit climbs to z22 through the same expression, and zooming in fattened
- * the line to a ribbon. A trail underfoot is a hairline now; a trail you zoom into is
- * the one you drew.
+ * A line width that is `px` screen pixels from above and `metres` wide on the
+ * ground at eye height. It holds `px` to z16, eases into `metres` by z19, and from
+ * there doubles with every zoom, which is exactly what holds a width constant on
+ * the ground.
  */
+function groundWidth(px: number, metres: number, lat: number): ExpressionSpecification {
+  const metresPerPx = (z: number) =>
+    (2 * Math.PI * EARTH_RADIUS * Math.cos((lat * Math.PI) / 180)) / (512 * 2 ** z);
+  const at19 = Math.max(px, metres / metresPerPx(19));
+  return ['interpolate', ['exponential', 2], ['zoom'], 16, px, 19, at19, 24, at19 * 32];
+}
+
+/** On the ground while walking: a trail you cannot miss underfoot, and casings
+ *  that frame the selection without swallowing the ground beside it. */
+const TRAIL_METRES = 3;
+const HALO_METRES = [4.6, 3.8] as const;
+
+/** Radius of a point's disc on the ground while walking, and the white edge around
+ *  it. Well wider than a trail, so a point on one still stands out from it. */
+const POINT_DISC_METRES = 3;
+const POINT_EDGE_METRES = 0.75;
+
+/**
+ * The width of every trail layer bar the orbit-only hover, the one place they are
+ * decided.
+ *
+ * With no latitude, orbit's: the 2D view's widths as they are, TRAIL_WEIGHT and each
+ * ring's weight, plain CSS pixels at every zoom — orbit climbs to z22, and a width in
+ * metres would fatten into a ribbon as you zoom in. Walking and playback pass the
+ * latitude they stand at, which sets how many metres a pixel covers, and get widths
+ * fixed on the ground instead: the walk camera sits at about z21, where a pixel width
+ * is a few centimetres of hairline.
+ */
+export function trailWidths(lat: number | null): [string, number | ExpressionSpecification][] {
+  const width = (px: number, metres: number) => (lat === null ? px : groundWidth(px, metres, lat));
+  return [
+    [LAYER_TRAILS, width(TRAIL_WEIGHT, TRAIL_METRES)],
+    ...HALO_RINGS.map((ring, i): [string, number | ExpressionSpecification] => [
+      LAYER_HALOS[i],
+      width(ring.weight, HALO_METRES[i]),
+    ]),
+    [LAYER_TRAIL_SELECTED, width(TRAIL_WEIGHT, TRAIL_METRES)],
+  ];
+}
+
+/** The trail layers start with orbit's widths, the ones trailWidths(null) gives. */
 export function layers(): LayerSpecification[] {
   const trailLayout = { 'line-join': 'round', 'line-cap': 'round' } as const;
   return [
@@ -203,6 +264,23 @@ export function layers(): LayerSpecification[] {
       // The accuracy circle from startLocating in map.ts.
       paint: { 'fill-color': '#1a73e8', 'fill-opacity': 0.12, 'fill-outline-color': '#1a73e8' },
     },
+    // While walking, a point is a disc painted on the ground rather than a dot in
+    // the air: a fill is draped onto the terrain, so it lies on a slope instead of
+    // sinking into it the way a flat circle layer would. Hidden in orbit, where the
+    // dots below are drawn instead; view3d.ts swaps them.
+    ...LAYER_POINT_DISCS.map(
+      (id, i): LayerSpecification => ({
+        id,
+        type: 'fill',
+        source: i === 0 ? SRC_POINT_EDGES : SRC_POINT_DISCS,
+        // Named points above the rest, as with the dots.
+        layout: { visibility: 'none', 'fill-sort-key': ['case', ['get', 'named'], 1, 0] },
+        paint: {
+          'fill-color':
+            i === 0 ? '#ffffff' : ['case', ['get', 'named'], PIN_COLOR_NAMED, PIN_COLOR_UNNAMED],
+        },
+      }),
+    ),
     // The point a click would open: a wider white disc behind its dot, edged dark
     // for the same two-basemap reason as the trail halo, and matching the ring the
     // 2D pin gets in style.css.
@@ -249,6 +327,11 @@ export function style(basemap: Basemap, trails: readonly Trail[], points: readon
       [SRC_TRAILS]: { type: 'geojson', data: trailsGeoJson(trails) },
       [SRC_POINTS]: { type: 'geojson', data: pointsGeoJson(points) },
       [SRC_LOCATION]: { type: 'geojson', data: EMPTY },
+      [SRC_POINT_EDGES]: {
+        type: 'geojson',
+        data: pointDiscsGeoJson(points, POINT_DISC_METRES + POINT_EDGE_METRES),
+      },
+      [SRC_POINT_DISCS]: { type: 'geojson', data: pointDiscsGeoJson(points, POINT_DISC_METRES) },
     },
     layers: layers(),
     // Exaggeration stays at 1: queryTerrainElevation scales by it, and the walk
