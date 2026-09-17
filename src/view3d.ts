@@ -578,9 +578,13 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     popup.setOffset([top.x - base.x, top.y - base.y - 10]);
   }
 
-  /** A tap or click on the scene while walking. True when it was spent here, so it
-   *  must not also capture the mouse. */
+  /** A tap or click on the scene while walking. True when it was spent here — on the
+   *  controls, a popup or a pick — so the click the browser sends next is swallowed
+   *  rather than pressed on what it put there. The mouse is captured either way. */
   function onSceneTap(): boolean {
+    // Put away by a tap during playback: this tap only brings the controls back, the
+    // way a phone video player does, and picks nothing out from behind them.
+    if (hud.reveal()) return true;
     // The same rule as orbit: while a popup is open or a trail is selected, a tap
     // only clears it. Not during playback, where the trail playing is the
     // selection and a tap is for the controls.
@@ -597,14 +601,21 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       openPopup(point);
       return true;
     }
-    // Selected, the trail's name shows on the selection bar, with its ▶, reached
-    // with the mouse once Escape frees it.
-    const trail = aimedTrail();
-    if (trail) {
-      opts.onSelect(trail);
-      return true;
+    // Only while walking: selected, the trail's name shows on the selection bar, with
+    // its ▶, reached with the mouse once Escape frees it — and that bar is hidden
+    // during playback, where a tap is for the controls instead. The trail playing is
+    // skipped anyway as the selected one, but a crossing trail within reach is not,
+    // and picking it there ate the tap for nothing you could see. It saves the query
+    // per tap too.
+    if (mode === 'walk') {
+      const trail = aimedTrail();
+      if (trail) {
+        opts.onSelect(trail);
+        return true;
+      }
     }
-    return hud.tap();
+    hud.dismiss();
+    return false;
   }
 
   // -- hover preview -------------------------------------------------------------

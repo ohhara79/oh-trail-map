@@ -79,9 +79,11 @@ npm run preview
     the trail takes the direction back.
   - **▶ on a trail row**: plays that trail at eye height, with pause, speed
     (1×–50× walking pace) and a scrubber.
-    While it plays, the buttons over the scene fade out after 3 s; tap or click
-    the scene to bring them back, or again to hide them. With a captured mouse,
-    Esc frees it and brings them back too.
+    The buttons over the scene stay up: tap or click the scene to put them away
+    while you watch, and again to bring them back — a tap with them hidden only
+    brings them back, and picks nothing. With a captured mouse, Esc frees it and
+    brings them back too. Aiming at a trail picks it while walking, not while
+    one plays, where a tap is for the controls; a point still opens its popup.
   - **▶ 3D on the selection bar**: clicking a trail on the map (2D or 3D)
     shows its name at the bottom with a ▶ that does the same, no panel needed.
   - **On a phone**: a joystick moves you, dragging looks around, and **Gyro**

@@ -553,9 +553,10 @@ button:hover { background: #f5f6f8; }
 /* A phone's orientation is only worth offering on a phone. */
 @media not (pointer: coarse) { #gyro3d { display: none !important; } }
 
-/* Playback's auto-hide, decided in hud3d.ts (keep the list in sync with CHROME
-   there). visibility follows the fade, so a hidden button can be neither clicked
-   nor tabbed to. Scoped to 3D so 2D never transitions anything. */
+/* Put away by a tap on the scene during playback, decided in hud3d.ts (keep the
+   list in sync with CHROME there). visibility follows the fade, so a hidden button
+   can be neither clicked nor tabbed to. Scoped to 3D so 2D never transitions
+   anything. */
 #app[data-mode3d] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d) {
   transition: opacity .25s ease;
 }
@@ -819,7 +820,7 @@ button:hover { background: #f5f6f8; }
   /* The searching state still reads as distinct through its accent colour. */
   #locate[data-state='searching'] svg { animation: none; }
   #view3d[data-state='loading'] { animation: none; }
-  /* The playback controls still hide and return; they just snap. Same
+  /* The playback controls still hide and return on a tap; they just snap. Same
      specificity as the rules above and later, so this wins. */
   #app[data-mode3d] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d) { transition: none; }
 }

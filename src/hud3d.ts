@@ -4,8 +4,9 @@
  * decided in style.css from data-mode3d on #app, so there is one place a mode's
  * layout lives.
  *
- * While a trail plays, the controls over the scene fade out after a few seconds
- * so they stop blocking the view, and a tap on the scene brings them back. That
+ * While a trail plays, a tap on the scene hides the controls over the scene, so
+ * they stop blocking the view, and another tap brings them back. Nothing else
+ * moves them: no timer takes them away, and pausing leaves them as they are. That
  * state is data-chrome on #app, read by style.css the same way.
  */
 import { formatDistance } from './gpx';
@@ -36,9 +37,7 @@ function el<T extends HTMLElement>(id: string): T {
 
 /** The scrubber's resolution. Fine enough that a drag looks continuous on any trail. */
 const SCRUB_STEPS = 1000;
-/** How long the playback controls stay up after they were last shown or used. */
-const HIDE_DELAY = 3000;
-/** Everything over the scene that fades out during playback. Keep in sync with
+/** Everything over the scene that a tap hides during playback. Keep in sync with
  *  the data-chrome rules in style.css. */
 const CHROME = '#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d';
 
@@ -66,9 +65,6 @@ export class Hud {
   /** True while the scrubber is held, so playback does not drag it out from under you. */
   private seeking = false;
   private mode: Mode3d = 'orbit';
-  /** Whether the trail was playing at the last setPlayback, so a change can be told apart. */
-  private playing = false;
-  private hideTimer = 0;
   /** The last attitude written, so a frame that changed nothing touches no style. */
   private attitudeAt = '';
 
@@ -87,13 +83,6 @@ export class Hud {
       cb.onSeek(Number(this.scrub.value) / SCRUB_STEPS);
     }, { signal });
     this.scrub.addEventListener('change', () => (this.seeking = false), { signal });
-    // Using a control keeps them all up: the bar must not fade out under the
-    // finger pressing it. The scene itself is left to tap().
-    const keepAlive = (e: Event) => {
-      if (this.hideTimer && !(e.target as Element).closest('#map3d')) this.scheduleHide();
-    };
-    this.app.addEventListener('pointerdown', keepAlive, { signal });
-    this.app.addEventListener('input', keepAlive, { signal });
     // Escape spent on releasing a captured mouse: the cursor is back, so should the
     // controls be.
     document.addEventListener('pointerlockchange', () => {
@@ -105,11 +94,9 @@ export class Hud {
   setMode(mode: Mode3d): void {
     this.mode = mode;
     this.app.dataset.mode3d = mode;
-    if (mode !== 'playback') this.playing = false;
+    // Entering playback, or starting another trail while one plays, opens with the
+    // controls up: only a tap on the scene puts them away.
     this.show();
-    // Another trail started while one was already playing: setPlayback sees no
-    // change, so the timer starts here.
-    if (mode === 'playback' && this.playing) this.scheduleHide();
     this.walk.setAttribute('aria-pressed', String(mode !== 'orbit'));
   }
 
@@ -142,13 +129,7 @@ export class Hud {
   }
 
   setPlayback(state: PlaybackState): void {
-    // Called every frame, so only a change of playing does anything. Paused, the
-    // controls come back and stay.
-    if (state.playing !== this.playing) {
-      this.playing = state.playing;
-      if (state.playing) this.scheduleHide();
-      else this.show();
-    }
+    // Called every frame, so it only writes what the frame changed.
     this.play.textContent = state.playing ? '❚❚' : '▶';
     this.play.setAttribute('aria-label', state.playing ? 'Pause' : 'Play');
     this.speed.textContent = `${state.speed}×`;
@@ -160,54 +141,33 @@ export class Hud {
   }
 
   /**
-   * A tap or click on the scene. During playback it toggles the controls. Returns
-   * true when it brought them back, so the browser's click that follows is not
-   * pressed on them. A captured mouse reaches them after Escape, which reveals
-   * them too.
+   * A tap or click on the scene with the controls hidden: it only brings them back.
+   * True when it did, so the tap is spent here — nothing behind them is picked — and
+   * the click the browser sends after it is swallowed rather than pressed on what
+   * just appeared. A captured mouse reaches them after Escape, which shows them too.
    */
-  tap(): boolean {
-    if (this.mode !== 'playback') return false;
-    if (this.app.dataset.chrome === 'hidden') {
-      this.reveal();
-      return true;
-    }
-    this.hide();
-    return false;
+  reveal(): boolean {
+    if (this.mode !== 'playback' || this.app.dataset.chrome !== 'hidden') return false;
+    this.show();
+    return true;
   }
 
-  /** Shows the controls, and while playing, only for a while. */
-  private reveal(): void {
-    if (this.mode !== 'playback') return;
-    this.show();
-    if (this.playing) this.scheduleHide();
+  /** A tap or click on the scene that picked nothing, with the controls up: away
+   *  they go, until the next tap. */
+  dismiss(): void {
+    if (this.mode === 'playback') this.hide();
   }
 
   private show(): void {
-    clearTimeout(this.hideTimer);
-    this.hideTimer = 0;
     delete this.app.dataset.chrome;
   }
 
   private hide(): void {
-    clearTimeout(this.hideTimer);
-    this.hideTimer = 0;
     this.app.dataset.chrome = 'hidden';
     // A hidden button left focused would swallow Space, which walkControls then
     // leaves alone rather than toggling playback.
     const focused = document.activeElement;
     if (focused instanceof HTMLElement && focused.closest(CHROME)) focused.blur();
-  }
-
-  private scheduleHide(): void {
-    clearTimeout(this.hideTimer);
-    this.hideTimer = window.setTimeout(() => {
-      this.hideTimer = 0;
-      if (this.mode !== 'playback' || !this.playing) return;
-      // Still in use: the scrubber held, or a mouse resting on a control.
-      const hovered = matchMedia('(hover: hover)').matches && this.app.querySelector(`:is(${CHROME}):hover`);
-      if (this.seeking || hovered) this.scheduleHide();
-      else this.hide();
-    }, HIDE_DELAY);
   }
 
   destroy(): void {
