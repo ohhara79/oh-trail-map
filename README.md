@@ -45,6 +45,13 @@ npm run preview
   either is selected, a click anywhere on the map (2D or 3D orbit) only clears
   it, so a near miss never jumps to a neighbouring trail or point. A row in the
   trail list still selects its trail directly.
+- The selection bar's profile button opens the selected trail's elevation
+  profile above it, in 2D and 3D. Hover or drag along it — or focus it and use
+  ←/→ (Shift for 10, Home/End), or ◀ ▶ — to pick one GPX point: a dot marks it
+  on the map, and the panel reads out its lat/lon, elevation, time (in the
+  browser's time zone), its number, how far along the trail and how long after
+  the start. In 2D, hovering near the selected trail moves the cursor to the
+  nearest point too; a click there still only clears the selection.
 - With a mouse, hovering shows what a click would pick before you click, in 2D
   and 3D orbit: a faint white casing under the trail, or a ring around the
   point, with its name beside the pointer. It follows the click's own rules —

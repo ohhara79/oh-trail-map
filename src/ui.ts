@@ -22,6 +22,8 @@ export type UiCallbacks = {
   onToggle3d: () => void;
   /** A trail row's ▶: play the trail at eye height in the 3D view. */
   onWalkTrail: (id: string) => void;
+  /** The selection bar's profile button: open the elevation profile, or close it. */
+  onToggleProfile: () => void;
 };
 
 /** What the locate button is currently saying: not following; following but
@@ -57,6 +59,7 @@ export class Ui {
   private readonly selectionName = el('selection-name');
   private readonly selectionStats = el('selection-stats');
   private readonly selectionWalk = el<HTMLButtonElement>('selection-walk');
+  private readonly selectionProfile = el<HTMLButtonElement>('selection-profile');
 
   /** Last rendered selection, so a row is only scrolled into view when the
    *  selection actually changed — not on every unrelated re-render. */
@@ -96,6 +99,7 @@ export class Ui {
     this.selectionWalk.addEventListener('click', () => {
       if (this.lastSelectedId !== null) this.cb.onWalkTrail(this.lastSelectedId);
     });
+    this.selectionProfile.addEventListener('click', () => this.cb.onToggleProfile());
     el('selection-clear').addEventListener('click', () => this.cb.onSelect(null));
 
     el('collapse').addEventListener('click', () => this.setPanel(false));
@@ -263,6 +267,17 @@ export class Ui {
     this.selectionName.title = trail.name;
     this.selectionStats.textContent = formatDistance(trail.stats.distance);
     this.selectionWalk.setAttribute('aria-label', `Walk ${trail.name} in 3D`);
+  }
+
+  /**
+   * Whether the profile is showing: the button's pressed state, and data-profile
+   * on #app, which lets style.css lift the notices and the scale bar clear of it.
+   * main.ts owns the flag and calls this whenever the panel opens or closes.
+   */
+  setProfileShown(shown: boolean): void {
+    this.selectionProfile.setAttribute('aria-pressed', String(shown));
+    if (shown) this.app.dataset.profile = '';
+    else delete this.app.dataset.profile;
   }
 
   /** The ids on screen, read back off the rows rather than cached alongside them. */

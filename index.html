@@ -153,9 +153,43 @@
           <span id="selection-name" class="selection-name"></span>
           <span id="selection-stats" class="muted"></span>
         </div>
+        <button id="selection-profile" type="button" class="hud-icon" aria-pressed="false"
+                title="Elevation profile and GPX points" aria-label="Elevation profile and GPX points">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none"
+               stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 19 8.5 10l4 5 3-4L21 19Z" />
+            <path d="M15.5 5v14" stroke-dasharray="2 2" />
+          </svg>
+        </button>
         <button id="selection-walk" type="button" title="Walk this trail in 3D">&#9654; 3D</button>
         <button id="selection-clear" type="button" title="Clear selection"
                 aria-label="Clear selection">&times;</button>
+      </div>
+      <!-- The selected trail's elevation over distance, and the GPX point under its
+           cursor. Filled by ProfilePanel in profilePanel.ts; stacked on the selection
+           bar, which opens it. -->
+      <div id="profile" class="hud-bar" hidden>
+        <div id="profile-chart" tabindex="0" role="slider" aria-label="GPX point along the trail"
+             aria-valuemin="1" aria-valuemax="1" aria-valuenow="1">
+          <svg id="profile-svg" aria-hidden="true">
+            <path class="profile-area" />
+            <path class="profile-line" />
+            <line class="profile-cursor-line" />
+            <circle class="profile-cursor-dot" r="4" />
+          </svg>
+          <span id="profile-ele-max" class="profile-label"></span>
+          <span id="profile-ele-min" class="profile-label"></span>
+          <span id="profile-total" class="profile-label"></span>
+        </div>
+        <div class="profile-foot">
+          <div class="profile-readout grow">
+            <div id="profile-line1"></div>
+            <div id="profile-line2"></div>
+            <div id="profile-line3"></div>
+          </div>
+          <button id="profile-prev" type="button" title="Previous point" aria-label="Previous point">&#9664;</button>
+          <button id="profile-next" type="button" title="Next point" aria-label="Next point">&#9654;</button>
+        </div>
       </div>
       <div id="notices"></div>
     </div>

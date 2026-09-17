@@ -604,6 +604,89 @@ button:hover { background: #f5f6f8; }
 .selection-text { display: flex; align-items: baseline; gap: 8px; min-width: 0; padding: 0 6px; font-size: 13px; }
 .selection-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 #selection-walk { color: #fff; background: var(--accent); }
+/* Square, like #mode3d's icons; outranks the touch padding below. */
+#selection-bar .hud-icon { width: 30px; padding: 0; }
+#selection-bar .hud-icon svg { display: block; margin: 0 auto; }
+
+/* The selected trail's elevation profile, stacked on #selection-bar with a 6px
+   gap: 10 + 34 + 6 = 50px up. Full width between the same insets, since the
+   chart is only as readable as it is wide. A fixed height, so #notices and the
+   scale bar can clear it with a number (50 + 158 + 10 = 218px). */
+#profile {
+  --profile-h: 158px;
+  bottom: calc(50px + env(safe-area-inset-bottom));
+  left: 12px;
+  right: 56px;
+  max-width: 560px;
+  height: var(--profile-h);
+  margin: 0 auto;
+  flex-direction: column; align-items: stretch;
+  padding: 4px;
+}
+#profile[hidden],
+#app[data-mode3d='playback'] #profile { display: none; }
+#profile-chart {
+  position: relative;
+  flex: 1; min-height: 0;
+  border-radius: 3px;
+  background: #f4f6f8;
+  cursor: crosshair;
+  /* A finger on the chart scrubs; it must not scroll or zoom the page instead. */
+  touch-action: none;
+}
+#profile-chart:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+#profile-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.profile-area { fill: var(--accent); fill-opacity: .18; }
+.profile-line { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linejoin: round; }
+.profile-cursor-line { stroke: var(--fg); stroke-width: 1; stroke-dasharray: 3 2; }
+.profile-cursor-dot { fill: var(--accent); stroke: #fff; stroke-width: 2; }
+.profile-label {
+  position: absolute;
+  font-size: 10px; line-height: 1;
+  color: var(--muted);
+  text-shadow: 0 0 2px #f4f6f8, 0 0 2px #f4f6f8;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+#profile-ele-max { top: 3px; left: 4px; }
+#profile-ele-min { bottom: 3px; left: 4px; }
+/* Top right: a trail mostly starts and ends low, at the car park. */
+#profile-total { top: 3px; right: 4px; }
+.profile-foot { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+.profile-readout {
+  min-width: 0;
+  padding: 0 4px;
+  font-size: 12px; line-height: 16px;
+  font-variant-numeric: tabular-nums;
+  /* The values are there to be copied. */
+  user-select: text; -webkit-user-select: text;
+}
+/* Always three lines, so the panel's height never moves with what they say. */
+.profile-readout > div { height: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#profile-line1 { font-weight: 500; }
+#profile-line3 { color: var(--muted); }
+#profile .profile-foot button { align-self: stretch; min-width: 34px; padding: 0 8px; }
+/* A 320px phone leaves the readout some 180px: enough, at 11px and with narrower
+   ◀ ▶, for the lat/lon and the elevation and time lines to fit whole. */
+@media (max-width: 360px) {
+  .profile-foot { gap: 2px; }
+  .profile-readout { font-size: 11px; padding: 0 2px; }
+  #profile .profile-foot button { min-width: 28px; padding: 0 4px; }
+}
+#profile .profile-foot button:disabled { opacity: .35; cursor: default; }
+/* The notices and the scale bar clear the panel as they clear the bar alone. */
+#app[data-selection][data-profile] #notices { bottom: calc(218px + env(safe-area-inset-bottom)); }
+#app[data-profile] :is(#map .leaflet-control-scale, #map3d .maplibregl-ctrl-scale) {
+  margin-bottom: calc(218px + env(safe-area-inset-bottom));
+}
+/* The map dot for the same point, over a trail of any colour on any basemap. */
+.profile-cursor-marker { filter: drop-shadow(0 0 1.5px rgba(0,0,0,.6)); }
+.maplibregl-marker.profile-cursor-marker {
+  width: 14px; height: 14px;
+  border: 3px solid #fff; border-radius: 50%;
+  box-sizing: content-box;
+  pointer-events: none;
+}
 
 /* In orbit, where Walk will put you: walking starts at the map centre, facing
    screen-up (see setMode in view3d.ts), so the longer tick is the way you will face.
@@ -653,6 +736,9 @@ button:hover { background: #f5f6f8; }
      that rule's extra attribute outranks #app[data-selection] #notices below. */
   #app[data-mode3d='walk'] #notices { bottom: calc(154px + env(safe-area-inset-bottom)); }
   #app[data-mode3d='walk'][data-selection] #notices { bottom: calc(198px + env(safe-area-inset-bottom)); }
+  /* The profile rides on the lifted bar: 154 + 34 + 6, and the notices above it. */
+  #app[data-mode3d='walk'] #profile { bottom: calc(194px + env(safe-area-inset-bottom)); }
+  #app[data-mode3d='walk'][data-profile] #notices { bottom: calc(362px + env(safe-area-inset-bottom)); }
 }
 
 #notices {

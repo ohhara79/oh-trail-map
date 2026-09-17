@@ -8,7 +8,9 @@ import type { NationalPoint } from './nationalPoint';
 import { loadNationalPoints, createPointsLayer, openPointPopup, pointRows } from './points';
 import { PointsList } from './pointsList';
 import { canHover, createHoverLabel } from './hoverLabel';
-import { Halo, HoverHalo, trailAt } from './selection';
+import { ProfilePanel } from './profilePanel';
+import { Halo, HoverHalo, nearestPointIndex, ProfileCursor, trailAt } from './selection';
+import { buildProfile } from './trailProfile';
 import {
   buildTrail,
   DEFAULT_SETTINGS,
@@ -145,6 +147,16 @@ async function main(): Promise<void> {
   let mapMoving = false;
   let hoverFrame = 0;
 
+  // The elevation profile. profileOpen is whether you asked for it, and outlives
+  // a change of selection; profileTrail is the trail it is actually showing — the
+  // selected one while it is open, null otherwise. cursorIndex is the GPX point
+  // its cursor is on, and setCursor() the only writer of it.
+  let profileOpen = false;
+  let profileTrail: Trail | null = null;
+  let cursorIndex: number | null = null;
+  const profileCursor = new ProfileCursor(map);
+  const profilePanel = new ProfilePanel({ onCursor: (index) => setCursor(index) });
+
   // The National Point Number pins. They draw in their own pane (see points.ts), so this
   // can sit wherever it reads best rather than having to run before startLocating.
   // The open point popup, if any, and the point it describes. A pin opens one only
@@ -272,6 +284,10 @@ async function main(): Promise<void> {
       ui.closeDrawer();
       void open3d().then((view) => view?.walkTrail(id));
     },
+    onToggleProfile: () => {
+      profileOpen = !profileOpen;
+      syncProfile();
+    },
   });
 
   const pointsList = new PointsList(pointRows(points), {
@@ -365,6 +381,7 @@ async function main(): Promise<void> {
         if (lastFix) view.setLocation({ lat: lastFix.lat, lon: lastFix.lng, accuracy: lastAccuracy });
         view.setHeading(lastHeading);
         view.setFollowing(following);
+        view.setProfileCursor(cursorAt());
         app.dataset.view = '3d';
         ui.set3dState('on');
         return view;
@@ -410,6 +427,43 @@ async function main(): Promise<void> {
 
   function refresh(): void {
     ui.renderTrails(trails, selectedId);
+    // Every change of selection ends in a refresh — including setVisible clearing
+    // it, which never goes through selectTrail — so the profile follows from here.
+    syncProfile();
+  }
+
+  /** The panel, and the trail it is for, from profileOpen and the selection. */
+  function syncProfile(): void {
+    const trail = (profileOpen && selectedId !== null && findTrail(selectedId)) || null;
+    ui.setProfileShown(trail !== null);
+    if (trail === profileTrail) return;
+    profileTrail = trail;
+    // A point number means nothing on another trail.
+    cursorIndex = null;
+    profilePanel.show(trail ? buildProfile(trail) : null);
+    applyCursor();
+  }
+
+  /** The single place the profile's cursor moves. */
+  function setCursor(index: number | null): void {
+    if (index === cursorIndex) return;
+    cursorIndex = index;
+    applyCursor();
+  }
+
+  /** Where the cursor's point is, for the two map dots. */
+  function cursorAt(): { lat: number; lon: number; color: string } | null {
+    if (!profileTrail || cursorIndex === null) return null;
+    const profile = buildProfile(profileTrail);
+    return { lat: profile.lat[cursorIndex], lon: profile.lon[cursorIndex], color: profileTrail.color };
+  }
+
+  /** The panel, the 2D dot and the 3D dot, from cursorIndex. */
+  function applyCursor(): void {
+    const at = cursorAt();
+    profilePanel.setCursor(cursorIndex);
+    profileCursor.show(at);
+    view3d?.setProfileCursor(at);
   }
 
   /** Opens a point's popup and remembers whose it is, so hiding that point can
@@ -523,6 +577,14 @@ async function main(): Promise<void> {
     const name = pin ? pin.name || pin.code : trail?.name;
     if (at && name) hoverLabel.show(name, at.x, at.y);
     else hoverLabel.hide();
+
+    // With the profile open, the selected trail answers the mouse too: near it, the
+    // cursor moves to the nearest point. Only the cursor — a click there still
+    // clears the selection, as any click does while one is made.
+    if (profileTrail?.visible && hoverAt && !view3d && !mapMoving && canHover() && !popupOpen) {
+      const index = nearestPointIndex(map, hoverAt, profileTrail);
+      if (index !== null) setCursor(index);
+    }
   }
 
   /**

@@ -115,6 +115,8 @@ export type View3d = {
   setHeading(heading: Heading | null): void;
   /** Whether the locate button is following you: in Walk, you face your heading too. */
   setFollowing(on: boolean): void;
+  /** The dot for the GPX point the profile's cursor is on, or null for none. */
+  setProfileCursor(at: { lat: number; lon: number; color: string } | null): void;
   fitTrail(id: string): void;
   panTo(lat: number, lon: number): void;
   walkTrail(id: string): void;
@@ -300,6 +302,13 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   // face on the terrain rather than at a fixed angle on the screen.
   const locationMarker = new Marker({ element: locationEl, rotationAlignment: 'map', pitchAlignment: 'map' });
   let locationShown = false;
+
+  // The 2D ProfileCursor's counterpart: a Marker, like your location, so it stands
+  // on the terrain at the point.
+  const profileEl = document.createElement('div');
+  profileEl.className = 'profile-cursor-marker';
+  const profileMarker = new Marker({ element: profileEl });
+  let profileShown = false;
 
   // -- clicks --------------------------------------------------------------------
 
@@ -996,6 +1005,19 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       following = on;
       syncSteering();
     },
+    setProfileCursor(at) {
+      if (!at) {
+        profileMarker.remove();
+        profileShown = false;
+        return;
+      }
+      profileEl.style.background = at.color;
+      profileMarker.setLngLat([at.lon, at.lat]);
+      if (!profileShown) {
+        profileMarker.addTo(map);
+        profileShown = true;
+      }
+    },
     fitTrail(id) {
       // Walking stays where it is: a row click must not pull you out of the scene.
       if (mode !== 'orbit') return;
@@ -1039,6 +1061,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       cancelAnimationFrame(pending);
       cancelAnimationFrame(hoverFrame);
       locationMarker.remove();
+      profileMarker.remove();
       // Frees the GL context and its tile textures. The module stays cached, so
       // opening 3D again costs no download.
       map.remove();
