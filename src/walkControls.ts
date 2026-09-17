@@ -15,6 +15,8 @@ export const KEY_TURN_RATE = 90;
 const RUN_FACTOR = 4;
 /** A pointer that moves less than this between down and up was a click. */
 const CLICK_SLOP = 4;
+/** How long a spent tap waits for the browser's click before giving up on it. */
+const GHOST_CLICK_MS = 500;
 
 export type Intent = {
   /** Back (negative) or forward, in multiples of walk speed: 1 walks, RUN_FACTOR
@@ -52,7 +54,8 @@ export type ControlsOptions = {
   /** A click or tap on the surface, as opposed to a drag, including a click with
    *  the mouse already captured. Returns true when the tap was spent on something
    *  the free mouse must still reach — a popup or the hidden controls — so it must
-   *  not also capture the mouse. */
+   *  not also capture the mouse. The click the browser sends after that tap is
+   *  swallowed too, or it would press whatever the tap just put under the finger. */
   onTap?: () => boolean;
 };
 
@@ -101,6 +104,34 @@ export function createControls(opts: ControlsOptions): WalkControls {
   let gyroOn = false;
 
   const touch = () => (last = performance.now());
+
+  /**
+   * Taps are handled on pointerup, and the browser's click for the same tap comes
+   * after. By then the tap may have shown the selection bar, a popup or the
+   * playback controls, and on a touch screen the click lands on whatever is under
+   * the finger now: ▶ would start playing the trail just picked. So the next click
+   * is dropped. The next press, or a click that never comes, ends the wait, so a
+   * real tap on what appeared still works.
+   */
+  let stopSwallowing: (() => void) | null = null;
+  function swallowNextClick() {
+    stopSwallowing?.();
+    const swallow = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      stop();
+    };
+    const timer = window.setTimeout(() => stop(), GHOST_CLICK_MS);
+    function stop() {
+      clearTimeout(timer);
+      window.removeEventListener('click', swallow, true);
+      window.removeEventListener('pointerdown', stop, true);
+      stopSwallowing = null;
+    }
+    window.addEventListener('click', swallow, true);
+    window.addEventListener('pointerdown', stop, true);
+    stopSwallowing = stop;
+  }
 
   // e.code, not e.key: with the Korean IME on, W arrives as key 'ㅈ' but code
   // 'KeyW'. Code names the physical key, which is what a movement binding means.
@@ -168,7 +199,10 @@ export function createControls(opts: ControlsOptions): WalkControls {
     if (e.type !== 'pointerup' || moved >= CLICK_SLOP) return;
     // A click that opened a popup or brought the hidden playback controls back
     // leaves the mouse free, or it could never reach them.
-    if (opts.onTap?.()) return;
+    if (opts.onTap?.()) {
+      swallowNextClick();
+      return;
+    }
     // A plain click with a mouse captures it, game-style, so looking no longer
     // needs a held button; Escape gives it back. Only on click, never on a drag,
     // so dragging to look keeps working for anyone who would rather not.
@@ -264,6 +298,7 @@ export function createControls(opts: ControlsOptions): WalkControls {
       if (on) window.addEventListener('deviceorientation', onOrientation);
     },
     destroy() {
+      stopSwallowing?.();
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
