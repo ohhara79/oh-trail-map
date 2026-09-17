@@ -60,8 +60,6 @@ npm run preview
     to look around.
     Aim the crosshair at a point or a trail and click or tap to open or select
     it; the selected trail's bar shows while walking too.
-    Walking past a national point (within 25 m) opens its popup on its own, in
-    playback too; points hidden in the panel are skipped.
     The locate button takes you to your location and keeps following as you
     move, until you walk away or click it again. During playback it leaves the
     trail first. While following, you also face the way you are facing (the

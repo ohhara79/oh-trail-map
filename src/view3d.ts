@@ -138,13 +138,6 @@ const EYE_HEIGHTS = [1.7, 20, 80];
  *  there has a moment to load before you are standing in it. */
 const FAR_JUMP = 200;
 const JUMP_HEIGHT = 150;
-/** Walking opens a point's popup on its own within this many metres. Trails that
- *  visit a point pass within 15–20 m of it, and points are rarely closer than 50 m
- *  to each other. */
-const NEARBY = 25;
-/** Further than this, a point that has opened can open again. Wider than NEARBY, so
- *  standing at the edge does not open it over and over. */
-const NEARBY_RELEASE = 40;
 
 function typingTarget(): boolean {
   const el = document.activeElement;
@@ -463,39 +456,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     scheduleHover();
     // Walked or looked away from the point: its popup has nothing left to point at.
     if (popup && !inWalkView(popup.getLngLat())) closePopup();
-    openNearby();
   });
-
-  /** Points whose popup has opened on its own, until you are NEARBY_RELEASE away from
-   *  them. A point closed with a tap, or left behind, does not open again meanwhile. */
-  const opened = new Set<NationalPoint>();
-
-  /** Opens the popup of the closest point you have walked up to, as a tap on it
-   *  would. Only one in view: beside or behind you, it would close on the next frame. */
-  function openNearby(): void {
-    if (!walker || tween) return;
-    const { pose } = walker;
-    // The one place points are walked directly rather than queried off the map,
-    // so the one place the panel list's hidden set has to be asked about by hand.
-    const { hiddenPoints } = getScene();
-    for (const point of opened) {
-      if (haversine(pose, point) > NEARBY_RELEASE) opened.delete(point);
-    }
-    let nearest: NationalPoint | undefined;
-    let nearestDistance = NEARBY;
-    for (const point of points) {
-      const d = haversine(pose, point);
-      // Distance first: it is the cheap test, and it rejects almost every point.
-      if (d > nearestDistance || hiddenPoints.has(point.code) || opened.has(point)) continue;
-      if (!inWalkView(new LngLat(point.lon, point.lat))) continue;
-      nearest = point;
-      nearestDistance = d;
-    }
-    if (!nearest) return;
-    opened.add(nearest);
-    closePopup();
-    openPopup(nearest);
-  }
 
   /** A tap or click on the scene while walking. True when it was spent here, so it
    *  must not also capture the mouse. */
@@ -699,8 +660,6 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     controls?.destroy();
     walker = null;
     controls = null;
-    // Walking again, the points around you open again.
-    opened.clear();
     return stood;
   }
 
@@ -854,8 +813,6 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     const playback = new Playback(path);
     playback.playing = true;
     playingId = id;
-    // Played again, a trail opens its points again.
-    opened.clear();
     walker.setPlayback(playback);
     mode = 'playback';
     hud.setMode(mode);
