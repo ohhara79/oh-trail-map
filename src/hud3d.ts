@@ -53,7 +53,6 @@ export class Hud {
   private readonly app = el('app');
   private readonly root = el('hud3d');
   readonly joystick = el('joystick');
-  private readonly crosshair = el('crosshair3d');
   private readonly walk = el<HTMLButtonElement>('walk3d');
   private readonly eye = el<HTMLButtonElement>('eye3d');
   private readonly gyro = el<HTMLButtonElement>('gyro3d');
@@ -116,11 +115,6 @@ export class Hud {
 
   setEye(metres: number): void {
     this.eye.textContent = metres < 10 ? `${metres} m` : `${Math.round(metres)} m`;
-  }
-
-  /** Whether the crosshair is over something a tap would open. */
-  setAimed(on: boolean): void {
-    this.crosshair.toggleAttribute('data-aimed', on);
   }
 
   setGyro(on: boolean): void {
@@ -218,7 +212,6 @@ export class Hud {
   destroy(): void {
     this.abort.abort();
     this.show();
-    this.setAimed(false);
     this.root.hidden = true;
     delete this.app.dataset.mode3d;
   }

@@ -242,8 +242,6 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       eyeIndex = (eyeIndex + 1) % EYE_HEIGHTS.length;
       if (walker) walker.eye = EYE_HEIGHTS[eyeIndex];
       hud.setEye(EYE_HEIGHTS[eyeIndex]);
-      // The reach changes with it, while nothing else may be moving.
-      syncAim();
     },
     onGyro: () => toggleGyro(),
     onAttitude: () => walker?.recentre(),
@@ -260,8 +258,6 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     map.setFilter(LAYER_TRAILS, visible);
     for (const id of [...LAYER_HALOS, LAYER_TRAIL_SELECTED]) map.setFilter(id, selected);
     map.setPaintProperty(LAYER_TRAILS, 'line-opacity', trailOpacity(selectedId));
-    // A trail hidden, or the one aimed at now selected, changes what a tap would do.
-    syncAim();
     scheduleHover();
   }
 
@@ -276,8 +272,6 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     map.setFilter(LAYER_POINTS, pointsFilter(hiddenPoints));
     // The same rule as 2D: a popup whose pin is gone points at nothing.
     if (popupPoint && hiddenPoints.has(popupPoint.code)) closePopup();
-    // Hiding the point under the crosshair changes what a tap would do.
-    syncAim();
     scheduleHover();
   }
 
@@ -331,7 +325,6 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     if (far) {
       // The jump may leave the point it names far behind.
       closePopup();
-      syncAim();
     }
   }
 
@@ -461,10 +454,6 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     return id === getScene().selectedId ? undefined : id;
   }
 
-  function syncAim(): void {
-    hud.setAimed(mode !== 'orbit' && (aimedPoint() !== undefined || aimedTrail() !== undefined));
-  }
-
   /** Whether a popup at `lngLat` is still on screen from where you stand. MapLibre
    *  projects a point behind the camera to a mirrored spot in front of it, so being
    *  inside the canvas is not enough on its own. */
@@ -478,10 +467,10 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     return p.x >= 0 && p.y >= 0 && p.x <= canvas.clientWidth && p.y <= canvas.clientHeight;
   }
 
-  // The walk camera only jumps when it actually moves, so standing still costs no query.
+  // Fires every frame the walk camera moves, so nothing here queries the scene: what
+  // the crosshair is over is only asked on a tap (onSceneTap).
   map.on('move', () => {
     if (mode === 'orbit') return;
-    syncAim();
     // Walked or looked away from the point: its popup has nothing left to point at.
     if (popup && !inWalkView(popup.getLngLat())) closePopup();
   });
@@ -764,7 +753,6 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     syncSteering();
     // A popup opened while walking would otherwise stay behind in orbit.
     closePopup();
-    syncAim();
     scheduleHover();
   }
 
@@ -833,7 +821,6 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     syncSteering();
     // The jump may leave the point it names far behind.
     closePopup();
-    syncAim();
   }
 
   // Escape undoes the most local thing first: playback back to walking, walking
@@ -915,7 +902,6 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       // the marker, so it reads the same either way.
       closePopup();
       openPopup(point);
-      syncAim();
     },
     walkTrail,
     viewFor2d() {

@@ -607,8 +607,10 @@ button:hover { background: #f5f6f8; }
 
 /* In orbit, where Walk will put you: walking starts at the map centre, facing
    screen-up (see setMode in view3d.ts), so the longer tick is the way you will face.
-   While walking, what a tap aims at: data-aimed lights it up over a point (see
-   onSceneTap in view3d.ts). Clicks pass through to the scene under it. */
+   While walking, what a tap aims at (see onSceneTap in view3d.ts). It does not
+   light up over what it would pick: finding out means querying the scene, which
+   every frame of a moving camera cannot afford. Clicks pass through to the scene
+   under it. */
 #crosshair3d {
   display: none;
   position: absolute; z-index: 900;
@@ -618,11 +620,9 @@ button:hover { background: #f5f6f8; }
   color: #fff;
   filter: drop-shadow(0 0 1.5px rgba(0,0,0,.7));
   pointer-events: none;
-  transition: transform .12s, color .12s;
 }
 #crosshair3d svg { display: block; }
 #app[data-mode3d] #crosshair3d { display: block; }
-#crosshair3d[data-aimed] { color: var(--accent); transform: translate(-50%, -50%) scale(1.25); }
 
 #joystick {
   display: none;
@@ -722,8 +722,6 @@ button:hover { background: #f5f6f8; }
   /* The playback controls still hide and return; they just snap. Same
      specificity as the rules above and later, so this wins. */
   #app[data-mode3d] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d) { transition: none; }
-  /* The accent colour still says aimed without the grow. */
-  #crosshair3d { transition: none; }
 }
 
 /* ---------------------------------------------------------------------------
