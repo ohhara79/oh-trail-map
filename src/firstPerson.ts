@@ -122,6 +122,8 @@ export class FirstPerson {
   private ground: number;
   /** Height above the ground right now, falling towards `eye` after entering. */
   private height: number;
+  /** The eye's altitude as place() last set it. */
+  private alt: number;
   private frameId = 0;
   private lastTime = 0;
   private lastCamera = '';
@@ -139,6 +141,7 @@ export class FirstPerson {
     this.lookOffset = this.pose.look;
     this.height = Math.max(startHeight, this.eye);
     this.ground = groundGuess;
+    this.alt = groundGuess + this.height;
     document.addEventListener('visibilitychange', this.onVisibility);
     this.run();
   }
@@ -225,6 +228,11 @@ export class FirstPerson {
   /** The smoothed ground height under the eye, in metres. */
   get groundHeight(): number {
     return this.ground;
+  }
+
+  /** Where the eye is, in metres above sea level, as the last frame placed it. */
+  get altitude(): number {
+    return this.alt;
   }
 
   destroy(): void {
@@ -369,6 +377,7 @@ export class FirstPerson {
     // smoothed one, which also keeps MapLibre from lifting it out of the terrain
     // on its own and fighting this loop.
     const alt = Math.max(this.ground + this.height, g + MIN_CLEARANCE);
+    this.alt = alt;
 
     // Standing still costs no redraw.
     const key = `${lat},${lon},${yaw},${look},${alt}`;

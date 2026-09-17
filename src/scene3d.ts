@@ -29,8 +29,7 @@ export const SRC_DEM = 'dem';
 export const SRC_TRAILS = 'trails';
 export const SRC_POINTS = 'points';
 export const SRC_LOCATION = 'location';
-export const SRC_POINT_EDGES = 'point-edges';
-export const SRC_POINT_DISCS = 'point-discs';
+export const SRC_POINT_SHADOWS = 'point-shadows';
 
 export const LAYER_BASEMAP = 'basemap';
 export const LAYER_TRAILS = 'trails';
@@ -40,9 +39,7 @@ export const LAYER_HALOS = ['trail-halo-outer', 'trail-halo'] as const;
 export const LAYER_LOCATION = 'location-accuracy';
 export const LAYER_POINTS = 'points';
 export const LAYER_POINT_HOVER = 'point-hover';
-/** The white edge, then the coloured disc on top of it. The edge covers the whole
- *  disc, so it is the one to query for what the crosshair is on. */
-export const LAYER_POINT_DISCS = ['point-disc-edge', 'point-disc'] as const;
+export const LAYER_POINT_SHADOW = 'point-shadow';
 
 /**
  * AWS Terrain Tiles: global, keyless, CORS-open, encoded as terrarium PNGs. Around
@@ -133,7 +130,7 @@ export function pointsGeoJson(points: readonly NationalPoint[]): GeoJSON.Feature
   };
 }
 
-/** Each point as a disc of `radius` metres, for the draped layers walking shows. */
+/** Each point as a disc of `radius` metres, for the draped layer walking shows. */
 export function pointDiscsGeoJson(points: readonly NationalPoint[], radius: number): GeoJSON.FeatureCollection {
   return {
     type: 'FeatureCollection',
@@ -179,10 +176,11 @@ function groundWidth(px: number, metres: number, lat: number): ExpressionSpecifi
 const TRAIL_METRES = 3;
 const HALO_METRES = [4.6, 3.8] as const;
 
-/** Radius of a point's disc on the ground while walking, and the white edge around
- *  it. Well wider than a trail, so a point on one still stands out from it. */
-const POINT_DISC_METRES = 3;
-const POINT_EDGE_METRES = 0.75;
+/** While walking, a point is a ball of this radius floating with its centre this
+ *  high over the ground: about eye height, so you aim straight at it. Drawn by
+ *  pointBalls.ts; here for the shadow under it. */
+export const BALL_RADIUS = 1;
+export const BALL_HEIGHT = 2;
 
 /**
  * The width of every trail layer bar the orbit-only hover, the one place they are
@@ -264,23 +262,17 @@ export function layers(): LayerSpecification[] {
       // The accuracy circle from startLocating in map.ts.
       paint: { 'fill-color': '#1a73e8', 'fill-opacity': 0.12, 'fill-outline-color': '#1a73e8' },
     },
-    // While walking, a point is a disc painted on the ground rather than a dot in
-    // the air: a fill is draped onto the terrain, so it lies on a slope instead of
-    // sinking into it the way a flat circle layer would. Hidden in orbit, where the
-    // dots below are drawn instead; view3d.ts swaps them.
-    ...LAYER_POINT_DISCS.map(
-      (id, i): LayerSpecification => ({
-        id,
-        type: 'fill',
-        source: i === 0 ? SRC_POINT_EDGES : SRC_POINT_DISCS,
-        // Named points above the rest, as with the dots.
-        layout: { visibility: 'none', 'fill-sort-key': ['case', ['get', 'named'], 1, 0] },
-        paint: {
-          'fill-color':
-            i === 0 ? '#ffffff' : ['case', ['get', 'named'], PIN_COLOR_NAMED, PIN_COLOR_UNNAMED],
-        },
-      }),
-    ),
+    // While walking, a point is a ball floating over its spot (pointBalls.ts), and
+    // this is its shadow, which marks where on the ground that spot is. A fill is
+    // draped onto the terrain, so it lies on a slope rather than sinking into it.
+    // Hidden in orbit, where the dots below are drawn instead; view3d.ts swaps them.
+    {
+      id: LAYER_POINT_SHADOW,
+      type: 'fill',
+      source: SRC_POINT_SHADOWS,
+      layout: { visibility: 'none' },
+      paint: { 'fill-color': '#000000', 'fill-opacity': 0.25 },
+    },
     // The point a click would open: a wider white disc behind its dot, edged dark
     // for the same two-basemap reason as the trail halo, and matching the ring the
     // 2D pin gets in style.css.
@@ -327,11 +319,7 @@ export function style(basemap: Basemap, trails: readonly Trail[], points: readon
       [SRC_TRAILS]: { type: 'geojson', data: trailsGeoJson(trails) },
       [SRC_POINTS]: { type: 'geojson', data: pointsGeoJson(points) },
       [SRC_LOCATION]: { type: 'geojson', data: EMPTY },
-      [SRC_POINT_EDGES]: {
-        type: 'geojson',
-        data: pointDiscsGeoJson(points, POINT_DISC_METRES + POINT_EDGE_METRES),
-      },
-      [SRC_POINT_DISCS]: { type: 'geojson', data: pointDiscsGeoJson(points, POINT_DISC_METRES) },
+      [SRC_POINT_SHADOWS]: { type: 'geojson', data: pointDiscsGeoJson(points, BALL_RADIUS) },
     },
     layers: layers(),
     // Exaggeration stays at 1: queryTerrainElevation scales by it, and the walk

@@ -38,13 +38,14 @@ import { haversine } from './gpx';
 import { canHover, createHoverLabel } from './hoverLabel';
 import { LOCATE_ICON_HTML } from './map';
 import type { NationalPoint } from './nationalPoint';
+import { createPointBalls, LAYER_POINT_BALLS } from './pointBalls';
 import { loadNationalPoints, popupContent } from './points';
 import {
   EMPTY,
   LAYER_BASEMAP,
   LAYER_HALOS,
-  LAYER_POINT_DISCS,
   LAYER_POINT_HOVER,
+  LAYER_POINT_SHADOW,
   LAYER_POINTS,
   LAYER_TRAILS,
   LAYER_TRAIL_HOVER,
@@ -181,6 +182,11 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     throw err;
   });
 
+  // On top of everything, and hidden until walking: see syncGround.
+  const balls = createPointBalls(map, points, () => getScene().hiddenPoints);
+  map.addLayer(balls);
+  map.setLayoutProperty(LAYER_POINT_BALLS, 'visibility', 'none');
+
   // Two controls rather than one: zoom alone is as tall as Leaflet's zoom control, so
   // #locate and the zoom buttons stay put between views, and the compass is lifted
   // above #locate by style.css. Bottom controls stack upwards, so it goes second.
@@ -271,7 +277,9 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
    */
   function syncPoints(): void {
     const { hiddenPoints } = getScene();
-    for (const id of [LAYER_POINTS, ...LAYER_POINT_DISCS]) map.setFilter(id, pointsFilter(hiddenPoints));
+    for (const id of [LAYER_POINTS, LAYER_POINT_SHADOW]) map.setFilter(id, pointsFilter(hiddenPoints));
+    // The balls are no style layer to filter: they read the hidden set as they draw.
+    map.triggerRepaint();
     // The same rule as 2D: a popup whose pin is gone points at nothing.
     if (popupPoint && hiddenPoints.has(popupPoint.code)) closePopup();
     scheduleHover();
@@ -436,11 +444,15 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
 
   // While walking, the pointer looks around and a captured mouse has no cursor, so
   // the crosshair at the screen centre, where the camera looks, is what you aim
-  // with. A point is a disc on the ground by then, and anywhere on it counts, or
-  // just off it: the box is a little wider than the crosshair's 7px ring.
+  // with. A point is a ball floating over the ground by then, and the view ray is
+  // tested against it: anywhere on it counts, or just off it, within 8px — a little
+  // wider than the crosshair's 7px ring.
   function aimedPoint(): NationalPoint | undefined {
-    const canvas = map.getCanvas();
-    return pointAt(LAYER_POINT_DISCS[0], canvas.clientWidth / 2, canvas.clientHeight / 2, 8, inReach);
+    if (!walker) return undefined;
+    const { pose } = walker;
+    const halfHeight = map.getCanvas().clientHeight / 2;
+    const pad = Math.atan((8 * Math.tan((WALK_FOV * Math.PI) / 360)) / halfHeight);
+    return balls.pick({ ...pose, alt: walker.altitude }, pose.yaw, pose.look, pad, inReach);
   }
 
   /** Whether a spot is within the crosshair's reach: see REACH. Measured from where
@@ -685,8 +697,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
 
   /**
    * Walking and playback draw for a camera at eye height: trails a fixed width on
-   * the ground rather than a hairline, and points as discs painted on the terrain in
-   * place of the dots. Orbit gets back what it had. Run on every mode change, which
+   * the ground rather than a hairline, and points as balls floating over a shadow
+   * on the terrain in place of the dots. Orbit gets back what it had. Run on every mode change, which
    * is when a camera flight starts, so the swap happens while everything moves.
    */
   function syncGround(): void {
@@ -696,7 +708,9 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     for (const [id, width] of trailWidths(on ? map.getCenter().lat : null)) {
       map.setPaintProperty(id, 'line-width', width);
     }
-    for (const id of LAYER_POINT_DISCS) map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
+    for (const id of [LAYER_POINT_BALLS, LAYER_POINT_SHADOW]) {
+      map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
+    }
     map.setLayoutProperty(LAYER_POINTS, 'visibility', on ? 'none' : 'visible');
   }
 
