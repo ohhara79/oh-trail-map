@@ -300,6 +300,19 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
 
   // -- clicks --------------------------------------------------------------------
 
+  // queryRenderedFeatures pads its box by how much smaller the top of the screen is
+  // drawn than the centre, measured where the top-left corner meets the ground plane.
+  // Once that corner is above the horizon it meets the plane behind the camera, the
+  // factor comes out negative, and the box shrinks to nothing: walking, that is every
+  // look between level and about 25° down, so a trail a few metres ahead could not be
+  // picked. Only the query reads the factor, and only to pad the lookup before the
+  // exact test against the line's width, so a larger one can only cost time; 1 already
+  // covers a line drawn flat on the map. MapLibre replaces the transform only when
+  // the projection changes, which style.load above has already done.
+  const { transform } = map._camera;
+  const pitchScale = transform.maxPitchScaleFactor.bind(transform);
+  transform.maxPitchScaleFactor = () => Math.max(1, pitchScale());
+
   /** The point `layer` draws within `r` pixels of (x, y) on the canvas, among those
    *  `keep` allows. A point the panel list has hidden is filtered out of the layer,
    *  and queryRenderedFeatures honours that, so there is nothing further to ask here. */
