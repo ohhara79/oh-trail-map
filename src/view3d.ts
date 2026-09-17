@@ -503,6 +503,17 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     if (mode !== 'orbit') liftPopup();
   });
 
+  // Trails and shadows are drawn into textures cached on the terrain, and MapLibre
+  // drops the ones under a source tile as it loads, matching the two by overscaled
+  // zoom. Past a source's maxzoom — the trails' 18, below where walking stands — its
+  // tile is overscaled and the terrain's never are, so none match: a trail selected
+  // while walking kept its old look until you walked onto new ground. Matched here
+  // by the tile it was cut from instead.
+  map.on('sourcedata', (e) => {
+    const id = e.tile ? e.coord : undefined;
+    if (id?.isOverscaled()) map.terrain?.tileManager.releaseRTT(id.scaledTo(id.canonical.z));
+  });
+
   /** Where on the canvas the top of the ball over `lngLat` was drawn last frame, or
    *  null while the terrain there has not loaded or the spot is behind the camera. */
   function ballTop(lngLat: LngLat): { x: number; y: number } | null {
