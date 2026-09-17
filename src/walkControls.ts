@@ -52,10 +52,10 @@ export type ControlsOptions = {
   joystick: HTMLElement;
   onSpace: () => void;
   /** A click or tap on the surface, as opposed to a drag, including a click with
-   *  the mouse already captured. Returns true when the tap was spent on something
-   *  the free mouse must still reach — a popup or the hidden controls — so it must
-   *  not also capture the mouse. The click the browser sends after that tap is
-   *  swallowed too, or it would press whatever the tap just put under the finger. */
+   *  the mouse already captured. Returns true when the tap put something on screen
+   *  — a popup, the selection bar or the hidden controls — so the click the browser
+   *  sends after it is swallowed, or it would press whatever the tap just put under
+   *  the finger. A mouse click captures the mouse either way. */
   onTap?: () => boolean;
 };
 
@@ -93,7 +93,7 @@ function typingTarget(): boolean {
 /** Captures the mouse, game-style: the cursor hides and every move looks around.
  *  Only from inside a click or key press, which requestPointerLock requires. A
  *  refusal, such as a click within Chrome's second after Esc, is ignored. */
-export function captureMouse(surface: HTMLElement): void {
+function captureMouse(surface: HTMLElement): void {
   if (surface.requestPointerLock) Promise.resolve(surface.requestPointerLock()).catch(() => {});
 }
 
@@ -204,16 +204,14 @@ export function createControls(opts: ControlsOptions): WalkControls {
     if (!drag) return;
     const moved = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
     if (e.type !== 'pointerup' || moved >= CLICK_SLOP) return;
-    // A click that opened a popup or brought the hidden playback controls back
-    // leaves the mouse free, or it could never reach them.
-    if (opts.onTap?.()) {
-      swallowNextClick();
-      return;
-    }
-    // A plain click with a mouse captures it, game-style, so looking no longer
-    // needs a held button; Escape gives it back. Only on click, never on a drag,
-    // so dragging to look keeps working for anyone who would rather not.
-    // pointerup is a user activation, which requestPointerLock requires.
+    // A tap that opened a popup, picked a trail or brought the playback controls
+    // back: the click the browser sends next must not press what it put there.
+    if (opts.onTap?.()) swallowNextClick();
+    // A click with a mouse captures it, game-style, so looking no longer needs a
+    // held button, even a click that picked something: Escape gives the mouse back
+    // to reach it. Only on click, never on a drag, so dragging to look keeps working
+    // for anyone who would rather not. pointerup is a user activation, which
+    // requestPointerLock requires.
     if (e.pointerType === 'mouse') captureMouse(surface);
   }
 

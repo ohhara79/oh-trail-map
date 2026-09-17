@@ -54,9 +54,9 @@ npm run preview
   the same basemap, trails and points:
   - It opens in orbit, to tilt and rotate from above.
   - **Walk** (a toggle; off again is back to orbit): stand at eye height (1.7 m, or 20 m / 80 m) and move with
-    W A S D or the arrows, Shift to run. With a mouse, Walk captures it to
-    look around; Esc frees it, and a click on the scene captures it again. You
-    can also drag to look.
+    W A S D or the arrows, Shift to run. Drag, or click the scene to capture
+    the mouse, to look around. Every click captures it, even one that picks
+    something, so press Esc to reach a popup or the selection bar.
     Aim the crosshair at a point or a trail within reach (50 m standing, 100 m
     at 20 m, 200 m at 80 m) and click or tap to open or select it; the selected trail's bar shows while walking too.
     The locate button takes you to your location and keeps following as you
@@ -72,7 +72,8 @@ npm run preview
   - **▶ on a trail row**: plays that trail at eye height, with pause, speed
     (1×–50× walking pace) and a scrubber.
     While it plays, the buttons over the scene fade out after 3 s; tap or click
-    the scene to bring them back, or again to hide them.
+    the scene to bring them back, or again to hide them. With a captured mouse,
+    Esc frees it and brings them back too.
   - **▶ 3D on the selection bar**: clicking a trail on the map (2D or 3D)
     shows its name at the bottom with a ▶ that does the same, no panel needed.
   - **On a phone**: a joystick moves you, dragging looks around, and **Gyro**

@@ -14,7 +14,7 @@ export type Mode3d = 'orbit' | 'walk' | 'playback';
 
 export type HudCallbacks = {
   /** Walk pressed: walking or playing a trail. Not pressed: orbit. */
-  onWalk: (e: MouseEvent) => void;
+  onWalk: () => void;
   onPlayToggle: () => void;
   onSpeed: () => void;
   /** 0..1 along the trail. */
@@ -74,7 +74,7 @@ export class Hud {
 
   constructor(cb: HudCallbacks) {
     const signal = this.abort.signal;
-    this.walk.addEventListener('click', (e) => cb.onWalk(e), { signal });
+    this.walk.addEventListener('click', () => cb.onWalk(), { signal });
     this.eye.addEventListener('click', () => cb.onEye(), { signal });
     this.gyro.addEventListener('click', () => cb.onGyro(), { signal });
     this.attitude.addEventListener('click', () => cb.onAttitude(), { signal });
@@ -161,8 +161,9 @@ export class Hud {
 
   /**
    * A tap or click on the scene. During playback it toggles the controls. Returns
-   * true when it brought them back, so the caller leaves the mouse uncaptured
-   * and able to reach them.
+   * true when it brought them back, so the browser's click that follows is not
+   * pressed on them. A captured mouse reaches them after Escape, which reveals
+   * them too.
    */
   tap(): boolean {
     if (this.mode !== 'playback') return false;

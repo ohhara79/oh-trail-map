@@ -69,7 +69,7 @@ import {
 import { tolerance } from './selection';
 import { Playback, buildPath, sampleAt } from './trailPlayback';
 import type { Trail } from './trails';
-import { captureMouse, createControls, type WalkControls } from './walkControls';
+import { createControls, type WalkControls } from './walkControls';
 
 setWorkerUrl(workerUrl);
 
@@ -243,19 +243,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
 
   const hud = new Hud({
     // A toggle: pressed while walking or playing, so a press from either is back to orbit.
-    onWalk: (e) => {
-      const entering = mode === 'orbit';
-      setMode(entering ? 'walk' : 'orbit');
-      // Walking with a mouse is looking with it: capture it now rather than on a
-      // first click, which a popup or a trail under the crosshair may spend instead.
-      // Only from Walk itself: ✕ and locate in playback are clicks on controls that
-      // need a free mouse, and Esc cannot grant a capture.
-      if (entering && (e as PointerEvent).pointerType === 'mouse') {
-        // Or Space, meant for the scene, would press Walk again and leave.
-        (e.currentTarget as HTMLElement | null)?.blur();
-        captureMouse(map.getCanvasContainer());
-      }
-    },
+    onWalk: () => setMode(mode === 'orbit' ? 'walk' : 'orbit'),
     onPlayToggle: () => walker?.playback?.toggle(),
     onSpeed: () => walker?.playback?.nextSpeed(),
     onSeek: (fraction) => walker?.playback?.seek(fraction * walker.playback.path.total),
@@ -580,8 +568,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       openPopup(point);
       return true;
     }
-    // Selected, the trail's name shows on the selection bar, with the ▶ that the
-    // free mouse has to be able to reach.
+    // Selected, the trail's name shows on the selection bar, with its ▶, reached
+    // with the mouse once Escape frees it.
     const trail = aimedTrail();
     if (trail) {
       opts.onSelect(trail);
@@ -735,7 +723,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       notify(
         window.matchMedia('(pointer: coarse)').matches
           ? 'Move with the joystick, drag to look around. Aim the crosshair at a point or trail and tap to pick it.'
-          : 'W A S D or arrows to move, Shift to run. The mouse looks around; Esc frees it, and a click on the scene captures it again. Aim the crosshair at a point or trail and click to pick it. Esc again to go back.',
+          : 'W A S D or arrows to move, Shift to run. Drag, or click to capture the mouse, to look around. Aim the crosshair at a point or trail and click to pick it. Esc frees the mouse to reach what you picked, and Esc again goes back.',
         'info',
         6000,
       );
@@ -751,14 +739,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     controls?.destroy();
     walker = null;
     controls = null;
-    releaseMouse();
     return stood;
-  }
-
-  /** Gives back a mouse Walk captured before the flight down had set up its
-   *  controls, which would otherwise have released it themselves. */
-  function releaseMouse(): void {
-    if (document.pointerLockElement === map.getCanvasContainer()) document.exitPointerLock();
   }
 
   /** Ends a camera flight now, if one is under way, so what follows starts from a
@@ -1033,7 +1014,6 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       window.removeEventListener('keydown', onKeyDown, { capture: true });
       walker?.destroy();
       controls?.destroy();
-      releaseMouse();
       hud.destroy();
       resizer.disconnect();
       cancelAnimationFrame(pending);
