@@ -41,6 +41,8 @@ import type { NationalPoint } from './nationalPoint';
 import { createPointBalls, LAYER_POINT_BALLS } from './pointBalls';
 import { loadNationalPoints, popupContent } from './points';
 import {
+  BALL_HEIGHT,
+  BALL_RADIUS,
   EMPTY,
   LAYER_BASEMAP,
   LAYER_HALOS,
@@ -348,6 +350,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     // Its own ✕ closes it without closePopup, and lets the preview back.
     popup.on('close', scheduleHover);
     popupPoint = point;
+    // Standing still draws no frame, so the first placement cannot wait for one.
+    liftPopup();
     opts.onPointPopup(point);
     scheduleHover();
   }
@@ -472,13 +476,14 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
 
   /** Whether a popup at `lngLat` is still on screen from where you stand. MapLibre
    *  projects a point behind the camera to a mirrored spot in front of it, so being
-   *  inside the canvas is not enough on its own. */
+   *  inside the canvas is not enough on its own. Measured at the top of the ball,
+   *  where the popup sits, once its ground is known. */
   function inWalkView(lngLat: LngLat): boolean {
     if (!walker) return true;
     const { pose } = walker;
     const there = { lat: lngLat.lat, lon: lngLat.lng };
     if (Math.abs(angleDelta(pose.yaw, bearing(pose, there))) >= 90) return false;
-    const p = map.project(lngLat);
+    const p = ballTop(lngLat) ?? map.project(lngLat);
     const canvas = map.getCanvas();
     return p.x >= 0 && p.y >= 0 && p.x <= canvas.clientWidth && p.y <= canvas.clientHeight;
   }
@@ -490,6 +495,35 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     // Walked or looked away from the point: its popup has nothing left to point at.
     if (popup && !inWalkView(popup.getLngLat())) closePopup();
   });
+
+  // After each frame drawn, not on move: the ball layer has just drawn with the
+  // matrix ballTop() projects with, so the popup lands on the ball you see. It also
+  // follows the ground as finer terrain tiles arrive, which fires no move.
+  map.on('render', () => {
+    if (mode !== 'orbit') liftPopup();
+  });
+
+  /** Where on the canvas the top of the ball over `lngLat` was drawn last frame, or
+   *  null while the terrain there has not loaded or the spot is behind the camera. */
+  function ballTop(lngLat: LngLat): { x: number; y: number } | null {
+    const ground = map.queryTerrainElevation(lngLat);
+    if (ground === null) return null;
+    return balls.project(lngLat.lng, lngLat.lat, ground + BALL_HEIGHT + BALL_RADIUS);
+  }
+
+  /** MapLibre places a popup on the ground. While walking, its point is a ball
+   *  floating over that spot, so the popup is lifted to stand the same 10px above
+   *  the top of the ball as it does above a dot in orbit. */
+  function liftPopup(): void {
+    if (!popup) return;
+    const top = mode === 'orbit' ? null : ballTop(popup.getLngLat());
+    if (!top) {
+      popup.setOffset(10);
+      return;
+    }
+    const base = map.project(popup.getLngLat());
+    popup.setOffset([top.x - base.x, top.y - base.y - 10]);
+  }
 
   /** A tap or click on the scene while walking. True when it was spent here, so it
    *  must not also capture the mouse. */

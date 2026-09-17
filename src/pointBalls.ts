@@ -32,6 +32,9 @@ export type PointBalls = CustomLayerInterface & {
     pad: number,
     keep: (lat: number, lon: number) => boolean,
   ): NationalPoint | undefined;
+  /** Where on the canvas, in CSS pixels, a spot `alt` metres above sea level was
+   *  drawn last frame, or null before the first frame or behind the camera. */
+  project(lon: number, lat: number, alt: number): { x: number; y: number } | null;
 };
 
 /** Rings from pole to pole, and segments around each. Enough that the edge of a
@@ -117,6 +120,8 @@ export function createPointBalls(
   const unit = origin.meterInMercatorCoordinateUnits();
   const instances = new Float32Array(points.length * 6);
   const matrix = new Float32Array(16);
+  /** mainMatrix as last drawn with, for project(). */
+  let drawn: Float64Array | null = null;
 
   let gl: WebGL2RenderingContext | null = null;
   let program: WebGLProgram | null = null;
@@ -179,6 +184,7 @@ export function createPointBalls(
 
     render(context, options) {
       if (!program || !vao || !instanceBuffer) return;
+      drawn = Float64Array.from(options.defaultProjectionData.mainMatrix);
       // Every frame, since terrain tiles keep arriving and a finer one moves the
       // ground by metres. A few hundred lookups is nothing next to the draw.
       const skip = hidden();
@@ -245,6 +251,18 @@ export function createPointBalls(
         }
       }
       return best;
+    },
+
+    project(lon, lat, alt) {
+      if (!drawn) return null;
+      const m = drawn;
+      const c = MercatorCoordinate.fromLngLat([lon, lat], alt);
+      const w = m[3] * c.x + m[7] * c.y + m[11] * c.z + m[15];
+      if (w <= 0) return null;
+      const x = (m[0] * c.x + m[4] * c.y + m[8] * c.z + m[12]) / w;
+      const y = (m[1] * c.x + m[5] * c.y + m[9] * c.z + m[13]) / w;
+      const canvas = map.getCanvas();
+      return { x: ((x + 1) / 2) * canvas.clientWidth, y: ((1 - y) / 2) * canvas.clientHeight };
     },
   };
 }
