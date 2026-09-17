@@ -90,6 +90,13 @@ function typingTarget(): boolean {
   return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement;
 }
 
+/** Captures the mouse, game-style: the cursor hides and every move looks around.
+ *  Only from inside a click or key press, which requestPointerLock requires. A
+ *  refusal, such as a click within Chrome's second after Esc, is ignored. */
+export function captureMouse(surface: HTMLElement): void {
+  if (surface.requestPointerLock) Promise.resolve(surface.requestPointerLock()).catch(() => {});
+}
+
 export function createControls(opts: ControlsOptions): WalkControls {
   const { surface, joystick } = opts;
   const thumb = joystick.firstElementChild as HTMLElement | null;
@@ -207,9 +214,7 @@ export function createControls(opts: ControlsOptions): WalkControls {
     // needs a held button; Escape gives it back. Only on click, never on a drag,
     // so dragging to look keeps working for anyone who would rather not.
     // pointerup is a user activation, which requestPointerLock requires.
-    if (e.pointerType === 'mouse' && surface.requestPointerLock) {
-      Promise.resolve(surface.requestPointerLock()).catch(() => {});
-    }
+    if (e.pointerType === 'mouse') captureMouse(surface);
   }
 
   function setStick(e: PointerEvent) {
