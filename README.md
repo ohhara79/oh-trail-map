@@ -49,9 +49,8 @@ npm run preview
   profile above it, in 2D and 3D, with the name of its GPX file in the chart's
   bottom-right corner. Hover or drag along it — or focus it and use
   ←/→ (Shift for 10, Home/End), or ◀ ▶ — to pick one GPX point: a dot marks it
-  on the map, and the panel reads out its lat/lon, elevation, time (in the
-  browser's time zone), its number, how far along the trail and how long after
-  the start. In 2D, hovering near the selected trail moves the cursor to the
+  on the map, and the panel reads out its lat/lon, elevation, how long after the
+  start, its number and how far along the trail. In 2D, hovering near the selected trail moves the cursor to the
   nearest point too; a click there still only clears the selection. A trail
   playing in 3D takes the panel over, whether or not you had it open — see below.
 - With a mouse, hovering shows what a click would pick before you click, in 2D
@@ -82,7 +81,7 @@ npm run preview
     (1×–50× walking pace) and a scrubber.
     The elevation profile rides above the playback bar while it plays, and its
     cursor follows you: it names the GPX point you are standing on — lat/lon,
-    elevation, time, `#842 / 3,000`, how far along and how long after the start.
+    elevation, how long after the start, `#842 / 3,000` and how far along.
     Scrubbing the chart, or stepping it with ◀ ▶ or the arrow keys, seeks the
     playback rather than just moving the cursor. Stop, and it stays on the point
     you stepped off at, if you had the panel open to begin with.

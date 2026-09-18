@@ -1,14 +1,14 @@
 /**
  * The selected trail's elevation over distance, with a cursor that picks one GPX
- * point and a readout of that point: its number, lat/lon, elevation, time, and how
- * far and how long into the trail it is. A corner of the chart names the .gpx file
+ * point and a readout of that point: its number, lat/lon, elevation, and how far
+ * and how long into the trail it is. A corner of the chart names the .gpx file
  * the points come from.
  *
  * It renders and reports, like pointsList.ts: main.ts owns which point the cursor
  * is on, hears about every move through onCursor, and hands the answer back with
  * setCursor — so the panel, the 2D dot and the 3D dot are set by one writer.
  */
-import { formatElapsed, formatPointTime, indexAtDistance, type Profile } from './trailProfile';
+import { formatElapsed, indexAtDistance, type Profile } from './trailProfile';
 
 export type ProfilePanelCallbacks = {
   /** The cursor was moved to point `index` — by the chart, a key or ◀ ▶. */
@@ -254,15 +254,16 @@ export class ProfilePanel {
     }
 
     const time = profile.time[i];
-    const hasTime = !Number.isNaN(time);
-    // What the point is first, where it falls in the trail last: on a narrow phone
-    // a line is cut at its end, and the elapsed time is what can best be spared.
-    const where = [`#${(i + 1).toLocaleString()} / ${n.toLocaleString()}`, formatAlong(profile.s[i])];
-    if (hasTime && !Number.isNaN(profile.startTime)) where.push(`+${formatElapsed((time - profile.startTime) / 1000)}`);
+    // Only the time since the start, not the clock time: a date and a clock beside
+    // the elevation was more than a narrow phone's line could hold.
+    const elapsed =
+      Number.isNaN(time) || Number.isNaN(profile.startTime)
+        ? 'no time'
+        : `+${formatElapsed((time - profile.startTime) / 1000)}`;
     this.setLines(
       `${profile.lat[i].toFixed(6)}, ${profile.lon[i].toFixed(6)}`,
-      `${Number.isNaN(ele) ? 'no elevation' : `${ele.toFixed(1)} m`} · ${hasTime ? formatPointTime(time) : 'no time'}`,
-      where.join(' · '),
+      `${Number.isNaN(ele) ? 'no elevation' : `${ele.toFixed(1)} m`} · ${elapsed}`,
+      `#${(i + 1).toLocaleString()} / ${n.toLocaleString()} · ${formatAlong(profile.s[i])}`,
     );
     this.chart.setAttribute('aria-valuenow', String(i + 1));
     this.chart.setAttribute('aria-valuetext', `Point ${i + 1} of ${n}`);

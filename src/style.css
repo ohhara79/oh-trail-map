@@ -702,7 +702,8 @@ button:hover { background: #f5f6f8; }
 #profile-line3 { color: var(--muted); }
 #profile .profile-foot button { align-self: stretch; min-width: 34px; padding: 0 8px; }
 /* A 320px phone leaves the readout some 180px: enough, at 11px and with narrower
-   ◀ ▶, for the lat/lon and the elevation and time lines to fit whole. */
+   ◀ ▶, for all three lines to fit whole — the widest, #12,345 / 12,345 · 12.34 km,
+   is under 160px even in a wide font. */
 @media (max-width: 360px) {
   .profile-foot { gap: 2px; }
   .profile-readout { font-size: 11px; padding: 0 2px; }

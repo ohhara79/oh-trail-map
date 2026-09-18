@@ -103,28 +103,6 @@ export function indexAtDistance(along: { s: Float64Array; total: number }, s: nu
   return s - along.s[lo] <= along.s[hi] - s ? lo : hi;
 }
 
-/** One formatter for every point: building an Intl.DateTimeFormat costs far more than using one. */
-const TIME_FORMAT = new Intl.DateTimeFormat('en-CA', {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  hourCycle: 'h23',
-});
-
-/**
- * `2026-06-13 08:58:43`, in the browser's time zone. The GPX stores UTC; a hike is
- * remembered by the clock on the wall. Assembled from parts rather than taken from
- * format(), whose punctuation varies by engine.
- */
-export function formatPointTime(ms: number): string {
-  const part: Record<string, string> = {};
-  for (const { type, value } of TIME_FORMAT.formatToParts(ms)) part[type] = value;
-  return `${part.year}-${part.month}-${part.day} ${part.hour}:${part.minute}:${part.second}`;
-}
-
 /** `1:13:22`, or `13:22` under an hour. */
 export function formatElapsed(seconds: number): string {
   const total = Math.max(0, Math.round(seconds));
