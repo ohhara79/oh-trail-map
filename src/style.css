@@ -557,10 +557,10 @@ button:hover { background: #f5f6f8; }
    list in sync with CHROME there). visibility follows the fade, so a hidden button
    can be neither clicked nor tabbed to. Scoped to 3D so 2D never transitions
    anything. */
-#app[data-mode3d] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d) {
+#app[data-mode3d] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d, #profile) {
   transition: opacity .25s ease;
 }
-#app[data-chrome='hidden'] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d) {
+#app[data-chrome='hidden'] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d, #profile) {
   opacity: 0; visibility: hidden;
   transition: opacity .25s ease, visibility 0s .25s;
 }
@@ -574,12 +574,27 @@ button:hover { background: #f5f6f8; }
   right: 56px;
   max-width: 560px;
   margin: 0 auto;
+  /* A fixed height, for the reason #profile has one: the panel stacked on it is
+     placed with a number, and this bar left to itself is not one height but
+     three. Its track column is 14.4px of text + 2px + a scrubber the engine
+     sizes (16px in Chrome, more elsewhere), and on touch the taller .hud-bar
+     button padding below would make the play button 36px and drive it instead.
+     44 = border 2 + padding 3, twice, around the 34px that leaves — the same
+     34px #mode3d and #selection-bar are. */
+  height: 44px;
 }
+/* Outranks .hud-bar button, including its taller padding on touch, exactly as
+   the #mode3d and #selection-bar rule above does. */
+#playback3d button { align-self: stretch; padding-block: 0; }
 #app[data-mode3d='playback'] #playback3d { display: flex; }
 #play3d, #speed3d { min-width: 40px; font-variant-numeric: tabular-nums; }
 .playback3d-track { display: flex; flex-direction: column; padding: 0 4px; }
 .playback3d-text { display: flex; gap: 8px; font-size: 12px; line-height: 1.2; }
 .playback3d-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+/* One line, always: the label wrapping under the name on a narrow screen is what
+   made this bar's height depend on how long the trail's name is. The name beside
+   it is the part that gives way, and it already ellipsizes. */
+#scrub3d-label { white-space: nowrap; }
 #scrub3d { width: 100%; margin: 2px 0 0; accent-color: var(--accent); }
 
 /* The selected trail, with a way to play it that does not need the panel open.
@@ -624,8 +639,18 @@ button:hover { background: #f5f6f8; }
   flex-direction: column; align-items: stretch;
   padding: 4px;
 }
-#profile[hidden],
-#app[data-mode3d='playback'] #profile { display: none; }
+#profile[hidden] { display: none; }
+/* Playing a trail, the panel rides on #playback3d instead of the selection bar,
+   which is hidden there: 10 + 44 + the same 6px gap = 60px up. Its cursor follows
+   the playback, so it reads out the GPX point you are standing on. */
+#app[data-mode3d='playback'] #profile { bottom: calc(60px + env(safe-area-inset-bottom)); }
+/* And is stacked on it rather than merely above it. #playback3d is inside #stage,
+   which starts where the map does; #profile hangs off #app, which the panel is part
+   of. Both are centred in what they hang off, so with the panel open the two would
+   sit half its width apart. Adding it back to the left inset lines the centres up,
+   since the right edges already agree. Only while playing: that is the one place
+   these two meet, and #selection-bar keeps the panel's own alignment elsewhere. */
+#app[data-panel='open'][data-mode3d='playback'] #profile { left: calc(12px + var(--sidebar-width)); }
 #profile-chart {
   position: relative;
   flex: 1; min-height: 0;
@@ -686,6 +711,12 @@ button:hover { background: #f5f6f8; }
 #profile .profile-foot button:disabled { opacity: .35; cursor: default; }
 /* The notices and the scale bar clear the panel as they clear the bar alone. */
 #app[data-selection][data-profile] #notices { bottom: calc(218px + env(safe-area-inset-bottom)); }
+/* Playing a trail, they clear #playback3d (10 + 44 + a 10px gap) and the panel
+   over it (60 + 158 + 10) instead: the selection bar the rules either side of this
+   measure is hidden there, and this bar is taller than it. Two attributes on the
+   second, so it outranks #app[data-selection] #notices further down. */
+#app[data-mode3d='playback'] #notices { bottom: calc(64px + env(safe-area-inset-bottom)); }
+#app[data-mode3d='playback'][data-profile] #notices { bottom: calc(228px + env(safe-area-inset-bottom)); }
 #app[data-profile] :is(#map .leaflet-control-scale, #map3d .maplibregl-ctrl-scale) {
   margin-bottom: calc(218px + env(safe-area-inset-bottom));
 }
@@ -798,6 +829,10 @@ button:hover { background: #f5f6f8; }
     visibility: hidden;
     transition: transform .22s ease, visibility 0s .22s;
   }
+  /* The drawer overlays the map rather than taking width from it, so the offset
+     the playback profile adds back above is zero here. Same specificity as that
+     rule, so this later one settles it. */
+  #app[data-panel='open'][data-mode3d='playback'] #profile { left: 12px; }
   /* Re-assert display over the desktop closed-rule; the drawer slides instead. */
   #app[data-panel='closed'] #sidebar { display: flex; }
   #app[data-panel='open'] #sidebar {
@@ -822,7 +857,7 @@ button:hover { background: #f5f6f8; }
   #view3d[data-state='loading'] { animation: none; }
   /* The playback controls still hide and return on a tap; they just snap. Same
      specificity as the rules above and later, so this wins. */
-  #app[data-mode3d] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d) { transition: none; }
+  #app[data-mode3d] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d, #profile) { transition: none; }
 }
 
 /* ---------------------------------------------------------------------------

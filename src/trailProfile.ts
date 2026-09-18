@@ -82,21 +82,25 @@ export function buildProfile(trail: Trail): Profile {
   return profile;
 }
 
-/** The point nearest `s` metres along the profile. */
-export function indexAtDistance(profile: Profile, s: number): number {
-  const n = profile.s.length;
+/**
+ * The point nearest `s` metres along. Structural rather than `Profile`, so the
+ * playback `Path` in trailPlayback.ts — points laid out by distance in the same
+ * way — is searched by this code rather than by a second copy of it.
+ */
+export function indexAtDistance(along: { s: Float64Array; total: number }, s: number): number {
+  const n = along.s.length;
   if (n === 0) return 0;
   if (s <= 0) return 0;
-  if (s >= profile.total) return n - 1;
+  if (s >= along.total) return n - 1;
   // The last index whose distance is <= s, then whichever neighbour is closer.
   let lo = 0;
   let hi = n - 1;
   while (hi - lo > 1) {
     const mid = (lo + hi) >> 1;
-    if (profile.s[mid] <= s) lo = mid;
+    if (along.s[mid] <= s) lo = mid;
     else hi = mid;
   }
-  return s - profile.s[lo] <= profile.s[hi] - s ? lo : hi;
+  return s - along.s[lo] <= along.s[hi] - s ? lo : hi;
 }
 
 /** One formatter for every point: building an Intl.DateTimeFormat costs far more than using one. */

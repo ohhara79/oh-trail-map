@@ -52,7 +52,8 @@ npm run preview
   on the map, and the panel reads out its lat/lon, elevation, time (in the
   browser's time zone), its number, how far along the trail and how long after
   the start. In 2D, hovering near the selected trail moves the cursor to the
-  nearest point too; a click there still only clears the selection.
+  nearest point too; a click there still only clears the selection. A trail
+  playing in 3D takes the panel over, whether or not you had it open — see below.
 - With a mouse, hovering shows what a click would pick before you click, in 2D
   and 3D orbit: a faint white casing under the trail, or a ring around the
   point, with its name beside the pointer. It follows the click's own rules —
@@ -79,10 +80,16 @@ npm run preview
     the trail takes the direction back.
   - **▶ on a trail row**: plays that trail at eye height, with pause, speed
     (1×–50× walking pace) and a scrubber.
+    The elevation profile rides above the playback bar while it plays, and its
+    cursor follows you: it names the GPX point you are standing on — lat/lon,
+    elevation, time, `#842 / 3,000`, how far along and how long after the start.
+    Scrubbing the chart, or stepping it with ◀ ▶ or the arrow keys, seeks the
+    playback rather than just moving the cursor. Stop, and it stays on the point
+    you stepped off at, if you had the panel open to begin with.
     The buttons over the scene stay up: tap or click the scene to put them away
     while you watch, and again to bring them back — a tap with them hidden only
-    brings them back, and picks nothing. With a captured mouse, Esc frees it and
-    brings them back too. Aiming at a trail picks it while walking, not while
+    brings them back, and picks nothing. The profile goes with them. With a
+    captured mouse, Esc frees it and brings them back too. Aiming at a trail picks it while walking, not while
     one plays, where a tap is for the controls; a point still opens its popup.
   - **▶ 3D on the selection bar**: clicking a trail on the map (2D or 3D)
     shows its name at the bottom with a ▶ that does the same, no panel needed.

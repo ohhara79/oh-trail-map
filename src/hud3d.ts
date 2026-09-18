@@ -39,7 +39,7 @@ function el<T extends HTMLElement>(id: string): T {
 const SCRUB_STEPS = 1000;
 /** Everything over the scene that a tap hides during playback. Keep in sync with
  *  the data-chrome rules in style.css. */
-const CHROME = '#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d';
+const CHROME = '#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d, #profile';
 
 /** The attitude face's radius, in the svg's user units — see the markup in index.html. */
 const FACE_RADIUS = 10;

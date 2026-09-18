@@ -15,6 +15,18 @@ export type Path = {
   lon: Float64Array;
   /** Distance from the start to each point, in metres. */
   s: Float64Array;
+  /**
+   * Which GPX point each of these came from, numbered as buildProfile() in
+   * trailProfile.ts numbers them: every trkpt in file order, including the ones
+   * dropped below. Both walk the same segments in the same order, which is what
+   * makes a plain counter enough.
+   *
+   * It is how playback names the point it has reached. The two distances cannot
+   * be compared for that: this one walks the gap between two segments and drops
+   * the steps under MIN_STEP, the profile's does neither, so the same metre mark
+   * is a different place in each.
+   */
+  point: Int32Array;
   total: number;
 };
 
@@ -31,10 +43,14 @@ export function buildPath(segments: Pt[][]): Path {
   const lat: number[] = [];
   const lon: number[] = [];
   const s: number[] = [];
+  const point: number[] = [];
   let last: Pt | null = null;
   let total = 0;
+  // Counted over every point, kept or not, so it stays the profile's numbering.
+  let index = -1;
   for (const seg of segments) {
     for (const p of seg) {
+      index++;
       if (last) {
         const step = haversine(last, p);
         if (step < MIN_STEP) continue;
@@ -43,6 +59,7 @@ export function buildPath(segments: Pt[][]): Path {
       lat.push(p.lat);
       lon.push(p.lon);
       s.push(total);
+      point.push(index);
       last = p;
     }
   }
@@ -50,6 +67,7 @@ export function buildPath(segments: Pt[][]): Path {
     lat: Float64Array.from(lat),
     lon: Float64Array.from(lon),
     s: Float64Array.from(s),
+    point: Int32Array.from(point),
     total,
   };
 }
@@ -73,6 +91,28 @@ export function sampleAt(path: Path, s: number): { lat: number; lon: number } {
     lat: path.lat[lo] + (path.lat[hi] - path.lat[lo]) * t,
     lon: path.lon[lo] + (path.lon[hi] - path.lon[lo]) * t,
   };
+}
+
+/**
+ * How far along the path GPX point `point` is, in metres: the first path point at
+ * or past it, since the ones between were dropped as standing still and are within
+ * half a metre of it anyway. The inverse of `path.point`, for a cursor moved on the
+ * profile chart while a trail plays.
+ */
+export function distanceAtPoint(path: Path, point: number): number {
+  const n = path.point.length;
+  if (n === 0) return 0;
+  if (point <= path.point[0]) return 0;
+  if (point >= path.point[n - 1]) return path.total;
+  // The first index whose point is >= the one asked for.
+  let lo = 0;
+  let hi = n - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (path.point[mid] < point) lo = mid;
+    else hi = mid;
+  }
+  return path.s[hi];
 }
 
 /**

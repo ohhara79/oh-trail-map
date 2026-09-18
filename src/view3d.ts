@@ -68,7 +68,8 @@ import {
   visibleFilter,
 } from './scene3d';
 import { tolerance } from './selection';
-import { Playback, buildPath, sampleAt } from './trailPlayback';
+import { Playback, buildPath, distanceAtPoint, sampleAt } from './trailPlayback';
+import { indexAtDistance } from './trailProfile';
 import type { Trail } from './trails';
 import { createControls, type WalkControls } from './walkControls';
 
@@ -98,6 +99,12 @@ export type View3dOptions = {
   /** A drag in orbit, walking with the keys or joystick, or starting a trail's
    *  playback: how following your location stops. */
   onStopFollowing: () => void;
+  /**
+   * The GPX point playback has reached, and the trail it belongs to — null for
+   * both when nothing is playing. main.ts turns it into a profile cursor move; the
+   * cursor has one writer and it is not this module. Fired only when it changes.
+   */
+  onPlaybackPoint: (trailId: string | null, index: number | null) => void;
   /** The GPU dropped the context — common on phones under memory pressure. */
   onContextLost: () => void;
   notify: (message: string, kind?: 'info' | 'error', timeout?: number) => void;
@@ -120,6 +127,9 @@ export type View3d = {
   fitTrail(id: string): void;
   panTo(lat: number, lon: number): void;
   walkTrail(id: string): void;
+  /** The profile chart was scrubbed onto GPX point `index` while a trail plays:
+   *  that is a seek, not a cursor move. */
+  seekToPoint(index: number): void;
   viewFor2d(): View2d;
   destroy(): void;
 };
@@ -736,6 +746,9 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       // Before the playback branch below, which returns early: the disc is read in
       // plain walk too, and that is the mode with the least else to go on.
       hud.setAttitude(next.pose.yaw, next.pose.look);
+      // Before the early return below, so walking reports no point the same way
+      // playing reports one.
+      syncPlaybackPoint();
       const playback = next.playback;
       if (!playback) {
         // Walking away is how following stops here. Only moving: looking around
@@ -789,6 +802,30 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   }
 
   let playingId: string | null = null;
+
+  /** The trail and GPX point last reported through onPlaybackPoint, so a frame that
+   *  reached the same point again writes nothing — the same compare-before-writing
+   *  Hud.setAttitude and FirstPerson.place() do with what they own. */
+  let reportedId: string | null = null;
+  let reportedPoint: number | null = null;
+
+  /**
+   * Where playback has got to, as a GPX point rather than a distance: the profile
+   * panel names points, and the two scales of distance do not line up (see
+   * Path.point in trailPlayback.ts). The single place onPlaybackPoint is called,
+   * so every way out of playback reports the same way in.
+   */
+  function syncPlaybackPoint(): void {
+    const playback = walker?.playback;
+    const id = playback ? playingId : null;
+    const point = playback
+      ? playback.path.point[indexAtDistance(playback.path, playback.s)]
+      : null;
+    if (id === reportedId && point === reportedPoint) return;
+    reportedId = id;
+    reportedPoint = point;
+    opts.onPlaybackPoint(id, point);
+  }
 
   /** Whether the trails and points are drawn for the ground, as syncGround last set. */
   let groundOn = false;
@@ -891,6 +928,9 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     // A popup opened while walking would otherwise stay behind in orbit.
     closePopup();
     scheduleHover();
+    // Both branches above have already dropped the playback. Orbit runs no frames
+    // to report from, and leaving playback should not wait for one.
+    syncPlaybackPoint();
   }
 
   function toggleGyro(): void {
@@ -1018,8 +1058,12 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     },
     setProfileCursor(at) {
       if (!at) {
-        profileMarker.remove();
-        profileShown = false;
+        // Called on every cursor move now, so it only touches the map when there
+        // is something on it to take off.
+        if (profileShown) {
+          profileMarker.remove();
+          profileShown = false;
+        }
         return;
       }
       profileEl.style.background = at.color;
@@ -1055,6 +1099,13 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       openPopup(point);
     },
     walkTrail,
+    seekToPoint(index) {
+      // The cursor is not moved here: the next frame reports the point back
+      // through onPlaybackPoint and main.ts moves it from there, so the chart,
+      // the scrubber and the camera cannot end up saying three different things.
+      const playback = walker?.playback;
+      if (playback) playback.seek(distanceAtPoint(playback.path, index));
+    },
     viewFor2d() {
       // Where the flight was going, not wherever it had got to.
       settle();

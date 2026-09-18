@@ -154,8 +154,22 @@ async function main(): Promise<void> {
   let profileOpen = false;
   let profileTrail: Trail | null = null;
   let cursorIndex: number | null = null;
+  // The trail 3D playback is walking, if any. While it plays it takes the panel
+  // over — the readout is the only place the point you are standing on is spelled
+  // out in 3D — without touching profileOpen, so the panel goes back to whatever
+  // 2D had the moment playback ends. No point number of its own: cursorIndex is
+  // that number, and a second copy would give the cursor two writers.
+  let playbackTrail: Trail | null = null;
   const profileCursor = new ProfileCursor(map);
-  const profilePanel = new ProfilePanel({ onCursor: (index) => setCursor(index) });
+  const profilePanel = new ProfilePanel({
+    onCursor: (index) => {
+      // While a trail plays the cursor is the playback's own position, so moving
+      // it is a seek. Setting it here as well would only be hauled back by the
+      // next frame; the seek comes back through onPlaybackPoint instead.
+      if (playbackTrail) view3d?.seekToPoint(index);
+      else setCursor(index);
+    },
+  });
 
   // The National Point Number pins. They draw in their own pane (see points.ts), so this
   // can sit wherever it reads best rather than having to run before startLocating.
@@ -367,6 +381,21 @@ async function main(): Promise<void> {
           onSelect: (id) => selectTrail(id),
           onPointPopup: (point) => selectPoint(point),
           onStopFollowing: stopFollowing,
+          onPlaybackPoint: (id, index) => {
+            const trail = (id !== null && findTrail(id)) || null;
+            if (trail !== playbackTrail) {
+              playbackTrail = trail;
+              // Swaps the panel onto the playing trail, or back to the selection.
+              syncProfile();
+              // The 3D dot is drawn off playback only, so the swap has to reach it
+              // even where neither the trail nor the point moved with it.
+              applyCursor();
+            }
+            // Playback stopping leaves the point it stopped on where it is: a panel
+            // still open on that trail goes on naming it, and the dot marks the spot
+            // you stepped off. Only a trail playing ever names a new one.
+            if (index !== null) setCursor(index);
+          },
           onContextLost: () => {
             ui.notify('The 3D view lost its graphics context and was closed.', 'error');
             close3d();
@@ -403,6 +432,13 @@ async function main(): Promise<void> {
   /** Back to 2D, at the place the 3D view was looking at or standing on. */
   function close3d(): void {
     if (!view3d) return;
+    // The one way out of playback that never reaches setMode in view3d.ts, so
+    // there is no frame left to report the end of it. Before destroy(), so the
+    // setProfileCursor(null) inside applyCursor still reaches a live map.
+    if (playbackTrail) {
+      playbackTrail = null;
+      syncProfile();
+    }
     const back = view3d.viewFor2d();
     view3d.destroy();
     view3d = null;
@@ -432,9 +468,15 @@ async function main(): Promise<void> {
     syncProfile();
   }
 
-  /** The panel, and the trail it is for, from profileOpen and the selection. */
+  /**
+   * The panel, and the trail it is for, from playback, profileOpen and the
+   * selection. A trail playing in 3D wins: it is the trail you are standing on,
+   * the selection bar that holds the toggle is hidden there, and a tap on the
+   * scene is what puts the panel away with the rest of the controls.
+   */
   function syncProfile(): void {
-    const trail = (profileOpen && selectedId !== null && findTrail(selectedId)) || null;
+    const selected = (profileOpen && selectedId !== null && findTrail(selectedId)) || null;
+    const trail = playbackTrail ?? selected;
     ui.setProfileShown(trail !== null);
     if (trail === profileTrail) return;
     profileTrail = trail;
@@ -464,7 +506,10 @@ async function main(): Promise<void> {
     const at = cursorAt();
     profilePanel.setCursor(cursorIndex);
     profileCursor.show(at);
-    view3d?.setProfileCursor(at);
+    // Not while playing: the cursor's point is the spot the camera stands on, so
+    // the dot would sit on the lens rather than mark anything. The 2D dot still
+    // gets it, and is right the moment 3D closes.
+    view3d?.setProfileCursor(playbackTrail ? null : at);
   }
 
   /** Opens a point's popup and remembers whose it is, so hiding that point can

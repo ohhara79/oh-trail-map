@@ -167,7 +167,8 @@
       </div>
       <!-- The selected trail's elevation over distance, and the GPX point under its
            cursor. Filled by ProfilePanel in profilePanel.ts; stacked on the selection
-           bar, which opens it. -->
+           bar, which opens it. While a trail plays in 3D it rides on the playback
+           bar instead, and its cursor is driven by where the playback has got to. -->
       <div id="profile" class="hud-bar" hidden>
         <div id="profile-chart" tabindex="0" role="slider" aria-label="GPX point along the trail"
              aria-valuemin="1" aria-valuemax="1" aria-valuenow="1">
