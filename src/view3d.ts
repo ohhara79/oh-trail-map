@@ -315,10 +315,12 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   let locationShown = false;
 
   // The 2D ProfileCursor's counterpart: a Marker, like your location, so it stands
-  // on the terrain at the point.
+  // on the terrain at the point. Always fully drawn, like the 2D dot: MapLibre fades
+  // a Marker it finds behind the terrain, and one standing exactly on the ground
+  // loses that depth test about half the time, so the dot flickered faint and solid.
   const profileEl = document.createElement('div');
   profileEl.className = 'profile-cursor-marker';
-  const profileMarker = new Marker({ element: profileEl });
+  const profileMarker = new Marker({ element: profileEl, opacityWhenCovered: 1 });
   let profileShown = false;
 
   // -- clicks --------------------------------------------------------------------
