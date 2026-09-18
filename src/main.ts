@@ -292,11 +292,14 @@ async function main(): Promise<void> {
     onWalkTrail: (id) => {
       const trail = findTrail(id);
       if (!trail) return;
+      // A point picked on this trail's profile is where the walk starts; taken
+      // before selectTrail, which could move the panel off it.
+      const from = profileTrail === trail && cursorIndex !== null ? cursorIndex : undefined;
       // A hidden trail would be walked with no line under your feet.
       setVisible(trail, true, map);
       selectTrail(id);
       ui.closeDrawer();
-      void open3d().then((view) => view?.walkTrail(id));
+      void open3d().then((view) => view?.walkTrail(id, from));
     },
     onToggleProfile: () => {
       profileOpen = !profileOpen;

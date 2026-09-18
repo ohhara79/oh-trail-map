@@ -126,7 +126,8 @@ export type View3d = {
   setProfileCursor(at: { lat: number; lon: number; color: string } | null): void;
   fitTrail(id: string): void;
   panTo(lat: number, lon: number): void;
-  walkTrail(id: string): void;
+  /** Plays trail `id` from GPX point `fromPoint`, or from its start. */
+  walkTrail(id: string, fromPoint?: number): void;
   /** The profile chart was scrubbed onto GPX point `index` while a trail plays:
    *  that is a seek, not a cursor move. */
   seekToPoint(index: number): void;
@@ -967,7 +968,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     });
   }
 
-  function walkTrail(id: string): void {
+  function walkTrail(id: string, fromPoint?: number): void {
     settle();
     const trail = getScene().trails.find((t) => t.id === id);
     if (!trail) return;
@@ -976,8 +977,12 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       notify(`${trail.name} is too short to walk.`, 'error');
       return;
     }
-    const start = sampleAt(path, 0);
-    const ele = trail.segments[0]?.[0]?.ele ?? 0;
+    // From the last point there would be nothing left to play, so that is the start.
+    let s0 = fromPoint === undefined ? 0 : distanceAtPoint(path, fromPoint);
+    if (s0 >= path.total) s0 = 0;
+    const start = sampleAt(path, s0);
+    const first = trail.segments[0]?.[0]?.ele ?? 0;
+    const ele = s0 > 0 ? (trail.segments.flat()[fromPoint!]?.ele ?? first) : first;
     const pose: Pose = { ...start, yaw: 0, look: 0 };
     if (!walker) {
       // Straight from orbit, so this is the view Esc comes back to.
@@ -990,6 +995,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     // Or the next fix would pull you off the trail.
     opts.onStopFollowing();
     const playback = new Playback(path);
+    // Before setPlayback, which faces you along the trail from wherever this is.
+    playback.seek(s0);
     playback.playing = true;
     playingId = id;
     walker.setPlayback(playback);
