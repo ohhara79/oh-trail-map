@@ -42,6 +42,7 @@ export const LAYER_POINTS = 'points';
 export const LAYER_POINT_HOVER = 'point-hover';
 export const LAYER_POINT_SHADOW = 'point-shadow';
 export const LAYER_PROFILE_CURSOR = 'profile-cursor';
+export const LAYER_PROFILE_CURSOR_SHADOW = 'profile-cursor-shadow';
 
 /**
  * AWS Terrain Tiles: global, keyless, CORS-open, encoded as terrarium PNGs. Around
@@ -275,6 +276,16 @@ export function layers(): LayerSpecification[] {
       layout: { visibility: 'none' },
       paint: { 'fill-color': '#000000', 'fill-opacity': 0.25 },
     },
+    // The same shadow under the profile cursor's ball while walking (pointBalls.ts
+    // draws the ball). Its source holds both this disc and the orbit dot's point.
+    {
+      id: LAYER_PROFILE_CURSOR_SHADOW,
+      type: 'fill',
+      source: SRC_PROFILE_CURSOR,
+      filter: ['==', ['geometry-type'], 'Polygon'],
+      layout: { visibility: 'none' },
+      paint: { 'fill-color': '#000000', 'fill-opacity': 0.25 },
+    },
     // The point a click would open: a wider white disc behind its dot, edged dark
     // for the same two-basemap reason as the trail halo, and matching the ring the
     // 2D pin gets in style.css.
@@ -317,6 +328,7 @@ export function layers(): LayerSpecification[] {
       id: LAYER_PROFILE_CURSOR,
       type: 'circle',
       source: SRC_PROFILE_CURSOR,
+      filter: ['==', ['geometry-type'], 'Point'],
       paint: {
         'circle-pitch-scale': 'viewport',
         'circle-radius': 4.5,

@@ -36,6 +36,9 @@ export type PointBalls = CustomLayerInterface & {
   /** Where on the canvas, in CSS pixels, a spot `alt` metres above sea level was
    *  drawn last frame, or null before the first frame or behind the camera. */
   project(lon: number, lat: number, alt: number): { x: number; y: number } | null;
+  /** One more ball, in `color`, over the GPX point the profile's cursor is on, or
+   *  none. Drawn like a point's, and never picked: the orbit dot opens nothing either. */
+  setCursor(at: { lat: number; lon: number; color: string } | null): void;
 };
 
 /** Rings from pole to pole, and segments around each. Enough that the edge of a
@@ -119,7 +122,9 @@ export function createPointBalls(
   // the step from there to mercator is taken here, in doubles, once a frame.
   const origin = MercatorCoordinate.fromLngLat([points[0]?.lon ?? 0, points[0]?.lat ?? 0]);
   const unit = origin.meterInMercatorCoordinateUnits();
-  const instances = new Float32Array(points.length * 6);
+  // One slot past the points for the cursor's ball.
+  const instances = new Float32Array((points.length + 1) * 6);
+  let cursor: { lat: number; lon: number; color: [number, number, number] } | null = null;
   const matrix = new Float32Array(16);
   /** mainMatrix as last drawn with, for project(). */
   let drawn: Float64Array | null = null;
@@ -202,6 +207,15 @@ export function createPointBalls(
         );
         count++;
       }
+      const cursorGround = cursor && map.queryTerrainElevation([cursor.lon, cursor.lat]);
+      if (cursor && cursorGround != null) {
+        const at = MercatorCoordinate.fromLngLat([cursor.lon, cursor.lat], cursorGround + BALL_HEIGHT);
+        instances.set(
+          [(at.x - origin.x) / unit, (at.y - origin.y) / unit, at.z / unit, ...cursor.color],
+          count * 6,
+        );
+        count++;
+      }
       if (count === 0) return;
 
       // mainMatrix × translate(origin) × scale(unit), column-major.
@@ -253,6 +267,11 @@ export function createPointBalls(
         }
       }
       return best;
+    },
+
+    setCursor(at) {
+      cursor = at && { lat: at.lat, lon: at.lon, color: rgb(at.color) };
+      map.triggerRepaint();
     },
 
     project(lon, lat, alt) {

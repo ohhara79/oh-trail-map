@@ -50,6 +50,8 @@ import {
   LAYER_POINT_HOVER,
   LAYER_POINT_SHADOW,
   LAYER_POINTS,
+  LAYER_PROFILE_CURSOR,
+  LAYER_PROFILE_CURSOR_SHADOW,
   LAYER_TRAILS,
   LAYER_TRAIL_HOVER,
   LAYER_TRAIL_SELECTED,
@@ -831,8 +833,9 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   /**
    * Walking and playback draw for a camera at eye height: trails a fixed width on
    * the ground rather than a hairline, and points as balls floating over a shadow
-   * on the terrain in place of the dots. Orbit gets back what it had. Run on every mode change, which
-   * is when a camera flight starts, so the swap happens while everything moves.
+   * on the terrain in place of the dots, the profile cursor's among them. Orbit gets
+   * back what it had. Run on every mode change, which is when a camera flight
+   * starts, so the swap happens while everything moves.
    */
   function syncGround(): void {
     const on = mode !== 'orbit';
@@ -841,10 +844,12 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     for (const [id, width] of trailWidths(on ? map.getCenter().lat : null)) {
       map.setPaintProperty(id, 'line-width', width);
     }
-    for (const id of [LAYER_POINT_BALLS, LAYER_POINT_SHADOW]) {
+    for (const id of [LAYER_POINT_BALLS, LAYER_POINT_SHADOW, LAYER_PROFILE_CURSOR_SHADOW]) {
       map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
     }
-    map.setLayoutProperty(LAYER_POINTS, 'visibility', on ? 'none' : 'visible');
+    for (const id of [LAYER_POINTS, LAYER_PROFILE_CURSOR]) {
+      map.setLayoutProperty(id, 'visibility', on ? 'none' : 'visible');
+    }
   }
 
   /** Walk faces your heading while following your location. Playback steers along
@@ -1066,15 +1071,24 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
         // is something on it to take off.
         if (profileShown) {
           map.getSource<GeoJSONSource>(SRC_PROFILE_CURSOR)?.setData(EMPTY);
+          balls.setCursor(null);
           profileShown = false;
         }
         return;
       }
+      // The dot orbit draws, and the shadow of the ball walking draws instead.
       map.getSource<GeoJSONSource>(SRC_PROFILE_CURSOR)?.setData({
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [at.lon, at.lat] },
-        properties: { color: at.color },
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [at.lon, at.lat] },
+            properties: { color: at.color },
+          },
+          circlePolygon(at.lat, at.lon, BALL_RADIUS),
+        ],
       });
+      balls.setCursor(at);
       profileShown = true;
     },
     fitTrail(id) {
