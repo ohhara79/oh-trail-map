@@ -162,7 +162,11 @@ export class PointsList {
       detail.replaceChildren(highlightName(row.detail, tokens));
       title.title = `${row.title} — click to go there`;
       detail.title = `${row.detail} — click to go there`;
-      text.append(title, detail);
+      // Not highlighted: the filter does not search it (see PointRow.coords).
+      const coords = document.createElement('div');
+      coords.className = 'point-detail point-code';
+      coords.textContent = row.coords;
+      text.append(title, detail, coords);
 
       li.append(visible, swatch, text);
       this.list.append(li);

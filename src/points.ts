@@ -1,7 +1,7 @@
 /**
  * The National Point Number layer: one pin per row of data/national_points_w_name.tsv, each
  * with a popup naming the 지점번호, the 사물유형, the 시/도 and 시/군/구 it is filed
- * under, and — where the source has one — the 이름.
+ * under, its lat, lon, and — where the source has one — the 이름.
  *
  * The data is imported rather than fetched. `vite build` copies only public/, so a
  * repo-root data/ would 404 in dist/; `?raw` makes it part of the bundle instead,
@@ -88,12 +88,26 @@ export type PointRow = {
   /** 사물유형 · 시/도 시/군/구. 이름 leads the title now, and an 11px line under it
    *  should not spend its width repeating it. */
   detail: string;
-  /** Both drawn lines joined, for the panel filter. Built from the strings that
-   *  are actually drawn, so what a query matches is what gets a <mark> over it. */
+  /** lat, lon — see formatLatLon. A third line, drawn as plain text. */
+  coords: string;
+  /** Title and detail joined, for the panel filter. Built from the strings that
+   *  are actually drawn, so what a query matches is what gets a <mark> over it.
+   *  `coords` is left out: it is all digits, and a 지점번호 query like 5241 would
+   *  start matching unrelated rows through their lat/lon. */
   haystack: string;
   /** The pin's colour, so a row's swatch and its pin can never disagree. */
   color: string;
 };
+
+/**
+ * A point's position as the popup and the list both print it: lat first, comma and
+ * space, like the GPX point readout on the profile. Five decimals (~1 m) where that
+ * readout has six, because a 지점번호 only resolves to 10 m — a sixth digit would claim
+ * precision the source does not have.
+ */
+export function formatLatLon(point: NationalPoint): string {
+  return `${point.lat.toFixed(5)}, ${point.lon.toFixed(5)}`;
+}
 
 /**
  * The list's rows, built once at boot rather than per keystroke: normalising,
@@ -116,6 +130,7 @@ export function pointRows(points: readonly NationalPoint[]): PointRow[] {
       code: point.code,
       title,
       detail,
+      coords: formatLatLon(point),
       // The two lines as drawn, so a match is always somewhere a <mark> can go.
       haystack: fold(`${title} ${detail}`),
       color: point.name ? PIN_COLOR_NAMED : PIN_COLOR_UNNAMED,
@@ -171,6 +186,13 @@ export function popupContent(point: NationalPoint): HTMLElement {
     where.textContent = region;
     root.append(where);
   }
+
+  // Last and muted for the same reason as the region, and .point-code for the
+  // tabular figures, so the digits sit in columns like the 지점번호's.
+  const at = document.createElement('div');
+  at.className = 'muted point-code';
+  at.textContent = formatLatLon(point);
+  root.append(at);
 
   return root;
 }
