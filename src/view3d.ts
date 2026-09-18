@@ -40,6 +40,7 @@ import { canHover, createHoverLabel } from './hoverLabel';
 import { LOCATE_ICON_HTML } from './map';
 import type { NationalPoint } from './nationalPoint';
 import { createPointBalls, LAYER_POINT_BALLS } from './pointBalls';
+import { createPointDots, LAYER_POINT_DOTS } from './pointDots';
 import { loadNationalPoints, popupContent } from './points';
 import {
   BALL_HEIGHT,
@@ -47,10 +48,8 @@ import {
   EMPTY,
   LAYER_BASEMAP,
   LAYER_HALOS,
-  LAYER_POINT_HOVER,
   LAYER_POINT_SHADOW,
   LAYER_POINTS,
-  LAYER_PROFILE_CURSOR,
   LAYER_PROFILE_CURSOR_SHADOW,
   LAYER_TRAILS,
   LAYER_TRAIL_HOVER,
@@ -61,7 +60,6 @@ import {
   allOf,
   basemapSource,
   circlePolygon,
-  hoveredPointFilter,
   pointsFilter,
   selectedFilter,
   sky,
@@ -207,6 +205,9 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   const balls = createPointBalls(map, points, () => getScene().hiddenPoints);
   map.addLayer(balls);
   map.setLayoutProperty(LAYER_POINT_BALLS, 'visibility', 'none');
+  // Orbit's dots, above everything too, and hidden while walking.
+  const dots = createPointDots(map, points, () => getScene().hiddenPoints);
+  map.addLayer(dots);
 
   // Two controls rather than one: zoom alone is as tall as Leaflet's zoom control, so
   // #locate and the zoom buttons stay put between views, and the compass is lifted
@@ -317,7 +318,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   const locationMarker = new Marker({ element: locationEl, rotationAlignment: 'map', pitchAlignment: 'map' });
   let locationShown = false;
 
-  // Whether the profile cursor's dot (LAYER_PROFILE_CURSOR) is on the map.
+  // Whether the profile cursor's dot and ball are on the map.
   let profileShown = false;
 
   // -- clicks --------------------------------------------------------------------
@@ -664,7 +665,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     }
     if (pointIndex !== hoveredPoint) {
       hoveredPoint = pointIndex;
-      map.setFilter(LAYER_POINT_HOVER, hoveredPointFilter(pointIndex));
+      dots.setHover(pointIndex);
     }
     // Walking owns the cursor while in walk or playback (style.css).
     if (mode === 'orbit') map.getCanvas().style.cursor = pick ? 'pointer' : '';
@@ -847,7 +848,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     for (const id of [LAYER_POINT_BALLS, LAYER_POINT_SHADOW, LAYER_PROFILE_CURSOR_SHADOW]) {
       map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
     }
-    for (const id of [LAYER_POINTS, LAYER_PROFILE_CURSOR]) {
+    for (const id of [LAYER_POINTS, LAYER_POINT_DOTS]) {
       map.setLayoutProperty(id, 'visibility', on ? 'none' : 'visible');
     }
   }
@@ -1072,23 +1073,15 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
         if (profileShown) {
           map.getSource<GeoJSONSource>(SRC_PROFILE_CURSOR)?.setData(EMPTY);
           balls.setCursor(null);
+          dots.setCursor(null);
           profileShown = false;
         }
         return;
       }
-      // The dot orbit draws, and the shadow of the ball walking draws instead.
-      map.getSource<GeoJSONSource>(SRC_PROFILE_CURSOR)?.setData({
-        type: 'FeatureCollection',
-        features: [
-          {
-            type: 'Feature',
-            geometry: { type: 'Point', coordinates: [at.lon, at.lat] },
-            properties: { color: at.color },
-          },
-          circlePolygon(at.lat, at.lon, BALL_RADIUS),
-        ],
-      });
+      // The shadow of the ball walking draws; orbit draws the dot instead.
+      map.getSource<GeoJSONSource>(SRC_PROFILE_CURSOR)?.setData(circlePolygon(at.lat, at.lon, BALL_RADIUS));
       balls.setCursor(at);
+      dots.setCursor(at);
       profileShown = true;
     },
     fitTrail(id) {

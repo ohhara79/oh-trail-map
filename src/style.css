@@ -722,7 +722,7 @@ button:hover { background: #f5f6f8; }
   margin-bottom: calc(218px + env(safe-area-inset-bottom));
 }
 /* The 2D map dot for the same point, over a trail of any colour on any basemap.
-   3D draws its own as a style layer (LAYER_PROFILE_CURSOR in scene3d.ts). */
+   3D draws its own in GL (pointDots.ts). */
 .profile-cursor-marker { filter: drop-shadow(0 0 1.5px rgba(0,0,0,.6)); }
 
 /* In orbit, where Walk will put you: walking starts at the map centre, facing

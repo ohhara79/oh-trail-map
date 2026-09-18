@@ -20,7 +20,7 @@ import type { Basemap } from './basemaps';
 import { offset } from './geo';
 import { EARTH_RADIUS } from './gpx';
 import type { NationalPoint } from './nationalPoint';
-import { PIN_COLOR_NAMED, PIN_COLOR_UNNAMED, PIN_RADIUS, PIN_STROKE } from './points';
+import { PIN_RADIUS, PIN_STROKE } from './points';
 import { HALO_RINGS, HOVER_RING } from './selection';
 import { DIM_OPACITY, TRAIL_WEIGHT, type Trail } from './trails';
 
@@ -39,9 +39,7 @@ export const LAYER_TRAIL_SELECTED = 'trail-selected';
 export const LAYER_HALOS = ['trail-halo-outer', 'trail-halo'] as const;
 export const LAYER_LOCATION = 'location-accuracy';
 export const LAYER_POINTS = 'points';
-export const LAYER_POINT_HOVER = 'point-hover';
 export const LAYER_POINT_SHADOW = 'point-shadow';
-export const LAYER_PROFILE_CURSOR = 'profile-cursor';
 export const LAYER_PROFILE_CURSOR_SHADOW = 'profile-cursor-shadow';
 
 /**
@@ -268,7 +266,7 @@ export function layers(): LayerSpecification[] {
     // While walking, a point is a ball floating over its spot (pointBalls.ts), and
     // this is its shadow, which marks where on the ground that spot is. A fill is
     // draped onto the terrain, so it lies on a slope rather than sinking into it.
-    // Hidden in orbit, where the dots below are drawn instead; view3d.ts swaps them.
+    // Hidden in orbit, where pointDots.ts draws dots instead; view3d.ts swaps them.
     {
       id: LAYER_POINT_SHADOW,
       type: 'fill',
@@ -277,32 +275,17 @@ export function layers(): LayerSpecification[] {
       paint: { 'fill-color': '#000000', 'fill-opacity': 0.25 },
     },
     // The same shadow under the profile cursor's ball while walking (pointBalls.ts
-    // draws the ball). Its source holds both this disc and the orbit dot's point.
+    // draws the ball, and pointDots.ts the orbit dot).
     {
       id: LAYER_PROFILE_CURSOR_SHADOW,
       type: 'fill',
       source: SRC_PROFILE_CURSOR,
-      filter: ['==', ['geometry-type'], 'Polygon'],
       layout: { visibility: 'none' },
       paint: { 'fill-color': '#000000', 'fill-opacity': 0.25 },
     },
-    // The point a click would open: a wider white disc behind its dot, edged dark
-    // for the same two-basemap reason as the trail halo, and matching the ring the
-    // 2D pin gets in style.css.
-    {
-      id: LAYER_POINT_HOVER,
-      type: 'circle',
-      source: SRC_POINTS,
-      filter: hoveredPointFilter(null),
-      paint: {
-        'circle-pitch-scale': 'viewport',
-        'circle-radius': PIN_RADIUS + PIN_STROKE + 2,
-        'circle-color': '#ffffff',
-        'circle-stroke-color': '#1f2328',
-        'circle-stroke-opacity': 0.5,
-        'circle-stroke-width': 1,
-      },
-    },
+    // What a click in orbit picks, and nothing more: pointDots.ts draws the dots,
+    // lifted off the ground, which no circle layer can be. queryRenderedFeatures
+    // ignores opacity, so the sizes here are still what a click has to land in.
     {
       id: LAYER_POINTS,
       type: 'circle',
@@ -315,26 +298,9 @@ export function layers(): LayerSpecification[] {
         // a point at your feet ballooned and one across the valley vanished.
         'circle-pitch-scale': 'viewport',
         'circle-radius': PIN_RADIUS,
-        'circle-color': ['case', ['get', 'named'], PIN_COLOR_NAMED, PIN_COLOR_UNNAMED],
-        'circle-stroke-color': '#ffffff',
         'circle-stroke-width': PIN_STROKE,
-      },
-    },
-    // The dot for the GPX point the profile's cursor is on, the 2D ProfileCursor's
-    // counterpart: above the points, as its pane is in 2D, and drawn like them, so
-    // the terrain places and hides it the same way. MapLibre strokes outside the
-    // radius and Leaflet across it, so 4.5 + 3 is the 2D dot's 6 with its 3px ring.
-    {
-      id: LAYER_PROFILE_CURSOR,
-      type: 'circle',
-      source: SRC_PROFILE_CURSOR,
-      filter: ['==', ['geometry-type'], 'Point'],
-      paint: {
-        'circle-pitch-scale': 'viewport',
-        'circle-radius': 4.5,
-        'circle-color': ['get', 'color'],
-        'circle-stroke-color': '#ffffff',
-        'circle-stroke-width': 3,
+        'circle-opacity': 0,
+        'circle-stroke-opacity': 0,
       },
     },
   ];
@@ -376,11 +342,6 @@ export function visibleFilter(trails: readonly Trail[]): FilterSpecification {
  */
 export function pointsFilter(hidden: ReadonlySet<string>): FilterSpecification {
   return ['!', ['in', ['get', 'code'], ['literal', [...hidden]]]];
-}
-
-/** Only the point at `index` in pointsGeoJson, or none for null. */
-export function hoveredPointFilter(index: number | null): FilterSpecification {
-  return index === null ? ['literal', false] : ['==', ['get', 'index'], index];
 }
 
 /** Only the selected trail, and nothing at all when there is no selection. */
