@@ -30,6 +30,7 @@ export const SRC_TRAILS = 'trails';
 export const SRC_POINTS = 'points';
 export const SRC_LOCATION = 'location';
 export const SRC_POINT_SHADOWS = 'point-shadows';
+export const SRC_PROFILE_CURSOR = 'profile-cursor';
 
 export const LAYER_BASEMAP = 'basemap';
 export const LAYER_TRAILS = 'trails';
@@ -40,6 +41,7 @@ export const LAYER_LOCATION = 'location-accuracy';
 export const LAYER_POINTS = 'points';
 export const LAYER_POINT_HOVER = 'point-hover';
 export const LAYER_POINT_SHADOW = 'point-shadow';
+export const LAYER_PROFILE_CURSOR = 'profile-cursor';
 
 /**
  * AWS Terrain Tiles: global, keyless, CORS-open, encoded as terrarium PNGs. Around
@@ -307,6 +309,22 @@ export function layers(): LayerSpecification[] {
         'circle-stroke-width': PIN_STROKE,
       },
     },
+    // The dot for the GPX point the profile's cursor is on, the 2D ProfileCursor's
+    // counterpart: above the points, as its pane is in 2D, and drawn like them, so
+    // the terrain places and hides it the same way. MapLibre strokes outside the
+    // radius and Leaflet across it, so 4.5 + 3 is the 2D dot's 6 with its 3px ring.
+    {
+      id: LAYER_PROFILE_CURSOR,
+      type: 'circle',
+      source: SRC_PROFILE_CURSOR,
+      paint: {
+        'circle-pitch-scale': 'viewport',
+        'circle-radius': 4.5,
+        'circle-color': ['get', 'color'],
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 3,
+      },
+    },
   ];
 }
 
@@ -320,6 +338,7 @@ export function style(basemap: Basemap, trails: readonly Trail[], points: readon
       [SRC_POINTS]: { type: 'geojson', data: pointsGeoJson(points) },
       [SRC_LOCATION]: { type: 'geojson', data: EMPTY },
       [SRC_POINT_SHADOWS]: { type: 'geojson', data: pointDiscsGeoJson(points, BALL_RADIUS) },
+      [SRC_PROFILE_CURSOR]: { type: 'geojson', data: EMPTY },
     },
     layers: layers(),
     // Exaggeration stays at 1: queryTerrainElevation scales by it, and the walk

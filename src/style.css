@@ -721,14 +721,9 @@ button:hover { background: #f5f6f8; }
 #app[data-profile] :is(#map .leaflet-control-scale, #map3d .maplibregl-ctrl-scale) {
   margin-bottom: calc(218px + env(safe-area-inset-bottom));
 }
-/* The map dot for the same point, over a trail of any colour on any basemap. */
+/* The 2D map dot for the same point, over a trail of any colour on any basemap.
+   3D draws its own as a style layer (LAYER_PROFILE_CURSOR in scene3d.ts). */
 .profile-cursor-marker { filter: drop-shadow(0 0 1.5px rgba(0,0,0,.6)); }
-.maplibregl-marker.profile-cursor-marker {
-  width: 14px; height: 14px;
-  border: 3px solid #fff; border-radius: 50%;
-  box-sizing: content-box;
-  pointer-events: none;
-}
 
 /* In orbit, where Walk will put you: walking starts at the map centre, facing
    screen-up (see setMode in view3d.ts), so the longer tick is the way you will face.

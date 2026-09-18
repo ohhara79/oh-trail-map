@@ -55,6 +55,7 @@ import {
   LAYER_TRAIL_SELECTED,
   SRC_BASEMAP,
   SRC_LOCATION,
+  SRC_PROFILE_CURSOR,
   allOf,
   basemapSource,
   circlePolygon,
@@ -314,13 +315,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   const locationMarker = new Marker({ element: locationEl, rotationAlignment: 'map', pitchAlignment: 'map' });
   let locationShown = false;
 
-  // The 2D ProfileCursor's counterpart: a Marker, like your location, so it stands
-  // on the terrain at the point. Always fully drawn, like the 2D dot: MapLibre fades
-  // a Marker it finds behind the terrain, and one standing exactly on the ground
-  // loses that depth test about half the time, so the dot flickered faint and solid.
-  const profileEl = document.createElement('div');
-  profileEl.className = 'profile-cursor-marker';
-  const profileMarker = new Marker({ element: profileEl, opacityWhenCovered: 1 });
+  // Whether the profile cursor's dot (LAYER_PROFILE_CURSOR) is on the map.
   let profileShown = false;
 
   // -- clicks --------------------------------------------------------------------
@@ -1070,17 +1065,17 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
         // Called on every cursor move now, so it only touches the map when there
         // is something on it to take off.
         if (profileShown) {
-          profileMarker.remove();
+          map.getSource<GeoJSONSource>(SRC_PROFILE_CURSOR)?.setData(EMPTY);
           profileShown = false;
         }
         return;
       }
-      profileEl.style.background = at.color;
-      profileMarker.setLngLat([at.lon, at.lat]);
-      if (!profileShown) {
-        profileMarker.addTo(map);
-        profileShown = true;
-      }
+      map.getSource<GeoJSONSource>(SRC_PROFILE_CURSOR)?.setData({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [at.lon, at.lat] },
+        properties: { color: at.color },
+      });
+      profileShown = true;
     },
     fitTrail(id) {
       // Walking stays where it is: a row click must not pull you out of the scene.
@@ -1132,7 +1127,6 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       cancelAnimationFrame(pending);
       cancelAnimationFrame(hoverFrame);
       locationMarker.remove();
-      profileMarker.remove();
       // Frees the GL context and its tile textures. The module stays cached, so
       // opening 3D again costs no download.
       map.remove();
