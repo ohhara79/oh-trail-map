@@ -24,6 +24,9 @@ export type UiCallbacks = {
   onWalkTrail: (id: string) => void;
   /** The selection bar's profile button: open the elevation profile, or close it. */
   onToggleProfile: () => void;
+  /** The 3D playback bar's profile button: hide the elevation profile while the
+   *  trail plays, or bring it back. */
+  onTogglePlaybackProfile: () => void;
 };
 
 /** What the locate button is currently saying: not following; following but
@@ -60,6 +63,7 @@ export class Ui {
   private readonly selectionStats = el('selection-stats');
   private readonly selectionWalk = el<HTMLButtonElement>('selection-walk');
   private readonly selectionProfile = el<HTMLButtonElement>('selection-profile');
+  private readonly playbackProfile = el<HTMLButtonElement>('playback3d-profile');
 
   /** Last rendered selection, so a row is only scrolled into view when the
    *  selection actually changed — not on every unrelated re-render. */
@@ -100,6 +104,7 @@ export class Ui {
       if (this.lastSelectedId !== null) this.cb.onWalkTrail(this.lastSelectedId);
     });
     this.selectionProfile.addEventListener('click', () => this.cb.onToggleProfile());
+    this.playbackProfile.addEventListener('click', () => this.cb.onTogglePlaybackProfile());
     el('selection-clear').addEventListener('click', () => this.cb.onSelect(null));
 
     el('collapse').addEventListener('click', () => this.setPanel(false));
@@ -278,6 +283,11 @@ export class Ui {
     this.selectionProfile.setAttribute('aria-pressed', String(shown));
     if (shown) this.app.dataset.profile = '';
     else delete this.app.dataset.profile;
+  }
+
+  /** The playback bar's profile button: pressed while playback shows the profile. */
+  setPlaybackProfileShown(shown: boolean): void {
+    this.playbackProfile.setAttribute('aria-pressed', String(shown));
   }
 
   /** The ids on screen, read back off the rows rather than cached alongside them. */

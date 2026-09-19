@@ -160,6 +160,10 @@ async function main(): Promise<void> {
   // 2D had the moment playback ends. No point number of its own: cursorIndex is
   // that number, and a second copy would give the cursor two writers.
   let playbackTrail: Trail | null = null;
+  // Whether playback shows the panel. Its own flag, not profileOpen: putting the
+  // chart away to watch the trail says nothing about 2D. Outlives a playback, so
+  // the next trail played comes up the way you left the last one.
+  let playbackProfileOpen = true;
   const profileCursor = new ProfileCursor(map);
   const profilePanel = new ProfilePanel({
     onCursor: (index) => {
@@ -303,6 +307,10 @@ async function main(): Promise<void> {
     },
     onToggleProfile: () => {
       profileOpen = !profileOpen;
+      syncProfile();
+    },
+    onTogglePlaybackProfile: () => {
+      playbackProfileOpen = !playbackProfileOpen;
       syncProfile();
     },
   });
@@ -475,12 +483,17 @@ async function main(): Promise<void> {
    * The panel, and the trail it is for, from playback, profileOpen and the
    * selection. A trail playing in 3D wins: it is the trail you are standing on,
    * the selection bar that holds the toggle is hidden there, and a tap on the
-   * scene is what puts the panel away with the rest of the controls.
+   * scene is what puts the panel away with the rest of the controls. The playback
+   * bar's own button hides just the panel; the trail stays its trail, so the cursor
+   * keeps following the walk while it is away.
    */
   function syncProfile(): void {
     const selected = (profileOpen && selectedId !== null && findTrail(selectedId)) || null;
     const trail = playbackTrail ?? selected;
-    ui.setProfileShown(trail !== null);
+    const hidden = playbackTrail !== null && !playbackProfileOpen;
+    ui.setProfileShown(trail !== null && !hidden);
+    ui.setPlaybackProfileShown(playbackProfileOpen);
+    profilePanel.setHidden(hidden);
     if (trail === profileTrail) return;
     profileTrail = trail;
     // A point number means nothing on another trail.

@@ -57,6 +57,9 @@ export class ProfilePanel {
   private hi = 1;
   /** The pointer dragging the cursor, for touch and pen, which have no hover. */
   private dragging: number | null = null;
+  /** Put away with its profile kept, so the cursor goes on following and the panel
+   *  comes back on the same point. */
+  private hiddenByUser = false;
 
   constructor(private readonly cb: ProfilePanelCallbacks) {
     // Drawn to the pixel, so a resize — the window, or the drawer on desktop taking
@@ -108,7 +111,7 @@ export class ProfilePanel {
     if (profile === this.profile) return;
     this.profile = profile;
     this.cursor = null;
-    this.root.hidden = !profile;
+    this.root.hidden = !profile || this.hiddenByUser;
     if (!profile) return;
     const n = profile.s.length;
     this.file.textContent = fileName;
@@ -119,6 +122,13 @@ export class ProfilePanel {
     this.chart.setAttribute('aria-valuemax', String(n));
     this.draw();
     this.syncCursor();
+  }
+
+  /** Hides the panel without letting go of its profile or cursor. Coming back, the
+   *  ResizeObserver sees the chart grow from nothing and draws it again. */
+  setHidden(hidden: boolean): void {
+    this.hiddenByUser = hidden;
+    this.root.hidden = !this.profile || hidden;
   }
 
   setCursor(index: number | null): void {

@@ -588,6 +588,8 @@ button:hover { background: #f5f6f8; }
 #playback3d button { align-self: stretch; padding-block: 0; }
 #app[data-mode3d='playback'] #playback3d { display: flex; }
 #play3d, #speed3d { min-width: 40px; font-variant-numeric: tabular-nums; }
+#playback3d .hud-icon { width: 34px; padding: 0; }
+#playback3d .hud-icon svg { display: block; margin: 0 auto; }
 .playback3d-track { display: flex; flex-direction: column; padding: 0 4px; }
 .playback3d-text { display: flex; gap: 8px; font-size: 12px; line-height: 1.2; }
 .playback3d-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
