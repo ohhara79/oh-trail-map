@@ -630,7 +630,9 @@ button:hover { background: #f5f6f8; }
    gap: 10 + 34 + 6 = 50px up. Full width between the same insets, since the
    chart is only as readable as it is wide. A fixed height, so #notices and the
    scale bar can clear it with a number (50 + 76 + 10 = 136px): a 64px chart with
-   the readout over it and ◀ ▶ beside it, in 4px padding and a 2px border. */
+   the readout over it and ◀ ▶ beside it, in 4px padding and a 2px border.
+   See-through, so the map still shows under the strip it covers; the border
+   keeps its edge, and white halos keep its text readable over busy tiles. */
 #profile {
   --profile-h: 76px;
   bottom: calc(50px + env(safe-area-inset-bottom));
@@ -641,6 +643,7 @@ button:hover { background: #f5f6f8; }
   margin: 0 auto;
   align-items: stretch;
   padding: 4px;
+  background: rgba(255, 255, 255, .35);
 }
 #profile[hidden] { display: none; }
 /* Playing a trail, the panel rides on #playback3d instead of the selection bar,
@@ -658,7 +661,6 @@ button:hover { background: #f5f6f8; }
   position: relative;
   flex: 1; min-height: 0;
   border-radius: 3px;
-  background: #f4f6f8;
   cursor: crosshair;
   /* A finger on the chart scrubs; it must not scroll or zoom the page instead. */
   touch-action: none;
@@ -673,7 +675,7 @@ button:hover { background: #f5f6f8; }
   position: absolute;
   font-size: 10px; line-height: 1;
   color: var(--muted);
-  text-shadow: 0 0 2px #f4f6f8, 0 0 2px #f4f6f8;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff;
   pointer-events: none;
   font-variant-numeric: tabular-nums;
 }
@@ -701,7 +703,7 @@ button:hover { background: #f5f6f8; }
   top: 3px; left: 4px; right: 4px;
   font-size: 11px; line-height: 14px;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 2px #f4f6f8, 0 0 2px #f4f6f8, 0 0 3px #f4f6f8;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff, 0 0 3px #fff;
   pointer-events: none;
 }
 /* Always three lines, so they never move with what they say. */
