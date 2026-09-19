@@ -55,7 +55,7 @@ export class ProfilePanel {
   private height = 0;
   private lo = 0;
   private hi = 1;
-  /** The pointer dragging the cursor, for touch and pen, which have no hover. */
+  /** The pointer pressed on the chart and dragging the cursor. */
   private dragging: number | null = null;
   /** Put away with its profile kept, so the cursor goes on following and the panel
    *  comes back on the same point. */
@@ -68,15 +68,15 @@ export class ProfilePanel {
 
     this.chart.addEventListener('pointerdown', (e) => {
       if (!this.profile || e.button !== 0) return;
-      // A mouse scrubs by hovering; pressing just focuses the chart for the keys.
-      if (e.pointerType !== 'mouse') {
-        this.dragging = e.pointerId;
-        this.chart.setPointerCapture(e.pointerId);
-      }
+      // A mouse too scrubs only while pressed: by hovering, it moved the location
+      // whenever it merely passed over the panel. Captured, so the drag goes on
+      // past the chart's edge.
+      this.dragging = e.pointerId;
+      this.chart.setPointerCapture(e.pointerId);
       this.scrubTo(e.clientX);
     });
     this.chart.addEventListener('pointermove', (e) => {
-      if (e.pointerType === 'mouse' || e.pointerId === this.dragging) this.scrubTo(e.clientX);
+      if (e.pointerId === this.dragging) this.scrubTo(e.clientX);
     });
     const release = (e: PointerEvent): void => {
       if (e.pointerId === this.dragging) this.dragging = null;
@@ -246,7 +246,7 @@ export class ProfilePanel {
     if (i === null) {
       this.chart.setAttribute('aria-valuenow', '1');
       this.chart.setAttribute('aria-valuetext', 'No point picked');
-      this.setLines(`${n.toLocaleString()} GPX points`, 'Point at the profile,', 'or step with ◀ ▶');
+      this.setLines(`${n.toLocaleString()} GPX points`, 'Drag along the profile,', 'or step with ◀ ▶');
       return;
     }
 
