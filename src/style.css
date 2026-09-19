@@ -582,6 +582,10 @@ button:hover { background: #f5f6f8; }
      44 = border 2 + padding 3, twice, around the 34px that leaves — the same
      34px #mode3d and #selection-bar are. */
   height: 44px;
+  /* See-through like #profile, which stacks on it: the scene still shows under the
+     strip the bar covers. The border keeps its edge, and white halos keep the text
+     and the buttons readable over it. */
+  background: rgba(255, 255, 255, .35);
 }
 /* Outranks .hud-bar button, including its taller padding on touch, exactly as
    the #mode3d and #selection-bar rule above does. */
@@ -591,7 +595,10 @@ button:hover { background: #f5f6f8; }
 #playback3d .hud-icon { width: 34px; padding: 0; }
 #playback3d .hud-icon svg { display: block; margin: 0 auto; }
 .playback3d-track { display: flex; flex-direction: column; padding: 0 4px; }
-.playback3d-text { display: flex; gap: 8px; font-size: 12px; line-height: 1.2; }
+.playback3d-text {
+  display: flex; gap: 8px; font-size: 12px; line-height: 1.2;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+}
 .playback3d-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 /* One line, always: the label wrapping under the name on a narrow screen is what
    made this bar's height depend on how long the trail's name is. The name beside
@@ -615,16 +622,37 @@ button:hover { background: #f5f6f8; }
   width: max-content;
   max-width: min(560px, 100% - 68px);
   margin: 0 auto;
+  /* See-through, like #profile above it and #playback3d it gives way to. */
+  background: rgba(255, 255, 255, .35);
 }
 /* .hud-bar's display: flex would otherwise outrank the hidden attribute. */
 #selection-bar[hidden],
 #app[data-mode3d='playback'] #selection-bar { display: none; }
-.selection-text { display: flex; align-items: baseline; gap: 8px; min-width: 0; padding: 0 6px; font-size: 13px; }
+.selection-text {
+  display: flex; align-items: baseline; gap: 8px; min-width: 0; padding: 0 6px; font-size: 13px;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+}
 .selection-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
-#selection-walk { color: #fff; background: var(--accent); }
-/* Square, like #mode3d's icons; outranks the touch padding below. */
+/* Square, like #mode3d's icons; outranks the touch padding below. ▶ carries no svg:
+   it is a glyph, which a button centres on its own. */
 #selection-bar .hud-icon { width: 30px; padding: 0; }
 #selection-bar .hud-icon svg { display: block; margin: 0 auto; }
+
+/* The buttons on the two see-through bars, as #profile's ◀ ▶ are: no fill of their
+   own, the labels' halo on the glyphs, and a light tint to show they press. On reads
+   as a heavier white rather than .hud-bar's accent fill, which would be the one opaque
+   thing left on a bar you are meant to see through; #mode3d keeps the accent, being
+   solid. The four tie on specificity, so the order here is what decides them. */
+:is(#selection-bar, #playback3d) button {
+  background: transparent;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+}
+:is(#selection-bar, #playback3d) button:hover { background: rgba(255, 255, 255, .5); }
+:is(#selection-bar, #playback3d) button[aria-pressed='true'] {
+  background: rgba(255, 255, 255, .75);
+  color: var(--fg);
+}
+:is(#selection-bar, #playback3d) button[aria-pressed='true']:hover { background: rgba(255, 255, 255, .9); }
 
 /* The selected trail's elevation profile, stacked on #selection-bar with a 6px
    gap: 10 + 34 + 6 = 50px up. Full width between the same insets, since the
