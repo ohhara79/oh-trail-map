@@ -679,21 +679,16 @@ button:hover { background: #f5f6f8; }
   pointer-events: none;
   font-variant-numeric: tabular-nums;
 }
-/* The top left is the readout's, so the scale's top goes to the right. */
-#profile-ele-max { top: 3px; right: 4px; }
 #profile-ele-min { bottom: 3px; left: 4px; }
-/* Bottom right, at the far end of the distance axis: which .gpx the points are
-   read from, then the trail's length. The name is cut short, never the length,
-   rather than run into the minimum elevation on a narrow phone. */
+/* Bottom right, at the far end of the distance axis: the maximum elevation, then
+   the trail's length. Not the top right, where it would take room from the
+   readout's first line, which a narrow phone would cut short. */
 .profile-br {
-  /* The clip would take the underscore at line-height 1: 2px lower, 2px taller. */
-  bottom: 1px; right: 4px;
-  padding-bottom: 2px;
-  max-width: 70%;
+  bottom: 3px; right: 4px;
   display: flex; gap: 4px;
+  white-space: nowrap;
 }
-#profile-file { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#profile-total { flex: none; }
+#profile-ele-max::after { content: ' ·'; }
 /* Over the chart, ending 45px down, above the minimum elevation at the bottom
    left. The line runs under it, so it takes the labels' halo, thicker. It takes
    no pointer, so the chart scrubs under it too — which is why it can no longer be
@@ -708,8 +703,7 @@ button:hover { background: #f5f6f8; }
 }
 /* Always three lines, so they never move with what they say. */
 .profile-readout > div { height: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* Only the first line shares a row with the maximum elevation at the top right. */
-#profile-line1 { font-weight: 500; margin-right: 48px; }
+#profile-line1 { font-weight: 500; }
 #profile-line3 { color: var(--muted); }
 /* ◀ over ▶, beside the chart rather than under it. See-through like the panel,
    with the labels' halo on the glyphs and a light tint to show they press. */

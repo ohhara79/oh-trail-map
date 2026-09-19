@@ -1,8 +1,7 @@
 /**
  * The selected trail's elevation over distance, with a cursor that picks one GPX
  * point and a readout of that point over the chart's top-left corner: its number,
- * lat/lon, elevation, and how far and how long into the trail it is. Another
- * corner names the .gpx file the points come from.
+ * lat/lon, elevation, and how far and how long into the trail it is.
  *
  * It renders and reports, like pointsList.ts: main.ts owns which point the cursor
  * is on, hears about every move through onCursor, and hands the answer back with
@@ -43,7 +42,6 @@ export class ProfilePanel {
   private readonly eleMax = el<HTMLElement>('profile-ele-max');
   private readonly eleMin = el<HTMLElement>('profile-ele-min');
   private readonly total = el<HTMLElement>('profile-total');
-  private readonly file = el<HTMLElement>('profile-file');
   private readonly lines = [el<HTMLElement>('profile-line1'), el<HTMLElement>('profile-line2'), el<HTMLElement>('profile-line3')];
   private readonly prev = el<HTMLButtonElement>('profile-prev');
   private readonly next = el<HTMLButtonElement>('profile-next');
@@ -114,10 +112,8 @@ export class ProfilePanel {
     this.root.hidden = !profile || this.hiddenByUser;
     if (!profile) return;
     const n = profile.s.length;
-    this.file.textContent = fileName;
-    this.file.title = fileName;
-    // The label takes no pointer, so a screen reader and a cut-short name both need
-    // the full name here.
+    // Not shown, to leave the readout room on a narrow phone; a screen reader still
+    // hears which file the points come from.
     this.chart.setAttribute('aria-label', fileName ? `GPX point along ${fileName}` : 'GPX point along the trail');
     this.chart.setAttribute('aria-valuemax', String(n));
     this.draw();
