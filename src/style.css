@@ -632,7 +632,7 @@ button:hover { background: #f5f6f8; }
    scale bar can clear it with a number (50 + 76 + 10 = 136px): a 64px chart with
    the readout over it and ◀ ▶ beside it, in 4px padding and a 2px border.
    See-through, so the map still shows under the strip it covers; the border
-   keeps its edge, and white halos keep its text readable over busy tiles. */
+   keeps its edge, and white halos keep its text and ◀ ▶ readable over busy tiles. */
 #profile {
   --profile-h: 76px;
   bottom: calc(50px + env(safe-area-inset-bottom));
@@ -711,9 +711,15 @@ button:hover { background: #f5f6f8; }
 /* Only the first line shares a row with the maximum elevation at the top right. */
 #profile-line1 { font-weight: 500; margin-right: 48px; }
 #profile-line3 { color: var(--muted); }
-/* ◀ over ▶, beside the chart rather than under it. */
+/* ◀ over ▶, beside the chart rather than under it. See-through like the panel,
+   with the labels' halo on the glyphs and a light tint to show they press. */
 .profile-side { display: flex; flex-direction: column; gap: 4px; }
-#profile .profile-side button { flex: 1; min-width: 30px; padding: 0 6px; }
+#profile .profile-side button {
+  flex: 1; min-width: 30px; padding: 0 6px;
+  background: transparent;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+}
+#profile .profile-side button:hover:not(:disabled) { background: rgba(255, 255, 255, .5); }
 #profile .profile-side button:disabled { opacity: .35; cursor: default; }
 /* The notices and the scale bar clear the panel as they clear the bar alone. */
 #app[data-selection][data-profile] #notices { bottom: calc(136px + env(safe-area-inset-bottom)); }
