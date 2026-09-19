@@ -174,9 +174,10 @@
                 aria-label="Clear selection">&times;</button>
       </div>
       <!-- The selected trail's elevation over distance, and the GPX point under its
-           cursor. Filled by ProfilePanel in profilePanel.ts; stacked on the selection
-           bar, which opens it. While a trail plays in 3D it rides on the playback
-           bar instead, and its cursor is driven by where the playback has got to. -->
+           cursor, read out over the chart's top-left corner. Filled by ProfilePanel
+           in profilePanel.ts; stacked on the selection bar, which opens it. While a
+           trail plays in 3D it rides on the playback bar instead, and its cursor is
+           driven by where the playback has got to. -->
       <div id="profile" class="hud-bar" hidden>
         <div id="profile-chart" tabindex="0" role="slider" aria-label="GPX point along the trail"
              aria-valuemin="1" aria-valuemax="1" aria-valuenow="1">
@@ -188,15 +189,17 @@
           </svg>
           <span id="profile-ele-max" class="profile-label"></span>
           <span id="profile-ele-min" class="profile-label"></span>
-          <span id="profile-total" class="profile-label"></span>
-          <span id="profile-file" class="profile-label"></span>
-        </div>
-        <div class="profile-foot">
-          <div class="profile-readout grow">
+          <span class="profile-label profile-br">
+            <span id="profile-file"></span>
+            <span id="profile-total"></span>
+          </span>
+          <div class="profile-readout">
             <div id="profile-line1"></div>
             <div id="profile-line2"></div>
             <div id="profile-line3"></div>
           </div>
+        </div>
+        <div class="profile-side">
           <button id="profile-prev" type="button" title="Previous point" aria-label="Previous point">&#9664;</button>
           <button id="profile-next" type="button" title="Next point" aria-label="Next point">&#9654;</button>
         </div>

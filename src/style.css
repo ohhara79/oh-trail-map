@@ -629,16 +629,17 @@ button:hover { background: #f5f6f8; }
 /* The selected trail's elevation profile, stacked on #selection-bar with a 6px
    gap: 10 + 34 + 6 = 50px up. Full width between the same insets, since the
    chart is only as readable as it is wide. A fixed height, so #notices and the
-   scale bar can clear it with a number (50 + 128 + 10 = 188px). */
+   scale bar can clear it with a number (50 + 76 + 10 = 136px): a 64px chart with
+   the readout over it and ◀ ▶ beside it, in 4px padding and a 2px border. */
 #profile {
-  --profile-h: 128px;
+  --profile-h: 76px;
   bottom: calc(50px + env(safe-area-inset-bottom));
   left: 12px;
   right: 56px;
   max-width: 560px;
   height: var(--profile-h);
   margin: 0 auto;
-  flex-direction: column; align-items: stretch;
+  align-items: stretch;
   padding: 4px;
 }
 #profile[hidden] { display: none; }
@@ -676,52 +677,52 @@ button:hover { background: #f5f6f8; }
   pointer-events: none;
   font-variant-numeric: tabular-nums;
 }
-#profile-ele-max { top: 3px; left: 4px; }
+/* The top left is the readout's, so the scale's top goes to the right. */
+#profile-ele-max { top: 3px; right: 4px; }
 #profile-ele-min { bottom: 3px; left: 4px; }
-/* Top right: a trail mostly starts and ends low, at the car park. */
-#profile-total { top: 3px; right: 4px; }
-/* Which .gpx the points are read from. Bottom right, the one corner left; cut
-   short rather than run into the minimum elevation on a narrow phone. */
-#profile-file {
+/* Bottom right, at the far end of the distance axis: which .gpx the points are
+   read from, then the trail's length. The name is cut short, never the length,
+   rather than run into the minimum elevation on a narrow phone. */
+.profile-br {
   /* The clip would take the underscore at line-height 1: 2px lower, 2px taller. */
   bottom: 1px; right: 4px;
   padding-bottom: 2px;
-  max-width: 60%;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 70%;
+  display: flex; gap: 4px;
 }
-.profile-foot { display: flex; align-items: center; gap: 4px; margin-top: 4px; }
+#profile-file { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#profile-total { flex: none; }
+/* Over the chart, ending 45px down, above the minimum elevation at the bottom
+   left. The line runs under it, so it takes the labels' halo, thicker. It takes
+   no pointer, so the chart scrubs under it too — which is why it can no longer be
+   selected to copy. */
 .profile-readout {
-  min-width: 0;
-  padding: 0 4px;
-  font-size: 12px; line-height: 16px;
+  position: absolute;
+  top: 3px; left: 4px; right: 4px;
+  font-size: 11px; line-height: 14px;
   font-variant-numeric: tabular-nums;
-  /* The values are there to be copied. */
-  user-select: text; -webkit-user-select: text;
+  text-shadow: 0 0 2px #f4f6f8, 0 0 2px #f4f6f8, 0 0 3px #f4f6f8;
+  pointer-events: none;
 }
-/* Always three lines, so the panel's height never moves with what they say. */
-.profile-readout > div { height: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#profile-line1 { font-weight: 500; }
+/* Always three lines, so they never move with what they say. */
+.profile-readout > div { height: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Only the first line shares a row with the maximum elevation at the top right. */
+#profile-line1 { font-weight: 500; margin-right: 48px; }
 #profile-line3 { color: var(--muted); }
-#profile .profile-foot button { align-self: stretch; min-width: 34px; padding: 0 8px; }
-/* A 320px phone leaves the readout some 180px: enough, at 11px and with narrower
-   ◀ ▶, for all three lines to fit whole — the widest, #12,345 / 12,345 · 12.34 km,
-   is under 160px even in a wide font. */
-@media (max-width: 360px) {
-  .profile-foot { gap: 2px; }
-  .profile-readout { font-size: 11px; padding: 0 2px; }
-  #profile .profile-foot button { min-width: 28px; padding: 0 4px; }
-}
-#profile .profile-foot button:disabled { opacity: .35; cursor: default; }
+/* ◀ over ▶, beside the chart rather than under it. */
+.profile-side { display: flex; flex-direction: column; gap: 4px; }
+#profile .profile-side button { flex: 1; min-width: 30px; padding: 0 6px; }
+#profile .profile-side button:disabled { opacity: .35; cursor: default; }
 /* The notices and the scale bar clear the panel as they clear the bar alone. */
-#app[data-selection][data-profile] #notices { bottom: calc(188px + env(safe-area-inset-bottom)); }
+#app[data-selection][data-profile] #notices { bottom: calc(136px + env(safe-area-inset-bottom)); }
 /* Playing a trail, they clear #playback3d (10 + 44 + a 10px gap) and the panel
-   over it (60 + 128 + 10) instead: the selection bar the rules either side of this
+   over it (60 + 76 + 10) instead: the selection bar the rules either side of this
    measure is hidden there, and this bar is taller than it. Two attributes on the
    second, so it outranks #app[data-selection] #notices further down. */
 #app[data-mode3d='playback'] #notices { bottom: calc(64px + env(safe-area-inset-bottom)); }
-#app[data-mode3d='playback'][data-profile] #notices { bottom: calc(198px + env(safe-area-inset-bottom)); }
+#app[data-mode3d='playback'][data-profile] #notices { bottom: calc(146px + env(safe-area-inset-bottom)); }
 #app[data-profile] :is(#map .leaflet-control-scale, #map3d .maplibregl-ctrl-scale) {
-  margin-bottom: calc(188px + env(safe-area-inset-bottom));
+  margin-bottom: calc(136px + env(safe-area-inset-bottom));
 }
 /* The 2D map dot for the same point, over a trail of any colour on any basemap.
    3D draws its own in GL (pointDots.ts). */
@@ -777,7 +778,7 @@ button:hover { background: #f5f6f8; }
   #app[data-mode3d='walk'][data-selection] #notices { bottom: calc(198px + env(safe-area-inset-bottom)); }
   /* The profile rides on the lifted bar: 154 + 34 + 6, and the notices above it. */
   #app[data-mode3d='walk'] #profile { bottom: calc(194px + env(safe-area-inset-bottom)); }
-  #app[data-mode3d='walk'][data-profile] #notices { bottom: calc(332px + env(safe-area-inset-bottom)); }
+  #app[data-mode3d='walk'][data-profile] #notices { bottom: calc(280px + env(safe-area-inset-bottom)); }
 }
 
 #notices {

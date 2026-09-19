@@ -1,8 +1,8 @@
 /**
  * The selected trail's elevation over distance, with a cursor that picks one GPX
- * point and a readout of that point: its number, lat/lon, elevation, and how far
- * and how long into the trail it is. A corner of the chart names the .gpx file
- * the points come from.
+ * point and a readout of that point over the chart's top-left corner: its number,
+ * lat/lon, elevation, and how far and how long into the trail it is. Another
+ * corner names the .gpx file the points come from.
  *
  * It renders and reports, like pointsList.ts: main.ts owns which point the cursor
  * is on, hears about every move through onCursor, and hands the answer back with
