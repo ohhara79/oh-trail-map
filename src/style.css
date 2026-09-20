@@ -684,20 +684,23 @@ button:hover { background: #f5f6f8; }
 #selection-bar .hud-icon svg { display: block; margin: 0 auto; }
 
 /* The buttons on the two see-through bars, as #profile's ◀ ▶ are: no fill of their
-   own, the labels' halo on the glyphs, and a light tint to show they press. On reads
-   as a heavier white rather than .hud-bar's accent fill, which would be the one opaque
-   thing left on a bar you are meant to see through; #mode3d keeps the accent, being
-   solid. The four tie on specificity, so the order here is what decides them. */
+   own, the labels' halo on the glyphs, and a light tint to show they press. On is a
+   transparent tint of --accent, light enough that the map still reads through it: hue
+   carries the state, so it need not also be heavy. What was weighed against it here is
+   .hud-bar's *solid* accent fill, which would be the one opaque thing left on a bar you
+   are meant to see through; #mode3d keeps that fill, being solid itself. Hover stays a
+   neutral white on the off ones, leaving blue to mean on alone. The four tie on
+   specificity, so the order here is what decides them. */
 :is(#selection-bar, #playback3d) button {
   background: transparent;
   text-shadow: 0 0 2px #fff, 0 0 2px #fff;
 }
 :is(#selection-bar, #playback3d) button:hover { background: rgba(255, 255, 255, .5); }
 :is(#selection-bar, #playback3d) button[aria-pressed='true'] {
-  background: rgba(255, 255, 255, .75);
+  background: rgba(26, 115, 232, .30);
   color: var(--fg);
 }
-:is(#selection-bar, #playback3d) button[aria-pressed='true']:hover { background: rgba(255, 255, 255, .9); }
+:is(#selection-bar, #playback3d) button[aria-pressed='true']:hover { background: rgba(26, 115, 232, .45); }
 
 /* The selected trail's elevation profile, stacked on #selection-bar with a 6px
    gap: 10 + 34 + 6 = 50px up. Full width between the same insets, since the
