@@ -288,9 +288,22 @@ button:hover { background: #f5f6f8; }
   z-index: 1100;
   color: #2b3138;
 }
-/* Following you, or waiting on the fix that will let it start. */
-#locate[data-state='on'], #locate[data-state='searching'] { color: var(--accent); }
-#locate[data-state='searching'] svg { animation: locate-pulse 1.4s ease-in-out infinite; }
+/* Following you, or waiting on the fix that will let it start. The same filled
+   accent #view3d wears when it is on, and for the same reason: a blue glyph on
+   a white chip is still a white chip, and this button carries no label to say
+   otherwise. Hue on the ink alone was too fine a difference to catch at a
+   glance. The ID beats the base button:hover rule, so the fill holds under the
+   pointer — again as #view3d's does.
+
+   Searching takes the fill too. It is pressed the moment you tap it, which is
+   what aria-pressed already says, and the pulse is left to carry "no fix yet".
+   The pulse sits on the button rather than the svg: over an accent fill a
+   fading glyph would just dissolve into the blue behind it, where the whole
+   chip fading reads as one thing waiting. */
+#locate[data-state='on'], #locate[data-state='searching'] {
+  color: #fff; background: var(--accent);
+}
+#locate[data-state='searching'] { animation: locate-pulse 1.4s ease-in-out infinite; }
 /* Denied or unavailable: the click still answers (it re-raises the notice), so
    this is dimmed rather than disabled. */
 #locate[data-state='blocked'] { color: var(--muted); }
@@ -939,8 +952,10 @@ button:hover { background: #f5f6f8; }
   .trail-halo { animation: none; }
   /* Likewise the cone still points; it just snaps there. */
   .locate-rotor { transition: none; }
-  /* The searching state still reads as distinct through its accent colour. */
-  #locate[data-state='searching'] svg { animation: none; }
+  /* Searching keeps the accent fill, so it still reads as pressed; it just
+     stops being told apart from 'on', which is a transient difference the
+     absent map marker reports anyway. */
+  #locate[data-state='searching'] { animation: none; }
   #view3d[data-state='loading'] { animation: none; }
   /* The playback controls still hide and return on a tap; they just snap. Same
      specificity as the rules above and later, so this wins. */
