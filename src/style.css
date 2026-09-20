@@ -220,11 +220,13 @@ button:hover { background: #f5f6f8; }
   background: transparent;
   cursor: pointer;
 }
-/* The whole map fades as one, tiles and trails and pins together, rather than
-   each pane on its own, which would double up wherever they overlap. Not opacity
-   on #map itself: that is what the data-chrome fade animates, and the rule above
-   outranks it. #minimap-you is outside the map and stays solid. */
-#app[data-view='3d'] #map .leaflet-map-pane { opacity: .6; }
+/* Only the basemap fades: the trails, pins and dots over it are what say where
+   you are, so they keep full strength over a busy scene — the same see-through
+   ground under solid marks as #profile and #playback3d. The pane, not the tile
+   layer's opacity option, so setBasemap has nothing to carry over. Not opacity
+   on #map itself either: that is what the data-chrome fade animates, and the
+   rule above outranks it. */
+#app[data-view='3d'] #map .leaflet-tile-pane { opacity: .55; }
 /* Nothing on it is its own target: the zoom and scale controls have no room, a
    pin or a popup left open in 2D would take the click meant for the minimap, and
    a 2D popup would not fit. The click lands on the map itself. */
