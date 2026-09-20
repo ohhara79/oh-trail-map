@@ -215,9 +215,16 @@ button:hover { background: #f5f6f8; }
   z-index: 950;
   border: 2px solid rgba(0,0,0,.2);
   border-radius: 6px;
-  box-shadow: 0 1px 6px rgba(0,0,0,.25);
+  /* See-through, so the scene still shows under the corner it covers: no grey
+     .leaflet-container ground, and no shadow, which over a clear box is a smudge. */
+  background: transparent;
   cursor: pointer;
 }
+/* The whole map fades as one, tiles and trails and pins together, rather than
+   each pane on its own, which would double up wherever they overlap. Not opacity
+   on #map itself: that is what the data-chrome fade animates, and the rule above
+   outranks it. #minimap-you is outside the map and stays solid. */
+#app[data-view='3d'] #map .leaflet-map-pane { opacity: .6; }
 /* Nothing on it is its own target: the zoom and scale controls have no room, a
    pin or a popup left open in 2D would take the click meant for the minimap, and
    a 2D popup would not fit. The click lands on the map itself. */
