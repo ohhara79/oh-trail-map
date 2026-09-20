@@ -576,8 +576,8 @@ button:hover { background: #f5f6f8; }
   margin: 0 auto;
   /* A fixed height, for the reason #profile has one: the panel stacked on it is
      placed with a number, and this bar left to itself is not one height but
-     three. Its track column is 14.4px of text + 2px + a scrubber the engine
-     sizes (16px in Chrome, more elsewhere), and on touch the taller .hud-bar
+     three. Its track column is 14.4px of text + 2px + a 16px scrubber, which
+     is a number only because #scrub3d sets one, and on touch the taller .hud-bar
      button padding below would make the play button 36px and drive it instead.
      44 = border 2 + padding 3, twice, around the 34px that leaves — the same
      34px #mode3d and #selection-bar are. */
@@ -604,7 +604,52 @@ button:hover { background: #f5f6f8; }
    made this bar's height depend on how long the trail's name is. The name beside
    it is the part that gives way, and it already ellipsizes. */
 #scrub3d-label { white-space: nowrap; }
-#scrub3d { width: 100%; margin: 2px 0 0; accent-color: var(--accent); }
+/* See-through like the bar around it: both halves of the track let the scene
+   through, and a hairline dark edge is what keeps them readable over bright tiles,
+   as the bars' own border is for them. appearance: none is what hands the parts
+   over; accent-color could only have coloured them, not given them alpha. Chrome
+   and Firefox name the parts differently and each drops a rule naming the other's,
+   so the two sets are written out rather than grouped. */
+#scrub3d {
+  appearance: none;
+  width: 100%;
+  /* Was whatever the engine picked, which is what made the bar's height a range
+     rather than a number. */
+  height: 16px;
+  margin: 2px 0 0;
+  background: transparent;
+}
+#scrub3d::-webkit-slider-runnable-track {
+  height: 4px; border-radius: 3px;
+  background: rgba(255, 255, 255, .25);
+  border: 1px solid rgba(0, 0, 0, .2);
+}
+#scrub3d::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, .35);
+  /* Chrome lays the thumb out from the track's top edge, so half the difference
+     between the two — 6px of track against 14px of thumb — centres it. */
+  margin-top: -4px;
+}
+#scrub3d::-moz-range-track {
+  height: 4px; border-radius: 3px;
+  background: rgba(255, 255, 255, .25);
+  border: 1px solid rgba(0, 0, 0, .2);
+}
+/* Firefox draws the played part on its own, and unstyled it would stay accent blue.
+   Chrome draws none with appearance: none, so there the thumb alone marks the
+   position, as the profile's cursor dot does. */
+#scrub3d::-moz-range-progress {
+  height: 4px; border-radius: 3px;
+  background: rgba(255, 255, 255, .55);
+}
+#scrub3d::-moz-range-thumb {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, .35);
+}
 
 /* The selected trail, with a way to play it that does not need the panel open.
    Placed like #playback3d, which it gives way to below. Walking, it shows the
