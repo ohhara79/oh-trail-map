@@ -618,10 +618,22 @@ button:hover { background: #f5f6f8; }
   height: 16px;
   margin: 2px 0 0;
   background: transparent;
+  /* hud3d.ts writes --played, 0 to 1, every frame; 0 here means no JS shows an empty
+     track rather than a broken one. The thumb's centre travels from 7px to 7px short of
+     the far end — it is 14px wide with its border, as the note on its margin-top says —
+     so the stop follows the thumb rather than the raw percentage, which would run up to
+     7px ahead of it at the ends. Neither track rule can name the other engine's part, so
+     the gradient is written once here and inherited by both; its percentages resolve
+     where --track is used, against each track's own box. */
+  --played: 0;
+  --fill: calc(7px + var(--played) * (100% - 14px));
+  --track: linear-gradient(90deg,
+    rgba(26, 115, 232, .35) 0 var(--fill),
+    rgba(255, 255, 255, .25) var(--fill) 100%);
 }
 #scrub3d::-webkit-slider-runnable-track {
   height: 4px; border-radius: 3px;
-  background: rgba(255, 255, 255, .25);
+  background: var(--track);
   border: 1px solid rgba(0, 0, 0, .2);
 }
 #scrub3d::-webkit-slider-thumb {
@@ -635,16 +647,14 @@ button:hover { background: #f5f6f8; }
 }
 #scrub3d::-moz-range-track {
   height: 4px; border-radius: 3px;
-  background: rgba(255, 255, 255, .25);
+  background: var(--track);
   border: 1px solid rgba(0, 0, 0, .2);
 }
-/* Firefox draws the played part on its own, and unstyled it would stay accent blue.
-   Chrome draws none with appearance: none, so there the thumb alone marks the
-   position, as the profile's cursor dot does. */
-#scrub3d::-moz-range-progress {
-  height: 4px; border-radius: 3px;
-  background: rgba(255, 255, 255, .55);
-}
+/* Firefox places a played part of its own, which would cover the track's gradient — and
+   unstyled it would be accent blue besides. Blanked, so the gradient is what shows and
+   both engines fill the played half the same way. Chrome has no such part at all, which
+   is why the fill is a gradient rather than this box. */
+#scrub3d::-moz-range-progress { background: transparent; }
 #scrub3d::-moz-range-thumb {
   width: 12px; height: 12px; border-radius: 50%;
   background: #fff;

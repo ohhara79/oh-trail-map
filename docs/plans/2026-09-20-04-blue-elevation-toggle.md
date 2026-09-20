@@ -40,6 +40,5 @@ below are the elevation indicator and nothing else.
   see-through with a white hover.
 - Pan so the chip sits over varied ground — forest, built-up, a ridge — and confirm it
   still reads as on against each.
-- Play the trail in 3D: `#playback3d-profile` matches, and `#scrub3d`'s
-  `accent-color: var(--accent)` now sits beside a tint of the same blue.
+- Play the trail in 3D: `#playback3d-profile` matches the selection bar's.
 - `#mode3d`'s Walk and Gyro are untouched — still the solid accent fill.

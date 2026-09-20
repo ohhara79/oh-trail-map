@@ -67,6 +67,8 @@ export class Hud {
   private mode: Mode3d = 'orbit';
   /** The last attitude written, so a frame that changed nothing touches no style. */
   private attitudeAt = '';
+  /** The last played fraction written, for the same reason. */
+  private playedAt = -1;
 
   constructor(cb: HudCallbacks) {
     const signal = this.abort.signal;
@@ -80,6 +82,8 @@ export class Hud {
     this.scrub.max = String(SCRUB_STEPS);
     this.scrub.addEventListener('input', () => {
       this.seeking = true;
+      // Paints the played half on the drag itself rather than a frame behind it.
+      this.markPlayed();
       cb.onSeek(Number(this.scrub.value) / SCRUB_STEPS);
     }, { signal });
     this.scrub.addEventListener('change', () => (this.seeking = false), { signal });
@@ -138,6 +142,21 @@ export class Hud {
     if (!this.seeking) {
       this.scrub.value = String(state.total > 0 ? Math.round((state.s / state.total) * SCRUB_STEPS) : 0);
     }
+    this.markPlayed();
+  }
+
+  /**
+   * Colours the track behind the thumb, by the fraction style.css multiplies into
+   * --fill. Read off the scrubber rather than off state.s: while the scrubber is held
+   * its value is the authoritative one and state.s trails it by a frame, so this one
+   * line covers playing and seeking alike.
+   */
+  private markPlayed(): void {
+    // A step of the 1000 the scrubber has, so every real move still writes.
+    const next = Math.round((Number(this.scrub.value) / SCRUB_STEPS) * 1000) / 1000;
+    if (next === this.playedAt) return;
+    this.playedAt = next;
+    this.scrub.style.setProperty('--played', String(next));
   }
 
   /**
