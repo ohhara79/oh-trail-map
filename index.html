@@ -75,6 +75,13 @@
       <div id="stage">
         <div id="map"></div>
         <div id="map3d"></div>
+        <!-- Where the 3D eye stands and which way it faces, over the centre of #map
+             while that is the minimap. Turned by --yaw from main.ts. -->
+        <div id="minimap-you" aria-hidden="true">
+          <svg viewBox="-12 -12 24 24" width="22" height="22">
+            <path d="M0 -9 L7 8 L0 4 L-7 8 Z" />
+          </svg>
+        </div>
         <div id="hud3d" hidden>
           <div id="mode3d" class="hud-bar" role="group" aria-label="3D controls">
             <button id="eye3d" type="button" class="walk-only" title="Eye height">1.7 m</button>

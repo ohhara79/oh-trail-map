@@ -106,6 +106,12 @@ export type View3dOptions = {
    * cursor has one writer and it is not this module. Fired only when it changes.
    */
   onPlaybackPoint: (trailId: string | null, index: number | null) => void;
+  /**
+   * Where the eye is and which way it faces, while walking or playing a trail —
+   * what the 2D minimap follows. `eye` is the eye height in metres, which sets how
+   * far out the minimap looks. Fired only when something in it changed.
+   */
+  onCamera: (at: { lat: number; lon: number; yaw: number; eye: number }) => void;
   /** The GPU dropped the context — common on phones under memory pressure. */
   onContextLost: () => void;
   notify: (message: string, kind?: 'info' | 'error', timeout?: number) => void;
@@ -730,6 +736,16 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     map.setSky(sky(ORBIT_FOG));
   }
 
+  /** The last camera handed to onCamera, so a frame that changed nothing sends nothing. */
+  let cameraAt = '';
+  function reportCamera(pose: Pose): void {
+    const eye = EYE_HEIGHTS[eyeIndex];
+    const key = `${pose.lat},${pose.lon},${pose.yaw},${eye}`;
+    if (key === cameraAt) return;
+    cameraAt = key;
+    opts.onCamera({ lat: pose.lat, lon: pose.lon, yaw: pose.yaw, eye });
+  }
+
   /** Starts the eye-height camera at `pose`, descending from `height` metres. */
   function startWalking(pose: Pose, height: number, groundGuess: number): FirstPerson {
     walkLimits();
@@ -745,8 +761,10 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     const walkControls = controls;
     const next = new FirstPerson(map, controls, pose, height, groundGuess, () => {
       // Before the playback branch below, which returns early: the disc is read in
-      // plain walk too, and that is the mode with the least else to go on.
+      // plain walk too, and that is the mode with the least else to go on. The
+      // minimap likewise.
       hud.setAttitude(next.pose.yaw, next.pose.look);
+      reportCamera(next.pose);
       // Before the early return below, so walking reports no point the same way
       // playing reports one.
       syncPlaybackPoint();
@@ -904,6 +922,9 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
         const pose: Pose = { lat: centre.lat, lon: centre.lng, yaw: map.getBearing(), look: 0 };
         const ground = map.getCenterElevation();
         const eye = EYE_HEIGHTS[eyeIndex];
+        // The minimap shows as soon as the mode changes: put it on the spot now
+        // rather than leave it where 2D was for the length of the flight down.
+        reportCamera(pose);
         walkLimits();
         // Down onto that spot, ending on the camera walking's first frame places.
         const camera = eyeCamera(map, pose, ground + eye, WALK_FOV);
@@ -987,6 +1008,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     const first = trail.segments[0]?.[0]?.ele ?? 0;
     const ele = s0 > 0 ? (trail.segments.flat()[fromPoint!]?.ele ?? first) : first;
     const pose: Pose = { ...start, yaw: 0, look: 0 };
+    reportCamera(pose);
     if (!walker) {
       // Straight from orbit, so this is the view Esc comes back to.
       orbitZoom = map.getZoom();

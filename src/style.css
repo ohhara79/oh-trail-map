@@ -178,6 +178,72 @@ button:hover { background: #f5f6f8; }
 #app[data-view='3d'] #map { visibility: hidden; }
 #app[data-view='3d'] #map3d { visibility: visible; }
 
+/* Walking or playing a trail, the 2D map comes back as a minimap in the top-left
+   corner, below #expand: at eye height the scene alone often does not say where
+   you are. It is the live 2D map, kept on the eye by followCamera in main.ts, so
+   everything drawn in 2D is on it already. The corner is the one place nothing
+   else in 3D reaches: the bars and the joystick are at the bottom, the button
+   column on the right, #mode3d at the top centre. North-up — Leaflet cannot turn
+   — so #minimap-you at its centre is what turns.
+   Over #map3d, under the .hud-bar controls (1000) and the drawer (1100). A click
+   toggles data-minimap='large'; see the click handler in main.ts. */
+#app { --minimap: 120px; }
+#app[data-minimap='large'] { --minimap: 200px; }
+@media (min-width: 721px) and (min-height: 481px) {
+  #app { --minimap: 180px; }
+  #app[data-minimap='large'] { --minimap: 280px; }
+}
+/* A landscape phone: 100px ends at 156, and 150 at 206, both above the joystick's
+   top edge on a 360px-tall screen (216) and the playback profile's (224). */
+@media (max-height: 480px) {
+  #app { --minimap: 100px; }
+  #app[data-minimap='large'] { --minimap: 150px; }
+}
+#app { --minimap-top: calc(56px + env(safe-area-inset-top)); --minimap-left: calc(12px + env(safe-area-inset-left)); }
+/* No #expand above it with the side panel open beside the map. The drawer on a
+   small screen covers the map instead, so there the corner stays where it is. */
+@media (min-width: 721px) and (min-height: 481px) {
+  #app[data-panel='open'] { --minimap-top: calc(12px + env(safe-area-inset-top)); }
+}
+#app[data-view='3d']:is([data-mode3d='walk'], [data-mode3d='playback']) #map {
+  visibility: visible;
+  inset: auto;
+  top: var(--minimap-top);
+  left: var(--minimap-left);
+  width: var(--minimap);
+  height: var(--minimap);
+  z-index: 950;
+  border: 2px solid rgba(0,0,0,.2);
+  border-radius: 6px;
+  box-shadow: 0 1px 6px rgba(0,0,0,.25);
+  cursor: pointer;
+}
+/* Nothing on it is its own target: the zoom and scale controls have no room, a
+   pin or a popup left open in 2D would take the click meant for the minimap, and
+   a 2D popup would not fit. The click lands on the map itself. */
+#app[data-view='3d'] #map .leaflet-control-container,
+#app[data-view='3d'] #map .leaflet-popup-pane,
+#app[data-view='3d'] #map .leaflet-tooltip-pane { display: none; }
+#app[data-view='3d'] #map .leaflet-pane { pointer-events: none; }
+#app[data-view='3d'] #map .leaflet-pane * { pointer-events: none !important; }
+
+#minimap-you {
+  display: none;
+  position: absolute; z-index: 960;
+  top: calc(var(--minimap-top) + var(--minimap) / 2);
+  left: calc(var(--minimap-left) + var(--minimap) / 2);
+  width: 22px; height: 22px;
+  transform: translate(-50%, -50%) rotate(var(--yaw, 0deg));
+  pointer-events: none;
+}
+/* Dark with a white edge, so it is never taken for the blue GPS dot, which is
+   also on the minimap wherever you physically are. */
+#minimap-you svg { display: block; fill: #2b3138; stroke: #fff; stroke-width: 1.8; stroke-linejoin: round; }
+#app[data-view='3d']:is([data-mode3d='walk'], [data-mode3d='playback']) #minimap-you { display: block; }
+/* The data-chrome rule further down puts both away with the rest, but the showing
+   rule above outranks it, so it is said again here with the weight to win. */
+#app[data-view='3d'][data-mode3d][data-chrome='hidden'] :is(#map, #minimap-you) { visibility: hidden; }
+
 /* The halo under the selected trail pulses twice on selection, then settles.
    Halo paths are destroyed and rebuilt on every selection (see Halo.show), so
    the animation restarts on its own — no class toggle plus forced reflow.
@@ -570,10 +636,10 @@ button:hover { background: #f5f6f8; }
    list in sync with CHROME there). visibility follows the fade, so a hidden button
    can be neither clicked nor tabbed to. Scoped to 3D so 2D never transitions
    anything. */
-#app[data-mode3d] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d, #profile) {
+#app[data-mode3d] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d, #profile, #map, #minimap-you) {
   transition: opacity .25s ease;
 }
-#app[data-chrome='hidden'] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d, #profile) {
+#app[data-chrome='hidden'] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d, #profile, #map, #minimap-you) {
   opacity: 0; visibility: hidden;
   transition: opacity .25s ease, visibility 0s .25s;
 }
@@ -959,7 +1025,7 @@ button:hover { background: #f5f6f8; }
   #view3d[data-state='loading'] { animation: none; }
   /* The playback controls still hide and return on a tap; they just snap. Same
      specificity as the rules above and later, so this wins. */
-  #app[data-mode3d] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d, #profile) { transition: none; }
+  #app[data-mode3d] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d, #profile, #map, #minimap-you) { transition: none; }
 }
 
 /* ---------------------------------------------------------------------------

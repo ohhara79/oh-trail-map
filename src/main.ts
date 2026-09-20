@@ -220,6 +220,7 @@ async function main(): Promise<void> {
   let view3d: View3d | null = null;
   let opening3d: Promise<View3d | null> | null = null;
   const app = document.getElementById('app')!;
+  const minimapYou = document.getElementById('minimap-you')!;
 
   const ui = new Ui({
     onToggle: (id, visible) => {
@@ -407,6 +408,7 @@ async function main(): Promise<void> {
             // you stepped off. Only a trail playing ever names a new one.
             if (index !== null) setCursor(index);
           },
+          onCamera: (at) => followCamera(at),
           onContextLost: () => {
             ui.notify('The 3D view lost its graphics context and was closed.', 'error');
             close3d();
@@ -414,6 +416,7 @@ async function main(): Promise<void> {
           notify: (message, kind, timeout) => ui.notify(message, kind, timeout),
         });
         view3d = view;
+        setMinimap(true);
         // The 2D popup is left open behind the switch — close3d comes back to it —
         // but nothing is open in the view you are now looking at, so nothing is
         // highlighted either.
@@ -453,6 +456,7 @@ async function main(): Promise<void> {
     const back = view3d.viewFor2d();
     view3d.destroy();
     view3d = null;
+    setMinimap(false);
     // destroy() takes its popup down with the GL context rather than through
     // closePopup, so the highlight is set back here — to the 2D popup that was
     // still open underneath, if there was one.
@@ -462,6 +466,46 @@ async function main(): Promise<void> {
     // Uncapped: 2D reaches MAX_ZOOM, which is exactly what orbit tops out at, so
     // however far in you were is a zoom 2D can hold.
     map.setView([back.lat, back.lon], back.zoom, { animate: false });
+  }
+
+  /**
+   * In 3D the 2D map stays alive behind the scene, and while walking or playing a
+   * trail style.css shows it as a minimap in the top-left corner (see #map there).
+   * It is the same map, so the trails, the selection, the pins, your location and
+   * the profile's dot are all already on it; this only takes its gestures away
+   * while it is small and hands them back when 3D closes. A click on it still
+   * arrives, and the click handler below spends it on the minimap's size.
+   */
+  function setMinimap(on: boolean): void {
+    const handlers = [map.dragging, map.touchZoom, map.scrollWheelZoom, map.doubleClickZoom, map.boxZoom, map.keyboard];
+    for (const handler of handlers) {
+      if (on) handler.disable();
+      else handler.enable();
+    }
+    if (!on) {
+      delete app.dataset.minimap;
+      cameraAt = null;
+    }
+  }
+
+  /** The eye the minimap was last put on, for when it changes size under a still eye. */
+  let cameraAt: { lat: number; lon: number; yaw: number; eye: number } | null = null;
+
+  /** Keeps the minimap on the 3D eye, north-up, with the arrow at its centre
+   *  turned the way the eye faces. */
+  function followCamera(at: { lat: number; lon: number; yaw: number; eye: number }): void {
+    cameraAt = at;
+    minimapYou.style.setProperty('--yaw', `${at.yaw}deg`);
+    // Further out the higher the eye: about 460m, 920m and 1.8km across the small
+    // minimap on a phone, for standing, a tree top and a drone.
+    const zoom = at.eye >= 80 ? 13 : at.eye >= 20 ? 14 : 15;
+    // Looking around turns the arrow and nothing else, so a frame that moved the eye
+    // less than a pixel costs Leaflet no work.
+    if (zoom === map.getZoom()) {
+      const offset = map.latLngToContainerPoint([at.lat, at.lon]).subtract(map.getSize().divideBy(2));
+      if (Math.abs(offset.x) < 1 && Math.abs(offset.y) < 1) return;
+    }
+    map.setView([at.lat, at.lon], zoom, { animate: false });
   }
 
   /** The single place the locate button's appearance is derived. */
@@ -767,6 +811,12 @@ async function main(): Promise<void> {
   // what was hit. While a trail is selected or a popup is open, any click only
   // clears it; a trail is picked only from a clear map.
   map.on('click', (e) => {
+    // Only reachable as the 3D minimap, whose one control is its size.
+    if (view3d) {
+      if (app.dataset.minimap) delete app.dataset.minimap;
+      else app.dataset.minimap = 'large';
+      return;
+    }
     if (clearMapSelection()) return;
     const hit = trailAt(map, e.containerPoint, trails);
     if (hit) selectTrail(hit.id);
@@ -797,6 +847,12 @@ async function main(): Promise<void> {
   map.on('moveend', () => {
     mapMoving = false;
     scheduleHover();
+  });
+  // Growing into the minimap, or toggling its size, keeps the top-left corner
+  // where it was (see createMap), which moves the centre off the eye — and a still
+  // eye reports nothing new to put it back.
+  map.on('resize', () => {
+    if (view3d && cameraAt) followCamera(cameraAt);
   });
   // Including the popup's own ✕, which no handler here sees.
   map.on('popupopen popupclose', scheduleHover);
