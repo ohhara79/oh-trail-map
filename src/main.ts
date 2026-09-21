@@ -155,6 +155,9 @@ async function main(): Promise<void> {
   let profileOpen = false;
   let profileTrail: Trail | null = null;
   let cursorIndex: number | null = null;
+  // The point the cursor was on when the panel last let go of a trail, so the same
+  // trail coming back — the profile closed and reopened — gets its point back.
+  let parkedCursor: { trail: Trail; index: number } | null = null;
   // The trail 3D playback is walking, if any. While it plays it takes the panel
   // over — the readout is the only place the point you are standing on is spelled
   // out in 3D — without touching profileOpen, so the panel goes back to whatever
@@ -608,9 +611,10 @@ async function main(): Promise<void> {
     ui.setPlaybackProfileShown(playbackProfileOpen);
     profilePanel.setHidden(hidden);
     if (trail === profileTrail) return;
+    if (profileTrail && cursorIndex !== null) parkedCursor = { trail: profileTrail, index: cursorIndex };
     profileTrail = trail;
-    // A point number means nothing on another trail.
-    cursorIndex = null;
+    // A point number means nothing on another trail; the parked one is for this one.
+    cursorIndex = trail && parkedCursor?.trail === trail ? parkedCursor.index : null;
     // A trail's id is its file name in data/gpx/ (see trailFiles.ts).
     profilePanel.show(trail ? buildProfile(trail) : null, trail?.id);
     applyCursor();
