@@ -27,6 +27,10 @@ export type UiCallbacks = {
   /** The 3D playback bar's profile button: hide the elevation profile while the
    *  trail plays, or bring it back. */
   onTogglePlaybackProfile: () => void;
+  /** #mode3d's minimap button: show the 2D map in the corner while walking or
+   *  playing a trail, or put it away. One button for both modes, that bar being
+   *  the one thing on screen in each of them. */
+  onToggleMinimap: () => void;
 };
 
 /** What the locate button is currently saying: not following; following but
@@ -64,6 +68,7 @@ export class Ui {
   private readonly selectionWalk = el<HTMLButtonElement>('selection-walk');
   private readonly selectionProfile = el<HTMLButtonElement>('selection-profile');
   private readonly playbackProfile = el<HTMLButtonElement>('playback3d-profile');
+  private readonly minimap3d = el<HTMLButtonElement>('minimap3d');
 
   /** Last rendered selection, so a row is only scrolled into view when the
    *  selection actually changed — not on every unrelated re-render. */
@@ -105,6 +110,9 @@ export class Ui {
     });
     this.selectionProfile.addEventListener('click', () => this.cb.onToggleProfile());
     this.playbackProfile.addEventListener('click', () => this.cb.onTogglePlaybackProfile());
+    // On #mode3d, which hud3d.ts otherwise binds, for the reason the playback bar's
+    // profile button is bound here: main.ts owns the flag behind it.
+    this.minimap3d.addEventListener('click', () => this.cb.onToggleMinimap());
     el('selection-clear').addEventListener('click', () => this.cb.onSelect(null));
 
     el('collapse').addEventListener('click', () => this.setPanel(false));
@@ -288,6 +296,11 @@ export class Ui {
   /** The playback bar's profile button: pressed while playback shows the profile. */
   setPlaybackProfileShown(shown: boolean): void {
     this.playbackProfile.setAttribute('aria-pressed', String(shown));
+  }
+
+  /** The 3D bar's minimap button: pressed while the corner map is showing. */
+  setMinimapShown(shown: boolean): void {
+    this.minimap3d.setAttribute('aria-pressed', String(shown));
   }
 
   /** The ids on screen, read back off the rows rather than cached alongside them. */

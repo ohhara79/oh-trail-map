@@ -164,6 +164,14 @@ async function main(): Promise<void> {
   // chart away to watch the trail says nothing about 2D. Outlives a playback, so
   // the next trail played comes up the way you left the last one.
   let playbackProfileOpen = true;
+  // The 2D minimap in Walk and playback. minimapOn is whether you asked for it, and
+  // outlives leaving and re-entering 3D the way profileOpen outlives a change of
+  // selection: which corner you want the map in is not something a trip back to 2D
+  // says anything about. minimapLarge is the size a click on the inset picks, held
+  // as a flag rather than read back off data-minimap so that turning the minimap
+  // off and on again brings it back at the size you left it.
+  let minimapOn = true;
+  let minimapLarge = false;
   const profileCursor = new ProfileCursor(map);
   const profilePanel = new ProfilePanel({
     onCursor: (index) => {
@@ -313,6 +321,10 @@ async function main(): Promise<void> {
     onTogglePlaybackProfile: () => {
       playbackProfileOpen = !playbackProfileOpen;
       syncProfile();
+    },
+    onToggleMinimap: () => {
+      minimapOn = !minimapOn;
+      syncMinimap();
     },
   });
 
@@ -482,7 +494,12 @@ async function main(): Promise<void> {
       if (on) handler.disable();
       else handler.enable();
     }
-    if (!on) {
+    if (on) {
+      // Each 3D session starts at the small size; whether you want the minimap at
+      // all is yours, and minimapOn is left where you put it.
+      minimapLarge = false;
+      syncMinimap();
+    } else {
       delete app.dataset.minimap;
       cameraAt = null;
     }
@@ -496,6 +513,12 @@ async function main(): Promise<void> {
   function followCamera(at: { lat: number; lon: number; yaw: number; eye: number }): void {
     cameraAt = at;
     minimapYou.style.setProperty('--yaw', `${at.yaw}deg`);
+    // Turned off, nothing shows the map, and walking it along would fetch tiles
+    // for a corner nobody can see. The two lines above still run: cameraAt is what
+    // syncMinimap puts it back on, and --yaw is what leaves the arrow already
+    // pointing the right way when it returns — which is the only thing that can
+    // set it while a playback is paused and no frame follows the button.
+    if (!minimapOn) return;
     // Further out the higher the eye: about 460m, 920m and 1.8km across the small
     // minimap on a phone, for standing, a tree top and a drone.
     const zoom = at.eye >= 80 ? 13 : at.eye >= 20 ? 14 : 15;
@@ -506,6 +529,20 @@ async function main(): Promise<void> {
       if (Math.abs(offset.x) < 1 && Math.abs(offset.y) < 1) return;
     }
     map.setView([at.lat, at.lon], zoom, { animate: false });
+  }
+
+  /**
+   * The single place data-minimap and its button are written. style.css reads the
+   * attribute for both the inset's size and whether it shows at all, so the two
+   * flags behind it are resolved in one place, as syncProfile() does for the panel.
+   */
+  function syncMinimap(): void {
+    app.dataset.minimap = !minimapOn ? 'off' : minimapLarge ? 'large' : 'small';
+    ui.setMinimapShown(minimapOn);
+    // Back on, and the eye has walked on since: put the map on the spot in the same
+    // frame the rule reveals it, rather than showing where you used to be until the
+    // next camera frame — or, in a paused playback, indefinitely.
+    if (minimapOn && cameraAt) followCamera(cameraAt);
   }
 
   /** The single place the locate button's appearance is derived. */
@@ -811,10 +848,12 @@ async function main(): Promise<void> {
   // what was hit. While a trail is selected or a popup is open, any click only
   // clears it; a trail is picked only from a clear map.
   map.on('click', (e) => {
-    // Only reachable as the 3D minimap, whose one control is its size.
+    // Only reachable as the 3D minimap, whose one control is its size — turning it
+    // off is the button's job, since a click on a minimap that is gone cannot ask
+    // for it back.
     if (view3d) {
-      if (app.dataset.minimap) delete app.dataset.minimap;
-      else app.dataset.minimap = 'large';
+      minimapLarge = !minimapLarge;
+      syncMinimap();
       return;
     }
     if (clearMapSelection()) return;

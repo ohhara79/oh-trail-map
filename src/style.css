@@ -249,6 +249,14 @@ button:hover { background: #f5f6f8; }
    also on the minimap wherever you physically are. */
 #minimap-you svg { display: block; fill: #2b3138; stroke: #fff; stroke-width: 1.8; stroke-linejoin: round; }
 #app[data-view='3d']:is([data-mode3d='walk'], [data-mode3d='playback']) #minimap-you { display: block; }
+/* Turned off from #mode3d's minimap button (see syncMinimap in main.ts). Put away
+   the way the data-chrome rule below does — visibility, with the inset rule above
+   still giving it its size and place — rather than by letting that rule lapse.
+   Lapsing would hand #map back its full-bleed inset: 0, and the ResizeObserver in
+   createMap would fetch a screenful of tiles for a map nobody can see. Off, it
+   stays on the eye at 120px and comes back the instant it is asked for. */
+#app[data-view='3d'][data-minimap='off']:is([data-mode3d='walk'], [data-mode3d='playback'])
+  :is(#map, #minimap-you) { visibility: hidden; }
 /* The data-chrome rule further down puts both away with the rest, but the showing
    rule above outranks it, so it is said again here with the weight to win. */
 #app[data-view='3d'][data-mode3d][data-chrome='hidden'] :is(#map, #minimap-you) { visibility: hidden; }
@@ -604,12 +612,15 @@ button:hover { background: #f5f6f8; }
 .hud-bar button { border: 0; padding: 4px 10px; white-space: nowrap; }
 .hud-bar button[aria-pressed='true'] { background: var(--accent); color: #fff; }
 
-/* Walk stays where it is when walking starts: Eye height and Gyro appear on
-   either side of it, and the bar is placed by Walk's centre rather than its own.
-   Orbit shows Walk alone, so there the two are the same. The offset is border 2
-   + padding 3 + Eye height + gap 4 + half of Walk, which holds whether or not
-   Gyro is shown, hence the fixed widths. At 146px the widest bar, on touch, still
-   clears #expand and #view3d on a 320px screen. */
+/* Walk stays where it is when walking starts: Eye height appears to its left, and
+   Gyro and the minimap button to its right, with the bar placed by Walk's centre
+   rather than its own. Orbit shows Walk alone, so there the two are the same. The
+   offset is border 2 + padding 3 + Eye height + gap 4 + half of Walk — only what
+   is left of Walk feeds it, so buttons added on the right never move it — and it
+   holds whether or not Gyro is shown, hence the fixed widths.
+   The widest bar, on touch, is 186px: 4 border + 6 padding + 56 Eye height + three
+   36px icons + three 4px gaps. Offset 83px left of centre it spans 77-263px on a
+   320px screen, clearing #expand (12-46) by 31 and #view3d (276-310) by 13. */
 #mode3d {
   --icon-w: 30px;
   --eye-w: 52px;

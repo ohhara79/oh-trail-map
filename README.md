@@ -92,6 +92,13 @@ npm run preview
     one plays, where a tap is for the controls; a point still opens its popup.
   - **▶ 3D on the selection bar**: clicking a trail on the map (2D or 3D)
     shows its name at the bottom with a ▶ that does the same, no panel needed.
+  - **The 2D map as a minimap**: walking or playing a trail, it comes back in the
+    top-left corner, north-up, with an arrow at its centre for where you stand and
+    which way you face. It is the same map, so the trails, the pins, your location
+    and the profile's cursor dot are already on it, and its basemap is see-through
+    so the scene still shows underneath. It looks further out the higher your eye.
+    Click or tap it to make it bigger, and the map button on the top bar to put it
+    away — it starts showing, and stays as you leave it until you reload.
   - **On a phone**: a joystick moves you, dragging looks around, and **Gyro**
     turns the view with the phone.
   - **Esc**: steps back from playback to walk, then to orbit.
