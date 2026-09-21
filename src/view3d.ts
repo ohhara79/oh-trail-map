@@ -112,6 +112,13 @@ export type View3dOptions = {
    * far out the minimap looks. Fired only when something in it changed.
    */
   onCamera: (at: { lat: number; lon: number; yaw: number; eye: number }) => void;
+  /**
+   * What the readout names: the ground under the crosshair in orbit, and where
+   * you stand while walking or playing a trail. `ele` is null while the terrain
+   * there has not loaded. Rounded to what the readout shows, and fired only when
+   * that changes.
+   */
+  onReadout: (at: { lat: number; lon: number; ele: number | null }) => void;
   /** The GPU dropped the context — common on phones under memory pressure. */
   onContextLost: () => void;
   notify: (message: string, kind?: 'info' | 'error', timeout?: number) => void;
@@ -492,7 +499,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   // the crosshair at the screen centre, where the camera looks, is what you aim
   // with. A point is a ball floating over the ground by then, and the view ray is
   // tested against it: anywhere on it counts, or just off it, within 8px — a little
-  // wider than the crosshair's 7px ring.
+  // past the ends of the crosshair's 7px arms.
   function aimedPoint(): NationalPoint | undefined {
     if (!walker) return undefined;
     const { pose } = walker;
@@ -526,7 +533,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
 
   /** The trail under the crosshair and within reach, unless it is already the
    *  selected one, which a tap has nothing more to do with. A trail a way off is a
-   *  hairline, so anywhere inside the crosshair's ticks counts, not only its ring. */
+   *  hairline, so anywhere a little past the crosshair's arms counts, not only its
+   *  centre. */
   function aimedTrail(): string | undefined {
     const canvas = map.getCanvas();
     const id = trailIn(canvas.clientWidth / 2, canvas.clientHeight / 2, 12, inTrailReach);
@@ -560,7 +568,33 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   // follows the ground as finer terrain tiles arrive, which fires no move.
   map.on('render', () => {
     if (mode !== 'orbit') liftPopup();
+    reportReadout();
   });
+
+  /** The last spot handed to onReadout, so a frame that changed nothing sends nothing. */
+  let readoutAt = '';
+  /** After each frame, since finer terrain tiles arriving change the elevation
+   *  under a still camera, and that fires no move. */
+  function reportReadout(): void {
+    let lat: number;
+    let lon: number;
+    if (walker) {
+      ({ lat, lon } = walker.pose);
+    } else {
+      const c = map.getCenter();
+      lat = c.lat;
+      lon = c.lng;
+    }
+    const ground = map.queryTerrainElevation([lon, lat]) ?? walker?.groundHeight ?? null;
+    const ele = ground === null ? null : Math.round(ground);
+    // Five decimals is about a metre, which is what the readout shows.
+    lat = Number(lat.toFixed(5));
+    lon = Number(lon.toFixed(5));
+    const key = `${lat},${lon},${ele}`;
+    if (key === readoutAt) return;
+    readoutAt = key;
+    opts.onReadout({ lat, lon, ele });
+  }
 
   // Trails and shadows are drawn into textures cached on the terrain, and MapLibre
   // drops the ones under a source tile as it loads, matching the two by overscaled

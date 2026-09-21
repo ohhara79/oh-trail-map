@@ -14,6 +14,10 @@ npm run preview
 
 - OSM basemap with your current location (marker + accuracy circle), zoom/pan,
   and a metric scale bar in the bottom-left, in 2D and 3D orbit.
+- A small see-through crosshair marks the map centre, and a readout at the top
+  centre gives its lat, lon and ground elevation — in 2D (from the same AWS
+  terrain tiles 3D uses, fetched as you pan) and in 3D orbit. Walking or playing
+  a trail in 3D it gives where you stand instead.
 - A locate button in the bottom-right: click to centre on yourself and keep
   following as you move, until you drag the map away or click it again.
 - Trails are the `.gpx` files in `data/gpx/`, bundled at build time (one lazy

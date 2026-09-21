@@ -82,6 +82,17 @@
             <path d="M0 -9 L7 8 L0 4 L-7 8 Z" />
           </svg>
         </div>
+        <!-- The spot #readout names in 2D and in 3D orbit, and what a tap aims at
+             while walking. Over the centre of the stage in both views. -->
+        <div id="crosshair" aria-hidden="true">
+          <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor"
+               stroke-width="1.5" stroke-linecap="round">
+            <path d="M8 1v14M1 8h14" />
+          </svg>
+        </div>
+        <!-- Latitude, longitude and elevation: of the crosshair, or of where you
+             stand while walking or playing a trail. Written by ui.setReadout. -->
+        <div id="readout"></div>
         <div id="hud3d" hidden>
           <div id="mode3d" class="hud-bar" role="group" aria-label="3D controls">
             <button id="eye3d" type="button" class="walk-only" title="Eye height">1.7 m</button>
@@ -163,14 +174,6 @@
             </svg>
           </button>
           <div id="joystick" aria-hidden="true"><div class="joystick-thumb"></div></div>
-          <div id="crosshair3d" aria-hidden="true">
-            <svg viewBox="0 0 28 28" width="28" height="28" fill="none" stroke="currentColor"
-                 stroke-width="2" stroke-linecap="round">
-              <circle cx="14" cy="14" r="7" />
-              <path d="M14 1v6M14 21v4M3 14h4M21 14h4" />
-              <circle cx="14" cy="14" r="1" fill="currentColor" stroke="none" />
-            </svg>
-          </div>
         </div>
       </div>
       <div id="selection-bar" class="hud-bar" hidden>

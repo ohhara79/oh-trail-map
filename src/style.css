@@ -656,10 +656,10 @@ button:hover { background: #f5f6f8; }
    list in sync with CHROME there). visibility follows the fade, so a hidden button
    can be neither clicked nor tabbed to. Scoped to 3D so 2D never transitions
    anything. */
-#app[data-mode3d] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d, #profile, #map, #minimap-you) {
+#app[data-mode3d] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d, #profile, #map, #minimap-you, #readout) {
   transition: opacity .25s ease;
 }
-#app[data-chrome='hidden'] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d, #profile, #map, #minimap-you) {
+#app[data-chrome='hidden'] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d, #profile, #map, #minimap-you, #readout) {
   opacity: 0; visibility: hidden;
   transition: opacity .25s ease, visibility 0s .25s;
 }
@@ -915,24 +915,45 @@ button:hover { background: #f5f6f8; }
    3D draws its own in GL (pointDots.ts). */
 .profile-cursor-marker { filter: drop-shadow(0 0 1.5px rgba(0,0,0,.6)); }
 
-/* In orbit, where Walk will put you: walking starts at the map centre, facing
-   screen-up (see setMode in view3d.ts), so the longer tick is the way you will face.
-   While walking, what a tap aims at (see onSceneTap in view3d.ts). It does not
-   light up over what it would pick: finding out means querying the scene, which
-   every frame of a moving camera cannot afford. Clicks pass through to the scene
-   under it. */
-#crosshair3d {
-  display: none;
+/* The centre of the stage, in both views. In 2D and in 3D orbit it is the spot
+   #readout names; in orbit it is also where Walk will put you (walking starts at
+   the map centre, see setMode in view3d.ts). While walking, what a tap aims at
+   (see onSceneTap in view3d.ts). It does not light up over what it would pick:
+   finding out means querying the scene, which every frame of a moving camera
+   cannot afford. Small and see-through, so it marks the spot without hiding it;
+   the shadow keeps it readable on a pale basemap and a bright sky alike. Clicks
+   pass through to the map under it. Over Leaflet's panes (up to 700) and the GL
+   canvas, under the controls (1000). */
+#crosshair {
   position: absolute; z-index: 900;
   left: 50%; top: 50%;
-  width: 28px; height: 28px;
+  width: 16px; height: 16px;
   transform: translate(-50%, -50%);
-  color: #fff;
-  filter: drop-shadow(0 0 1.5px rgba(0,0,0,.7));
+  color: rgba(255, 255, 255, .75);
+  filter: drop-shadow(0 0 1px rgba(0,0,0,.6));
   pointer-events: none;
 }
-#crosshair3d svg { display: block; }
-#app[data-mode3d] #crosshair3d { display: block; }
+#crosshair svg { display: block; }
+
+/* Latitude, longitude and elevation of the crosshair — or, walking or playing a
+   trail, of where you stand — at the top centre: the one place 2D has nothing,
+   and under #mode3d (12 + 34px, and an 8px gap) in 3D. The see-through ground of
+   #profile and #playback3d. Written by setReadout in ui.ts; empty, it is gone. */
+#readout {
+  position: absolute; z-index: 950;
+  top: calc(12px + env(safe-area-inset-top));
+  left: 50%; transform: translateX(-50%);
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, .35);
+  border-radius: 6px;
+  font-size: 12px;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+#readout:empty { display: none; }
+#app[data-view='3d'] #readout { top: calc(54px + env(safe-area-inset-top)); }
 
 #joystick {
   display: none;

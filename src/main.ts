@@ -2,6 +2,7 @@ import L from 'leaflet';
 import './style.css';
 
 import { basemapById } from './basemaps';
+import { cachedElevation, elevationTile, loadElevation } from './dem';
 import { compassNeedsPermission, requestCompassPermission, type Heading } from './heading';
 import { createMap, startLocating } from './map';
 import type { NationalPoint } from './nationalPoint';
@@ -421,6 +422,8 @@ async function main(): Promise<void> {
             if (index !== null) setCursor(index);
           },
           onCamera: (at) => followCamera(at),
+          // 3D's terrain answers null only until its tile has loaded.
+          onReadout: (at) => ui.setReadout({ ...at, ele: at.ele ?? undefined }),
           onContextLost: () => {
             ui.notify('The 3D view lost its graphics context and was closed.', 'error');
             close3d();
@@ -478,6 +481,35 @@ async function main(): Promise<void> {
     // Uncapped: 2D reaches MAX_ZOOM, which is exactly what orbit tops out at, so
     // however far in you were is a zoom 2D can hold.
     map.setView([back.lat, back.lon], back.zoom, { animate: false });
+    // setView fires its move before the view is 2D's again; say it now anyway, in
+    // case the view was already there and no move fired at all.
+    read2d();
+  }
+
+  /** The tile read2d last asked for, so an answer for a spot the map has since
+   *  left is dropped rather than shown. */
+  let readoutTile = '';
+
+  /**
+   * The readout in 2D: the map centre, under #crosshair, and the ground there.
+   * In 3D the 2D map is only the minimap, and view3d reports instead (onReadout).
+   */
+  function read2d(): void {
+    if (view3d) return;
+    const { lat, lng: lon } = map.getCenter().wrap();
+    const ele = cachedElevation(lat, lon);
+    ui.setReadout({ lat, lon, ele });
+    if (ele !== undefined) return;
+    const tile = elevationTile(lat, lon);
+    if (tile === readoutTile) return;
+    readoutTile = tile;
+    void loadElevation(lat, lon).then(() => {
+      // Still over that tile: the centre now, whose tile is loaded.
+      if (readoutTile === tile) {
+        readoutTile = '';
+        read2d();
+      }
+    });
   }
 
   /**
@@ -892,7 +924,11 @@ async function main(): Promise<void> {
   // eye reports nothing new to put it back.
   map.on('resize', () => {
     if (view3d && cameraAt) followCamera(cameraAt);
+    // A resize keeps the top-left corner, not the centre, and fires no move.
+    read2d();
   });
+  map.on('move', read2d);
+  read2d();
   // Including the popup's own ✕, which no handler here sees.
   map.on('popupopen popupclose', scheduleHover);
 }

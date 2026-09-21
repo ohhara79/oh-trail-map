@@ -17,6 +17,7 @@ import type {
   StyleSpecification,
 } from 'maplibre-gl';
 import type { Basemap } from './basemaps';
+import { DEM_MAX_ZOOM, DEM_TILES } from './dem';
 import { offset } from './geo';
 import { EARTH_RADIUS } from './gpx';
 import type { NationalPoint } from './nationalPoint';
@@ -41,14 +42,6 @@ export const LAYER_LOCATION = 'location-accuracy';
 export const LAYER_POINTS = 'points';
 export const LAYER_POINT_SHADOW = 'point-shadow';
 export const LAYER_PROFILE_CURSOR_SHADOW = 'profile-cursor-shadow';
-
-/**
- * AWS Terrain Tiles: global, keyless, CORS-open, encoded as terrarium PNGs. Around
- * Seoul the source is SRTM at roughly 30 m, so the mountain has its true shape but
- * no cliffs, boulders or trees. Tiles stop at z15; MapLibre overscales past that.
- */
-const DEM_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
-const DEM_MAX_ZOOM = 15;
 
 export function basemapSource(basemap: Basemap): RasterSourceSpecification {
   // MapLibre has no {s} placeholder; it takes a list of URLs and spreads requests

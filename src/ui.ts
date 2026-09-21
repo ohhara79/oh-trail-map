@@ -69,6 +69,7 @@ export class Ui {
   private readonly selectionProfile = el<HTMLButtonElement>('selection-profile');
   private readonly playbackProfile = el<HTMLButtonElement>('playback3d-profile');
   private readonly minimap3d = el<HTMLButtonElement>('minimap3d');
+  private readonly readout = el('readout');
 
   /** Last rendered selection, so a row is only scrolled into view when the
    *  selection actually changed — not on every unrelated re-render. */
@@ -301,6 +302,22 @@ export class Ui {
   /** The 3D bar's minimap button: pressed while the corner map is showing. */
   setMinimapShown(shown: boolean): void {
     this.minimap3d.setAttribute('aria-pressed', String(shown));
+  }
+
+  /**
+   * The top-centre readout: `37.45679, 126.98765 · 432 m`. `ele` undefined is an
+   * elevation still on its way, shown as `… m`; null is one there is none of (its
+   * tile failed), and the readout says nothing of it.
+   * Null clears it.
+   */
+  setReadout(at: { lat: number; lon: number; ele: number | null | undefined } | null): void {
+    if (!at) {
+      this.readout.textContent = '';
+      return;
+    }
+    const where = `${at.lat.toFixed(5)}, ${at.lon.toFixed(5)}`;
+    const ele = at.ele === undefined ? ' · … m' : at.ele === null ? '' : ` · ${Math.round(at.ele)} m`;
+    this.readout.textContent = where + ele;
   }
 
   /** The ids on screen, read back off the rows rather than cached alongside them. */
