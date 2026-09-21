@@ -178,10 +178,9 @@ const TRAIL_REACH = [150, 1000, 5000];
  *  there has a moment to load before you are standing in it. */
 const FAR_JUMP = 200;
 const JUMP_HEIGHT = 150;
-/** Walking shows a point's name beside its ball within this many metres. Trails that
- *  visit a point pass within 15–20 m of it, and points are rarely closer than 50 m
- *  to each other. */
-const NEARBY = 25;
+/** Walking shows a point's name beside its ball within this many metres: about a
+ *  minute's walk ahead of reaching it. */
+const NEARBY = 100;
 
 function typingTarget(): boolean {
   const el = document.activeElement;
@@ -598,6 +597,10 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       // Distance first: it is the cheap test, and it rejects almost every point.
       if (d > nearestDistance || hiddenPoints.has(point.code)) continue;
       if (!inWalkView(new LngLat(point.lon, point.lat))) continue;
+      // That far off, a ridge can hide the ball: the same test the crosshair's pick
+      // makes, so the label never names a ball a tap could not reach.
+      const ground = map.queryTerrainElevation([point.lon, point.lat]);
+      if (ground === null || !inSight(point.lat, point.lon, ground + BALL_HEIGHT)) continue;
       nearest = point;
       nearestDistance = d;
     }

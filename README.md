@@ -71,7 +71,7 @@ npm run preview
     something, so press Esc to reach a popup or the selection bar.
     Aim the crosshair at a point you can see, or a trail within reach (150 m
     standing, 1 km at 20 m, 5 km at 80 m), and click or tap to open or select it; the selected trail's bar shows while walking too.
-    Walking past a national point (within 25 m) shows its name beside its ball,
+    Walking towards a national point you can see (within 100 m) shows its name beside its ball,
     in playback too; it opens only when you aim at it and tap.
     The locate button takes you to your location and keeps following as you
     move, until you walk away or click it again. During playback it leaves the
