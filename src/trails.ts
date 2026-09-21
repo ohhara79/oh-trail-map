@@ -39,7 +39,7 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 /** Every trail's stroke width, in CSS pixels. The halo's casings are derived from it. */
-export const TRAIL_WEIGHT = 2;
+export const TRAIL_WEIGHT = 3;
 
 /** How far an unselected trail recedes while something else is selected. */
 export const DIM_OPACITY = 0.3;
@@ -48,7 +48,7 @@ export const DIM_OPACITY = 0.3;
  * 64 colours, handed out by position in data/gpx/ and repeating after the last.
  * Picked greedily in OKLab from a 16-level sRGB grid: each entry is the candidate
  * farthest from every entry before it, so the first N are the most distinct N for
- * any N. Candidates are limited to lightness 0.40–0.75 and chroma ≥ 0.08, so a 2px
+ * any N. Candidates are limited to lightness 0.40–0.75 and chroma ≥ 0.08, so a 3px
  * line holds up on the street, topo and satellite basemaps. The halo casings, the
  * points.ts pin amber and slate, the location blue and the OSM ground colours count
  * as already taken, so no trail is mistaken for any of them.
