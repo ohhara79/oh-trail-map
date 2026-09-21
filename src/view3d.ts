@@ -178,6 +178,10 @@ const TRAIL_REACH = [150, 1000, 5000];
  *  there has a moment to load before you are standing in it. */
 const FAR_JUMP = 200;
 const JUMP_HEIGHT = 150;
+/** Walking shows a point's name beside its ball within this many metres. Trails that
+ *  visit a point pass within 15–20 m of it, and points are rarely closer than 50 m
+ *  to each other. */
+const NEARBY = 25;
 
 function typingTarget(): boolean {
   const el = document.activeElement;
@@ -403,6 +407,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     liftPopup();
     opts.onPointPopup(point);
     scheduleHover();
+    // A still camera draws no frame, and the nearby label has to make way now.
+    map.triggerRepaint();
   }
 
   function closePopup(): void {
@@ -411,6 +417,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     popupPoint = null;
     opts.onPointPopup(null);
     scheduleHover();
+    // And the nearby label comes back without waiting for a step.
+    map.triggerRepaint();
   }
 
   // Orbit only: walking uses the pointer to look, and aims with the crosshair instead.
@@ -567,9 +575,43 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   // matrix ballTop() projects with, so the popup lands on the ball you see. It also
   // follows the ground as finer terrain tiles arrive, which fires no move.
   map.on('render', () => {
-    if (mode !== 'orbit') liftPopup();
+    if (mode !== 'orbit') {
+      liftPopup();
+      syncNearby();
+    }
     reportReadout();
   });
+
+  /** The closest point you have walked up to and can see, whose name the label shows
+   *  while walking. Only a preview: a tap still opens what the crosshair aims at.
+   *  None while a popup is open, which already names its point. */
+  function nearbyPoint(): NationalPoint | undefined {
+    if (!walker || tween || popup?.isOpen()) return undefined;
+    const { pose } = walker;
+    // Points are walked directly here rather than queried off the map, so the
+    // panel list's hidden set has to be asked about by hand.
+    const { hiddenPoints } = getScene();
+    let nearest: NationalPoint | undefined;
+    let nearestDistance = NEARBY;
+    for (const point of points) {
+      const d = haversine(pose, point);
+      // Distance first: it is the cheap test, and it rejects almost every point.
+      if (d > nearestDistance || hiddenPoints.has(point.code)) continue;
+      if (!inWalkView(new LngLat(point.lon, point.lat))) continue;
+      nearest = point;
+      nearestDistance = d;
+    }
+    return nearest;
+  }
+
+  /** The hover label, while walking, beside the ball of nearbyPoint(). After each
+   *  frame drawn, like liftPopup, so it sits on the ball you see. */
+  function syncNearby(): void {
+    const point = nearbyPoint();
+    const at = point && ballTop(new LngLat(point.lon, point.lat));
+    if (point && at) hoverLabel.show(point.name || point.code, at.x, at.y);
+    else hoverLabel.hide();
+  }
 
   /** The last spot handed to onReadout, so a frame that changed nothing sends nothing. */
   let readoutAt = '';
@@ -709,6 +751,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     }
     // Walking owns the cursor while in walk or playback (style.css).
     if (mode === 'orbit') map.getCanvas().style.cursor = pick ? 'pointer' : '';
+    // Walking, the label is syncNearby's.
+    if (mode !== 'orbit') return;
     const name = pick?.point
       ? pick.point.name || pick.point.code
       : getScene().trails.find((t) => t.id === pick?.trail)?.name;
