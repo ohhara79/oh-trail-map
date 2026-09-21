@@ -5,6 +5,7 @@
  */
 
 import { haversine } from './gpx';
+import type { NationalPoint } from './nationalPoint';
 import type { Trail } from './trails';
 
 export type Profile = {
@@ -80,6 +81,70 @@ export function buildProfile(trail: Trail): Profile {
 
   cache.set(trail, profile);
   return profile;
+}
+
+/**
+ * How close the trail has to come to a national point to pass it. Measured over
+ * data/gpx/: the count of points near each trail levels off here, and the ones
+ * further out stand on other paths.
+ */
+export const PASS_DISTANCE = 30;
+
+/** A national point the trail goes by, at GPX point `index`. */
+export type PointPass = { index: number; point: NationalPoint };
+
+const passCache = new WeakMap<Profile, PointPass[]>();
+
+/**
+ * Every time the trail goes by a national point, in the order it does. A run of
+ * GPX points within PASS_DISTANCE is one pass, placed at the closest of them, so an
+ * out-and-back trail passes the same point twice. Hidden points are kept: toggling
+ * one is not a reason to walk the trail again.
+ */
+export function pointPasses(profile: Profile, points: readonly NationalPoint[]): PointPass[] {
+  const cached = passCache.get(profile);
+  if (cached) return cached;
+
+  const n = profile.s.length;
+  let latMin = Infinity;
+  let latMax = -Infinity;
+  let lonMin = Infinity;
+  let lonMax = -Infinity;
+  for (let i = 0; i < n; i++) {
+    latMin = Math.min(latMin, profile.lat[i]);
+    latMax = Math.max(latMax, profile.lat[i]);
+    lonMin = Math.min(lonMin, profile.lon[i]);
+    lonMax = Math.max(lonMax, profile.lon[i]);
+  }
+  // The bounds grown by PASS_DISTANCE, a little over in longitude, which rejects
+  // nearly every point before a single haversine.
+  const dLat = PASS_DISTANCE / 111_000;
+  const dLon = dLat / Math.cos((((latMin + latMax) / 2) * Math.PI) / 180);
+
+  const passes: PointPass[] = [];
+  for (const point of points) {
+    if (point.lat < latMin - dLat || point.lat > latMax + dLat) continue;
+    if (point.lon < lonMin - dLon || point.lon > lonMax + dLon) continue;
+    let best = -1;
+    let bestDistance = PASS_DISTANCE;
+    for (let i = 0; i <= n; i++) {
+      const d = i < n ? haversine(point, { lat: profile.lat[i], lon: profile.lon[i] }) : Infinity;
+      if (d < PASS_DISTANCE) {
+        if (d < bestDistance || best < 0) {
+          best = i;
+          bestDistance = d;
+        }
+      } else if (best >= 0) {
+        passes.push({ index: best, point });
+        best = -1;
+        bestDistance = PASS_DISTANCE;
+      }
+    }
+  }
+  passes.sort((a, b) => a.index - b.index);
+
+  passCache.set(profile, passes);
+  return passes;
 }
 
 /**

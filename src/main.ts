@@ -11,7 +11,7 @@ import { PointsList } from './pointsList';
 import { canHover, createHoverLabel } from './hoverLabel';
 import { ProfilePanel } from './profilePanel';
 import { Halo, HoverHalo, nearestPointIndex, ProfileCursor, trailAt } from './selection';
-import { buildProfile } from './trailProfile';
+import { buildProfile, pointPasses } from './trailProfile';
 import {
   buildTrail,
   DEFAULT_SETTINGS,
@@ -196,6 +196,7 @@ async function main(): Promise<void> {
   /** The 지점번호 whose pins are off, as the app reads it. Settings holds the same
    *  thing as an array, rebuilt from here whenever this changes. */
   const hiddenPoints = new Set(settings.hiddenPoints);
+  profilePanel.setHiddenPoints(hiddenPoints);
   let pointPopup: L.Popup | null = null;
   let popupPoint: NationalPoint | null = null;
   /** The 지점번호 the panel list draws as selected: whichever point has a popup
@@ -616,7 +617,8 @@ async function main(): Promise<void> {
     // A point number means nothing on another trail; the parked one is for this one.
     cursorIndex = trail && parkedCursor?.trail === trail ? parkedCursor.index : null;
     // A trail's id is its file name in data/gpx/ (see trailFiles.ts).
-    profilePanel.show(trail ? buildProfile(trail) : null, trail?.id);
+    const profile = trail ? buildProfile(trail) : null;
+    profilePanel.show(profile, trail?.id, profile ? pointPasses(profile, points) : []);
     applyCursor();
   }
 
@@ -706,6 +708,7 @@ async function main(): Promise<void> {
    *  gone, and the 3D layer. */
   function syncPoints(): void {
     pointsLayer.sync(hiddenPoints);
+    profilePanel.setHiddenPoints(hiddenPoints);
     if (popupPoint && hiddenPoints.has(popupPoint.code)) closePointPopup();
     // A pin removed from under the mouse never reports the mouse leaving it.
     if (hoveredPin && hiddenPoints.has(hoveredPin.code)) hoveredPin = null;

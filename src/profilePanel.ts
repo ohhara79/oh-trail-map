@@ -1,13 +1,17 @@
 /**
  * The selected trail's elevation over distance, with a cursor that picks one GPX
  * point and a readout of that point over the chart's top-left corner: its number,
- * lat/lon, elevation, and how far and how long into the trail it is.
+ * lat/lon, elevation, and how far and how long into the trail it is. The national
+ * points the trail passes sit on the line as small pins, and the readout names the
+ * one the cursor is on.
  *
  * It renders and reports, like pointsList.ts: main.ts owns which point the cursor
  * is on, hears about every move through onCursor, and hands the answer back with
  * setCursor — so the panel, the 2D dot and the 3D dot are set by one writer.
  */
-import { formatElapsed, indexAtDistance, type Profile } from './trailProfile';
+import { haversine } from './gpx';
+import { PIN_COLOR_NAMED, PIN_COLOR_UNNAMED } from './points';
+import { formatElapsed, indexAtDistance, PASS_DISTANCE, type PointPass, type Profile } from './trailProfile';
 
 export type ProfilePanelCallbacks = {
   /** The cursor was moved to point `index` — by the chart, a key or ◀ ▶. */
@@ -20,6 +24,9 @@ const PAD_BOTTOM = 4;
 /** The least elevation range the chart spans. Scaled to the trail's own range, a
  *  flat riverside walk would draw 3 m of barometer noise as a mountain range. */
 const MIN_ELE_SPAN = 30;
+/** A point's pin on the line: smaller than the cursor's dot (r 4), which it sits under. */
+const PASS_RADIUS = 3.5;
+const SVG_NS = 'http://www.w3.org/2000/svg';
 
 function el<T extends Element>(id: string): T {
   const found = document.getElementById(id);
@@ -37,6 +44,7 @@ export class ProfilePanel {
   private readonly svg = el<SVGSVGElement>('profile-svg');
   private readonly area = this.svg.querySelector<SVGPathElement>('.profile-area')!;
   private readonly line = this.svg.querySelector<SVGPathElement>('.profile-line')!;
+  private readonly pointsGroup = this.svg.querySelector<SVGGElement>('.profile-points')!;
   private readonly cursorLine = this.svg.querySelector<SVGLineElement>('.profile-cursor-line')!;
   private readonly cursorDot = this.svg.querySelector<SVGCircleElement>('.profile-cursor-dot')!;
   private readonly eleMax = el<HTMLElement>('profile-ele-max');
@@ -48,6 +56,9 @@ export class ProfilePanel {
 
   private profile: Profile | null = null;
   private cursor: number | null = null;
+  private passes: readonly PointPass[] = [];
+  /** The 지점번호 turned off in the National Points list: off the chart and unnamed. */
+  private hiddenPoints: ReadonlySet<string> = new Set();
   /** The chart's size when it was last drawn, and the elevation range it maps. */
   private width = 0;
   private height = 0;
@@ -103,11 +114,13 @@ export class ProfilePanel {
     this.next.addEventListener('click', () => this.step(1));
   }
 
-  /** Shows the panel for `profile`, read from `fileName`, or hides it for null. The
-   *  same profile again keeps everything as it is. */
-  show(profile: Profile | null, fileName = ''): void {
+  /** Shows the panel for `profile`, read from `fileName`, with the national points
+   *  it passes, or hides it for null. The same profile again keeps everything as it
+   *  is. */
+  show(profile: Profile | null, fileName = '', passes: readonly PointPass[] = []): void {
     if (profile === this.profile) return;
     this.profile = profile;
+    this.passes = passes;
     this.cursor = null;
     this.root.hidden = !profile || this.hiddenByUser;
     if (!profile) return;
@@ -125,6 +138,12 @@ export class ProfilePanel {
   setHidden(hidden: boolean): void {
     this.hiddenByUser = hidden;
     this.root.hidden = !this.profile || hidden;
+  }
+
+  setHiddenPoints(hidden: ReadonlySet<string>): void {
+    this.hiddenPoints = hidden;
+    this.drawPoints();
+    this.syncCursor();
   }
 
   setCursor(index: number | null): void {
@@ -184,6 +203,8 @@ export class ProfilePanel {
       const base = `M0 ${this.height - PAD_BOTTOM} H${this.width}`;
       this.line.setAttribute('d', base);
       this.area.setAttribute('d', '');
+      this.drawPoints();
+      this.syncCursor();
       return;
     }
     const mid = (profile.eleMin + profile.eleMax) / 2;
@@ -226,7 +247,48 @@ export class ProfilePanel {
       'd',
       xs.length ? `${d}L${xs[xs.length - 1].toFixed(1)} ${this.height}L${xs[0].toFixed(1)} ${this.height}Z` : '',
     );
+    this.drawPoints();
     this.syncCursor();
+  }
+
+  /** A pin on the line for each pass of a point that is on, coloured as its map pin.
+   *  Without elevation it sits on the flat baseline the line is drawn as then. */
+  private drawPoints(): void {
+    const profile = this.profile;
+    this.pointsGroup.replaceChildren();
+    if (!profile || !this.width) return;
+    const hasEle = Number.isFinite(profile.eleMin);
+    for (const { index, point } of this.passes) {
+      if (this.hiddenPoints.has(point.code)) continue;
+      const ele = profile.ele[index];
+      const circle = document.createElementNS(SVG_NS, 'circle');
+      circle.setAttribute('cx', this.x(profile.s[index]).toFixed(1));
+      circle.setAttribute(
+        'cy',
+        (hasEle && !Number.isNaN(ele) ? this.y(ele) : this.height - PAD_BOTTOM).toFixed(1),
+      );
+      circle.setAttribute('r', String(PASS_RADIUS));
+      circle.setAttribute('fill', point.name ? PIN_COLOR_NAMED : PIN_COLOR_UNNAMED);
+      this.pointsGroup.append(circle);
+    }
+  }
+
+  /** The point on, closest to GPX point `i` and within PASS_DISTANCE of it. */
+  private pointAt(i: number): PointPass['point'] | null {
+    const profile = this.profile;
+    if (!profile) return null;
+    const here = { lat: profile.lat[i], lon: profile.lon[i] };
+    let found: PointPass['point'] | null = null;
+    let nearest = PASS_DISTANCE;
+    for (const { point } of this.passes) {
+      if (this.hiddenPoints.has(point.code)) continue;
+      const d = haversine(here, point);
+      if (d < nearest) {
+        nearest = d;
+        found = point;
+      }
+    }
+    return found;
   }
 
   /** The cursor on the chart, the readout, ◀ ▶ and the slider's value, from this.cursor. */
@@ -235,6 +297,8 @@ export class ProfilePanel {
     if (!profile) return;
     const n = profile.s.length;
     const i = this.cursor;
+    this.lines[2].style.color = '';
+    this.lines[2].classList.remove('profile-point-name');
     this.prev.disabled = i === null || i === 0;
     this.next.disabled = i === n - 1;
     this.cursorLine.style.display = this.cursorDot.style.display = i === null ? 'none' : '';
@@ -266,13 +330,21 @@ export class ProfilePanel {
       Number.isNaN(time) || Number.isNaN(profile.startTime)
         ? 'no time'
         : `+${formatElapsed((time - profile.startTime) / 1000)}`;
+    // On a national point, its name takes the third line: the point number and the
+    // distance are what the other points are told apart by, and this one has a name.
+    const point = this.pointAt(i);
+    const pointName = point ? point.name || point.code : '';
     this.setLines(
       `${profile.lat[i].toFixed(6)}, ${profile.lon[i].toFixed(6)}`,
       `${Number.isNaN(ele) ? 'no elevation' : `${ele.toFixed(1)} m`} · ${elapsed}`,
-      `#${(i + 1).toLocaleString()} / ${n.toLocaleString()} · ${formatAlong(profile.s[i])}`,
+      point ? pointName : `#${(i + 1).toLocaleString()} / ${n.toLocaleString()} · ${formatAlong(profile.s[i])}`,
     );
+    if (point) {
+      this.lines[2].classList.add('profile-point-name');
+      this.lines[2].style.color = point.name ? PIN_COLOR_NAMED : PIN_COLOR_UNNAMED;
+    }
     this.chart.setAttribute('aria-valuenow', String(i + 1));
-    this.chart.setAttribute('aria-valuetext', `Point ${i + 1} of ${n}`);
+    this.chart.setAttribute('aria-valuetext', `Point ${i + 1} of ${n}${point ? `, at ${pointName}` : ''}`);
   }
 
   private setLines(...text: string[]): void {
