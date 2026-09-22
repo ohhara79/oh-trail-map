@@ -266,7 +266,8 @@ button:hover { background: #f5f6f8; }
    the animation restarts on its own — no class toggle plus forced reflow.
    Leaflet writes stroke-opacity as a presentation attribute, which loses to any
    author rule, so the keyframes apply while running and the attribute's own
-   value takes back over once they finish. */
+   value takes back over once they finish. The 3D view plays the same numbers
+   from HALO_PULSE in selection.ts; change one and change the other. */
 @keyframes trail-halo-pulse {
   0%, 100% { stroke-opacity: .95; }
   50%      { stroke-opacity: .2; }

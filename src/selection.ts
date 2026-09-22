@@ -17,6 +17,14 @@ export const HALO_RINGS = [
 ] as const;
 
 /**
+ * The white ring's pulse on selection, which style.css plays in 2D as
+ * trail-halo-pulse: down to `low` and back, `period` ms each, `count` times. The
+ * 3D view has no CSS to hand it to, so it plays these numbers on its own; change
+ * one and change the other.
+ */
+export const HALO_PULSE = { low: 0.2, period: 550, count: 2 } as const;
+
+/**
  * The casing drawn under the trail a click would pick, while the mouse hovers
  * near it: the selection's white ring, fainter and without the pulse, so a
  * preview never reads as a selection. Shared with the 3D view's hover layer.

@@ -237,6 +237,9 @@ export function layers(): LayerSpecification[] {
         paint: {
           'line-color': ring.color,
           'line-opacity': ring.opacity,
+          // view3d.ts steps the opacity every frame for the selection pulse; the
+          // style's default 300ms transition would smear each step into the next.
+          'line-opacity-transition': { duration: 0 },
           'line-width': ring.weight,
         },
       }),

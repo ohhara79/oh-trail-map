@@ -68,7 +68,7 @@ import {
   trailWidths,
   visibleFilter,
 } from './scene3d';
-import { pinReach, tolerance } from './selection';
+import { HALO_PULSE, HALO_RINGS, pinReach, tolerance } from './selection';
 import { Playback, buildPath, distanceAtPoint, sampleAt } from './trailPlayback';
 import { indexAtDistance } from './trailProfile';
 import type { Trail } from './trails';
@@ -304,7 +304,38 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     map.setFilter(LAYER_TRAILS, visible);
     for (const id of [...LAYER_HALOS, LAYER_TRAIL_SELECTED]) map.setFilter(id, selected);
     map.setPaintProperty(LAYER_TRAILS, 'line-opacity', trailOpacity(selectedId));
+    const haloed = trails.find((t) => t.id === selectedId && t.visible)?.id ?? null;
+    if (haloed !== haloedId) {
+      haloedId = haloed;
+      if (haloed !== null) pulseHalo();
+    }
     scheduleHover();
+  }
+
+  /**
+   * The white ring blinks as 2D's does on selection (HALO_PULSE). A cosine rather
+   * than CSS's ease-in-out per half, which it matches to within a few percent of
+   * opacity. Only when the halo's trail changes — not on every restyle, which in 2D
+   * rebuilds the paths and so replays the pulse on a colour change too.
+   */
+  function pulseHalo(): void {
+    cancelAnimationFrame(pulseFrame);
+    const layer = LAYER_HALOS[LAYER_HALOS.length - 1];
+    const high = HALO_RINGS[HALO_RINGS.length - 1].opacity;
+    const { low, period, count } = HALO_PULSE;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const start = performance.now();
+    const step = (now: number) => {
+      const t = (now - start) / period;
+      if (t >= count) {
+        map.setPaintProperty(layer, 'line-opacity', high);
+        return;
+      }
+      const dip = (1 - Math.cos(2 * Math.PI * t)) / 2;
+      map.setPaintProperty(layer, 'line-opacity', high - (high - low) * dip);
+      pulseFrame = requestAnimationFrame(step);
+    };
+    pulseFrame = requestAnimationFrame(step);
   }
 
   /**
@@ -322,6 +353,13 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     if (popupPoint && hiddenPoints.has(popupPoint.code)) closePopup();
     scheduleHover();
   }
+
+  // The halo 3D opens on was already pulsed in 2D; only a change from here on pulses.
+  let haloedId: string | null = (() => {
+    const { trails, selectedId } = getScene();
+    return trails.find((t) => t.id === selectedId && t.visible)?.id ?? null;
+  })();
+  let pulseFrame = 0;
 
   syncTrails();
   syncPoints();
@@ -1237,6 +1275,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       resizer.disconnect();
       cancelAnimationFrame(pending);
       cancelAnimationFrame(hoverFrame);
+      cancelAnimationFrame(pulseFrame);
       locationMarker.remove();
       // Frees the GL context and its tile textures. The module stays cached, so
       // opening 3D again costs no download.
