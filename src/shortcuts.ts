@@ -19,8 +19,9 @@ export type ShortcutCallbacks = {
   stepProfile: (delta: number) => void;
   /** `[` and `]`: the previous or next trail in the panel list. */
   stepTrail: (delta: number) => void;
-  /** `;` and `'`: the previous or next national point in the panel list. */
-  stepPoint: (delta: number) => void;
+  /** `;` and `'`: the previous or next national point on the selected trail's
+   *  profile, or in the panel list with no trail selected. */
+  stepPoint: (delta: 1 | -1) => void;
   /** `C`: frame the selected trail. */
   zoomToSelected: () => void;
   /** `B`: the next basemap. */

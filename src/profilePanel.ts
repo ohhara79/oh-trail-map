@@ -250,6 +250,27 @@ export class ProfilePanel {
     return true;
   }
 
+  /** Moves the cursor to the next (1) or previous (-1) national point pin along
+   *  the trail; from no cursor, onto the first or last. The pins drawPoints draws,
+   *  read off the passes rather than this.pins, which stay empty while the panel is
+   *  put away. False when there is none that way: it stops at the ends, as step does. */
+  stepPass(delta: 1 | -1): boolean {
+    if (!this.profile) return false;
+    const indices: number[] = [];
+    let last = '';
+    for (const { index, point } of this.passes) {
+      if (this.hiddenPoints.has(point.code) || point.code === last) continue;
+      last = point.code;
+      indices.push(index);
+    }
+    const cursor = this.cursor;
+    if (delta < 0) indices.reverse();
+    const index = indices.find((i) => cursor === null || (delta > 0 ? i > cursor : i < cursor));
+    if (index === undefined) return false;
+    this.cb.onCursor(index);
+    return true;
+  }
+
   private x(s: number): number {
     const total = this.profile?.total ?? 0;
     return total > 0 ? (s / total) * this.width : 0;

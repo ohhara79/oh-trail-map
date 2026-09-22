@@ -394,7 +394,13 @@ async function main(): Promise<void> {
       selectTrail(id);
       zoomToTrail(id);
     },
+    // With a trail on the profile, its own pins in trail order, moving only the
+    // cursor: the list would fly off the trail. None left that way is nothing.
     stepPoint: (delta) => {
+      if (cursorTrail) {
+        profilePanel.stepPass(delta);
+        return;
+      }
       const codes = pointsList.renderedCodes().filter((code) => !hiddenPoints.has(code));
       const code = stepIn(codes, selectedPointCode, delta);
       if (code !== null) goToPoint(code);

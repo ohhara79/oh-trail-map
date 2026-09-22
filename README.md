@@ -141,7 +141,7 @@ leave Ctrl/Alt/Cmd combinations to the browser.
 | `E` | Elevation profile (the playback one while a trail plays) |
 | `,` `.` | Previous / next GPX point on the profile; `Shift` for 10, hold to repeat |
 | `[` `]` | Previous / next trail in the list (as filtered, skipping hidden ones) |
-| `;` `'` | Previous / next national point in the list (as filtered, skipping hidden ones) |
+| `;` `'` | Previous / next national point on the selected trail's profile; with no trail selected, in the list (as filtered, skipping hidden ones) |
 | `Enter` | Walk the selected trail in 3D, from the profile cursor |
 | `C` | Zoom to the selected trail |
 | `G` | Show and follow your location |
