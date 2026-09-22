@@ -400,10 +400,15 @@ async function main(): Promise<void> {
     // Capped at the source's native level: framing a trail is automatic, and
     // a 200 m loop would otherwise land on upscaled tiles you never asked for.
     // Zooming in by hand still goes deeper.
+    //
+    // Flown rather than fitted, as 3D's fitBounds is: Leaflet's fitBounds snaps
+    // without animating once the zoom changes by more than 4 or the new centre
+    // is off-screen, so stepping with [ ] glided to some trails and jumped to others.
     if (trail?.bounds.isValid())
-      map.fitBounds(trail.bounds, {
+      map.flyToBounds(trail.bounds, {
         padding: [30, 30],
         maxZoom: basemapById(settings.basemapId).maxZoom,
+        animate: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
       });
   }
 
