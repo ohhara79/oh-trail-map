@@ -134,10 +134,10 @@ export class ProfilePanel {
 
     this.chart.addEventListener('keydown', (e) => {
       const step =
-        e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? -1
-        : e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1
-        : e.key === 'PageDown' ? -100
-        : e.key === 'PageUp' ? 100
+        e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1
+        : e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1
+        : e.key === 'PageUp' ? -100
+        : e.key === 'PageDown' ? 100
         : e.key === 'Home' ? -Infinity
         : e.key === 'End' ? Infinity
         : 0;
