@@ -99,6 +99,18 @@ function findTrail(id: string): Trail | undefined {
 }
 
 /**
+ * The id `delta` rows from `current` in `ids`, wrapping at either end, or null
+ * for an empty list. From nothing — or from a row the filter has since taken
+ * away — forward starts at the first and back at the last.
+ */
+function stepIn(ids: readonly string[], current: string | null, delta: number): string | null {
+  if (ids.length === 0) return null;
+  const at = current === null ? -1 : ids.indexOf(current);
+  if (at === -1) return delta > 0 ? ids[0] : ids[ids.length - 1];
+  return ids[(((at + delta) % ids.length) + ids.length) % ids.length];
+}
+
+/**
  * The single place a trail's visibility changes: flips the flag, syncs the map
  * layer, and persists. Shared by the per-trail checkbox and the show/hide-all
  * toggle so the two can never diverge. The early return keeps a bulk toggle
@@ -313,29 +325,35 @@ async function main(): Promise<void> {
       setPointsHidden(codes, !visible);
     },
     onFilterChange: () => pointsList.render(hiddenPoints, selectedPointCode),
-    onSelect: (code) => {
-      const point = pointByCode.get(code);
-      if (!point) return;
-      // Like a trail row, which zooms to a hidden trail without turning it on: a
-      // row click is you asking for this point now. It selects the point, not the
-      // trail — a trail already selected stays selected — and the highlight comes
-      // from the popup either branch below opens, never from here.
-      if (view3d) {
-        view3d.showPoint(point);
-      } else {
-        // Never zooms out: you may already be closer in than POINT_ZOOM — as
-        // close as MAX_ZOOM, now that a basemap's native limit no longer stops
-        // the camera.
-        const zoom = Math.max(map.getZoom(), POINT_ZOOM);
-        map.setView([point.lat, point.lon], zoom);
-        openPoint(point);
-      }
-      // The one place this diverges from a trail row: the drawer covers most of a
-      // phone screen and the popup is the whole payload of the click, where a
-      // trail row's zoom survives being looked at later.
-      ui.closeDrawer();
-    },
+    onSelect: (code) => goToPoint(code),
   });
+
+  /**
+   * What a points list row does, and `;` `'` too: goes to the point and opens its
+   * popup.
+   */
+  function goToPoint(code: string): void {
+    const point = pointByCode.get(code);
+    if (!point) return;
+    // Like a trail row, which zooms to a hidden trail without turning it on: a
+    // row click is you asking for this point now. It selects the point, not the
+    // trail — a trail already selected stays selected — and the highlight comes
+    // from the popup either branch below opens, never from here.
+    if (view3d) {
+      view3d.showPoint(point);
+    } else {
+      // Never zooms out: you may already be closer in than POINT_ZOOM — as
+      // close as MAX_ZOOM, now that a basemap's native limit no longer stops
+      // the camera.
+      const zoom = Math.max(map.getZoom(), POINT_ZOOM);
+      map.setView([point.lat, point.lon], zoom);
+      openPoint(point);
+    }
+    // The one place this diverges from a trail row: the drawer covers most of a
+    // phone screen and the popup is the whole payload of the click, where a
+    // trail row's zoom survives being looked at later.
+    ui.closeDrawer();
+  }
 
   ui.applySettings(settings);
 
@@ -343,6 +361,20 @@ async function main(): Promise<void> {
     togglePanel: () => ui.togglePanel(),
     focusSearch: () => ui.focusTrailSearch(),
     stepProfile: (delta) => void profilePanel.step(delta),
+    // The rows the list shows, in its order, less those switched off: each step
+    // does what a click on the neighbouring row would, and lands on something drawn.
+    stepTrail: (delta) => {
+      const ids = ui.renderedIds().filter((id) => findTrail(id)?.visible);
+      const id = stepIn(ids, selectedId, delta);
+      if (id === null) return;
+      selectTrail(id);
+      zoomToTrail(id);
+    },
+    stepPoint: (delta) => {
+      const codes = pointsList.renderedCodes().filter((code) => !hiddenPoints.has(code));
+      const code = stepIn(codes, selectedPointCode, delta);
+      if (code !== null) goToPoint(code);
+    },
     zoomToSelected: () => {
       if (selectedId !== null) zoomToTrail(selectedId);
     },

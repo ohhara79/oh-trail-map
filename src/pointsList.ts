@@ -215,8 +215,9 @@ export class PointsList {
     }
   }
 
-  /** The codes on screen, read back off the rows rather than cached alongside them. */
-  private renderedCodes(): string[] {
+  /** The codes on screen, in list order, read back off the rows rather than cached
+   *  alongside them. The master checkbox acts on these, and `;` `'` step through them. */
+  renderedCodes(): string[] {
     return Array.from(this.list.children)
       .map((li) => (li as HTMLElement).dataset.pointCode ?? '')
       .filter(Boolean);

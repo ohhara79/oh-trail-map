@@ -332,8 +332,9 @@ export class Ui {
     this.readout.textContent = where + ele;
   }
 
-  /** The ids on screen, read back off the rows rather than cached alongside them. */
-  private renderedIds(): string[] {
+  /** The ids on screen, in list order, read back off the rows rather than cached
+   *  alongside them. The master checkbox acts on these, and `[` `]` step through them. */
+  renderedIds(): string[] {
     return Array.from(this.list.querySelectorAll<HTMLElement>('.trail-name'))
       .map((node) => node.dataset.trailId ?? '')
       .filter(Boolean);

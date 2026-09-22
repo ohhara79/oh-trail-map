@@ -17,6 +17,10 @@ export type ShortcutCallbacks = {
   focusSearch: () => void;
   /** `,` and `.`: move the profile cursor by this many points. */
   stepProfile: (delta: number) => void;
+  /** `[` and `]`: the previous or next trail in the panel list. */
+  stepTrail: (delta: number) => void;
+  /** `;` and `'`: the previous or next national point in the panel list. */
+  stepPoint: (delta: number) => void;
   /** `C`: frame the selected trail. */
   zoomToSelected: () => void;
   /** `B`: the next basemap. */
@@ -126,6 +130,10 @@ export function installShortcuts(cb: ShortcutCallbacks): void {
       KeyC: cb.zoomToSelected,
       KeyB: cb.nextBasemap,
       KeyH: cb.togglePoints,
+      BracketLeft: () => cb.stepTrail(-1),
+      BracketRight: () => cb.stepTrail(1),
+      Semicolon: () => cb.stepPoint(-1),
+      Quote: () => cb.stepPoint(1),
     }[e.code];
     if (action) {
       action();
