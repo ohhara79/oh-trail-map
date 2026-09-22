@@ -3,7 +3,7 @@
  * point and a readout of that point over the chart's top-left corner: its number,
  * lat/lon, elevation, and how far and how long into the trail it is. The national
  * points the trail passes sit on the line as small pins, and the readout names the
- * one the cursor is on.
+ * one the cursor is on, on a line of its own.
  *
  * It renders and reports, like pointsList.ts: main.ts owns which point the cursor
  * is on, hears about every move through onCursor, and hands the answer back with
@@ -54,7 +54,12 @@ export class ProfilePanel {
   private readonly eleMax = el<HTMLElement>('profile-ele-max');
   private readonly eleMin = el<HTMLElement>('profile-ele-min');
   private readonly total = el<HTMLElement>('profile-total');
-  private readonly lines = [el<HTMLElement>('profile-line1'), el<HTMLElement>('profile-line2'), el<HTMLElement>('profile-line3')];
+  private readonly lines = [
+    el<HTMLElement>('profile-line1'),
+    el<HTMLElement>('profile-line2'),
+    el<HTMLElement>('profile-line3'),
+    el<HTMLElement>('profile-line4'),
+  ];
   private readonly prev = el<HTMLButtonElement>('profile-prev');
   private readonly next = el<HTMLButtonElement>('profile-next');
 
@@ -316,8 +321,8 @@ export class ProfilePanel {
     if (!profile) return;
     const n = profile.s.length;
     const i = this.cursor;
-    this.lines[2].style.color = '';
-    this.lines[2].classList.remove('profile-point-name');
+    this.lines[3].style.color = '';
+    this.lines[3].classList.remove('profile-point-name');
     this.prev.disabled = i === null || i === 0;
     this.next.disabled = i === n - 1;
     this.cursorLine.style.display = this.cursorDot.style.display = i === null ? 'none' : '';
@@ -325,7 +330,7 @@ export class ProfilePanel {
     if (i === null) {
       this.chart.setAttribute('aria-valuenow', '1');
       this.chart.setAttribute('aria-valuetext', 'No point picked');
-      this.setLines(`${n.toLocaleString()} GPX points`, 'Drag along the profile,', 'or step with ◀ ▶');
+      this.setLines(`${n.toLocaleString()} GPX points`, 'Drag along the profile,', 'or step with ◀ ▶', '');
       return;
     }
 
@@ -349,18 +354,19 @@ export class ProfilePanel {
       Number.isNaN(time) || Number.isNaN(profile.startTime)
         ? 'no time'
         : `+${formatElapsed((time - profile.startTime) / 1000)}`;
-    // On a national point, its name takes the third line: the point number and the
-    // distance are what the other points are told apart by, and this one has a name.
+    // On a national point, its name gets the fourth line, under the point number
+    // and the distance rather than in their place.
     const point = this.pointAt(i);
     const pointName = point ? point.name || point.code : '';
     this.setLines(
       `${profile.lat[i].toFixed(6)}, ${profile.lon[i].toFixed(6)}`,
       `${Number.isNaN(ele) ? 'no elevation' : `${ele.toFixed(1)} m`} · ${elapsed}`,
-      point ? pointName : `#${(i + 1).toLocaleString()} / ${n.toLocaleString()} · ${formatAlong(profile.s[i])}`,
+      `#${(i + 1).toLocaleString()} / ${n.toLocaleString()} · ${formatAlong(profile.s[i])}`,
+      pointName,
     );
     if (point) {
-      this.lines[2].classList.add('profile-point-name');
-      this.lines[2].style.color = point.name ? PIN_COLOR_NAMED : PIN_COLOR_UNNAMED;
+      this.lines[3].classList.add('profile-point-name');
+      this.lines[3].style.color = point.name ? PIN_COLOR_NAMED : PIN_COLOR_UNNAMED;
     }
     this.chart.setAttribute('aria-valuenow', String(i + 1));
     this.chart.setAttribute('aria-valuetext', `Point ${i + 1} of ${n}${point ? `, at ${pointName}` : ''}`);

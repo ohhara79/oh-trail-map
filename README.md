@@ -56,8 +56,8 @@ npm run preview
   on the map, and the panel reads out its lat/lon, elevation, how long after the
   start, its number and how far along the trail. The national points the trail
   passes (within 30 m) sit on the line as small pins, amber for named and grey
-  for unnamed, and with the cursor on one the readout names it in place of the
-  number and distance. Dragging near a pin snaps the cursor onto it;
+  for unnamed, and with the cursor on one the readout names it on a line below
+  the number and distance. Dragging near a pin snaps the cursor onto it;
   the keys and ◀ ▶ still step one GPX point at a time. In 2D, hovering near the selected trail moves the cursor to the
   nearest point too; a click there still only clears the selection. A trail
   playing in 3D takes the panel over, whether or not you had it open — see below.
