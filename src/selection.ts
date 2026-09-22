@@ -211,38 +211,6 @@ export function trailAt(map: L.Map, point: L.Point, trails: Trail[]): Trail | nu
   return best;
 }
 
-/**
- * The index, counted through every segment in order as trailProfile.ts counts
- * it, of the point of `trail` nearest `point` — or null when the trail itself is
- * further than a click's tolerance. Measured to the line, not to the points, so a
- * long straight stretch between two sparse fixes still answers; the nearer end of
- * that stretch is the point.
- */
-export function nearestPointIndex(map: L.Map, point: L.Point, trail: Trail): number | null {
-  const zoom = map.getZoom();
-  const pixel = map.project(map.containerPointToLatLng(point), zoom);
-  let best: number | null = null;
-  let bestDistance = tolerance();
-  let offset = 0;
-  for (const seg of projectedSegments(map, trail, zoom)) {
-    for (let i = 0; i < seg.length; i++) {
-      const d =
-        i + 1 < seg.length
-          ? L.LineUtil.pointToSegmentDistance(pixel, seg[i], seg[i + 1])
-          : seg.length === 1
-            ? pixel.distanceTo(seg[i])
-            : Infinity;
-      if (d < bestDistance) {
-        bestDistance = d;
-        const next = seg[i + 1];
-        best = offset + (next && pixel.distanceTo(next) < pixel.distanceTo(seg[i]) ? i + 1 : i);
-      }
-    }
-    offset += seg.length;
-  }
-  return best;
-}
-
 /** Above the pins (580), under your own location (markerPane, 600). */
 const CURSOR_PANE = 'profile-cursor';
 const CURSOR_PANE_Z_INDEX = '590';

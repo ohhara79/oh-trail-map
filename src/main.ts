@@ -10,7 +10,7 @@ import { loadNationalPoints, createPointsLayer, openPointPopup, pointRows } from
 import { PointsList } from './pointsList';
 import { canHover, createHoverLabel } from './hoverLabel';
 import { ProfilePanel } from './profilePanel';
-import { Halo, HoverHalo, nearestPointIndex, ProfileCursor, trailAt } from './selection';
+import { Halo, HoverHalo, ProfileCursor, trailAt } from './selection';
 import { buildProfile, pointPasses } from './trailProfile';
 import {
   buildTrail,
@@ -757,14 +757,6 @@ async function main(): Promise<void> {
     const name = pin ? pin.name || pin.code : trail?.name;
     if (at && name) hoverLabel.show(name, at.x, at.y);
     else hoverLabel.hide();
-
-    // While a trail is selected it answers the mouse too, panel open or not: near
-    // it, the cursor moves to the nearest point. Only the cursor — a click there
-    // still clears the selection, as any click does while one is made.
-    if (cursorTrail?.visible && hoverAt && !view3d && !mapMoving && canHover() && !popupOpen) {
-      const index = nearestPointIndex(map, hoverAt, cursorTrail);
-      if (index !== null) setCursor(index);
-    }
   }
 
   /**
