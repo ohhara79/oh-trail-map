@@ -138,10 +138,10 @@ export class Ui {
       this.setPanel(false);
     });
 
-    // On a phone the map is the point, so start with it unobstructed. Not
+    // The map is the point, so start with it unobstructed at every width. Not
     // persisted: Settings describes how trails render, and panel state is
     // per-device chrome rather than a rendering choice.
-    this.setPanel(!window.matchMedia(DRAWER_QUERY).matches);
+    this.setPanel(false);
   }
 
   /**
