@@ -94,6 +94,11 @@ function applyAbout(): void {
   document.getElementById('about')!.hidden = !(name || email || homepage || keys);
 }
 
+/** The OS asks for less motion: camera moves jump instead of flying. */
+function prefersReducedMotion(): boolean {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 function findTrail(id: string): Trail | undefined {
   return trails.find((t) => t.id === id);
 }
@@ -213,6 +218,9 @@ async function main(): Promise<void> {
   profilePanel.setHiddenPoints(hiddenPoints);
   let pointPopup: L.Popup | null = null;
   let popupPoint: NationalPoint | null = null;
+  /** The point goToPoint is flying to, whose popup opens when the camera lands.
+   *  Any other popup change, or a trail flight, clears it. */
+  let pendingPoint: NationalPoint | null = null;
   /** The 지점번호 the panel list draws as selected: whichever point has a popup
    *  open in the view you are looking at. View state, like selectedId. */
   let selectedPointCode: string | null = null;
@@ -337,17 +345,30 @@ async function main(): Promise<void> {
     if (!point) return;
     // Like a trail row, which zooms to a hidden trail without turning it on: a
     // row click is you asking for this point now. It selects the point, not the
-    // trail — a trail already selected stays selected — and the highlight comes
-    // from the popup either branch below opens, never from here.
+    // trail — a trail already selected stays selected.
     if (view3d) {
+      // The highlight comes from the popup showPoint opens.
       view3d.showPoint(point);
     } else {
       // Never zooms out: you may already be closer in than POINT_ZOOM — as
       // close as MAX_ZOOM, now that a basemap's native limit no longer stops
       // the camera.
       const zoom = Math.max(map.getZoom(), POINT_ZOOM);
-      map.setView([point.lat, point.lon], zoom);
-      openPoint(point);
+      // Flown, as 3D's panTo is: setView snaps once the zoom changes by more
+      // than 4 or the point is off-screen. The popup waits for the landing — its
+      // autoPan, run mid-flight, would measure the old view and pan against the
+      // flight — but the row highlights now, so a quick second ; ' steps on from
+      // this point rather than the one you are leaving.
+      closePointPopup();
+      selectPoint(point);
+      pendingPoint = point;
+      // Registered first: under reduced motion flyTo is a setView, whose moveend
+      // fires before it returns. A newer flight stops this one, so the one moveend
+      // runs every queued handler and only the latest point passes.
+      map.once('moveend', () => {
+        if (pendingPoint === point) openPoint(point);
+      });
+      map.flyTo([point.lat, point.lon], zoom, { animate: !prefersReducedMotion() });
     }
     // The one place this diverges from a trail row: the drawer covers most of a
     // phone screen and the popup is the whole payload of the click, where a
@@ -404,12 +425,14 @@ async function main(): Promise<void> {
     // Flown rather than fitted, as 3D's fitBounds is: Leaflet's fitBounds snaps
     // without animating once the zoom changes by more than 4 or the new centre
     // is off-screen, so stepping with [ ] glided to some trails and jumped to others.
-    if (trail?.bounds.isValid())
-      map.flyToBounds(trail.bounds, {
-        padding: [30, 30],
-        maxZoom: basemapById(settings.basemapId).maxZoom,
-        animate: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-      });
+    if (!trail?.bounds.isValid()) return;
+    // A point still in flight never gets its popup: you have moved on to a trail.
+    if (pendingPoint) closePointPopup();
+    map.flyToBounds(trail.bounds, {
+      padding: [30, 30],
+      maxZoom: basemapById(settings.basemapId).maxZoom,
+      animate: !prefersReducedMotion(),
+    });
   }
 
   function setBasemap(id: string): void {
@@ -705,6 +728,7 @@ async function main(): Promise<void> {
   /** Opens a point's popup and remembers whose it is, so hiding that point can
    *  take the popup with it. The only place pointPopup is written. */
   function openPoint(point: NationalPoint): void {
+    pendingPoint = null;
     pointPopup = openPointPopup(map, point);
     popupPoint = point;
     selectPoint(point);
@@ -714,6 +738,7 @@ async function main(): Promise<void> {
     if (pointPopup) map.closePopup(pointPopup);
     pointPopup = null;
     popupPoint = null;
+    pendingPoint = null;
     selectPoint(null);
   }
 
