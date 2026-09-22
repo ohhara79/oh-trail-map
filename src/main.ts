@@ -481,6 +481,10 @@ async function main(): Promise<void> {
     selectPoint(popupPoint);
     delete app.dataset.view;
     ui.set3dState('off');
+    // Walking left #map at the minimap's size, and Leaflet only learns the full one
+    // a frame later (see createMap): centred in the old size, where you stood would
+    // land near the top-left corner rather than under #crosshair.
+    map.invalidateSize({ pan: false });
     // Uncapped: 2D reaches MAX_ZOOM, which is exactly what orbit tops out at, so
     // however far in you were is a zoom 2D can hold.
     map.setView([back.lat, back.lon], back.zoom, { animate: false });
