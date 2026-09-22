@@ -27,6 +27,10 @@ const MIN_ELE_SPAN = 30;
 /** A point's pin on the line: smaller than the cursor's dot (r 4), which it sits under. */
 const PASS_RADIUS = 3.5;
 const SVG_NS = 'http://www.w3.org/2000/svg';
+/** How near a pin, in CSS pixels from its centre, a drag snaps onto its point: a
+ *  finger is wider than a mouse pointer. */
+const SNAP_PX_MOUSE = 6;
+const SNAP_PX_TOUCH = 12;
 
 function el<T extends Element>(id: string): T {
   const found = document.getElementById(id);
@@ -82,10 +86,10 @@ export class ProfilePanel {
       // past the chart's edge.
       this.dragging = e.pointerId;
       this.chart.setPointerCapture(e.pointerId);
-      this.scrubTo(e.clientX);
+      this.scrubTo(e.clientX, e.pointerType);
     });
     this.chart.addEventListener('pointermove', (e) => {
-      if (e.pointerId === this.dragging) this.scrubTo(e.clientX);
+      if (e.pointerId === this.dragging) this.scrubTo(e.clientX, e.pointerType);
     });
     const release = (e: PointerEvent): void => {
       if (e.pointerId === this.dragging) this.dragging = null;
@@ -152,12 +156,27 @@ export class ProfilePanel {
     this.syncCursor();
   }
 
-  private scrubTo(clientX: number): void {
+  /**
+   * The cursor to where the pointer is along the chart, or onto a national point's
+   * pin when the pointer is that close to it. Only a drag snaps: the keys and ◀ ▶
+   * still step one GPX point at a time, so the points beside a pin stay reachable.
+   */
+  private scrubTo(clientX: number, pointerType: string): void {
     const profile = this.profile;
     if (!profile) return;
     const rect = this.chart.getBoundingClientRect();
     const t = rect.width > 0 ? Math.min(1, Math.max(0, (clientX - rect.left) / rect.width)) : 0;
-    const index = indexAtDistance(profile, t * profile.total);
+    let index = indexAtDistance(profile, t * profile.total);
+    let nearest = pointerType === 'mouse' ? SNAP_PX_MOUSE : SNAP_PX_TOUCH;
+    const px = t * rect.width;
+    for (const pass of this.passes) {
+      if (this.hiddenPoints.has(pass.point.code)) continue;
+      const d = Math.abs(this.x(profile.s[pass.index]) - px);
+      if (d <= nearest) {
+        nearest = d;
+        index = pass.index;
+      }
+    }
     if (index !== this.cursor) this.cb.onCursor(index);
   }
 
