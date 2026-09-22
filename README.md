@@ -139,6 +139,7 @@ leave Ctrl/Alt/Cmd combinations to the browser.
 | `3` | Switch between 2D and 3D |
 | `E` | Elevation profile (the playback one while a trail plays) |
 | `,` `.` | Previous / next GPX point on the profile; `Shift` for 10, hold to repeat |
+| arrows, `PgUp` `PgDn`, `Home` `End` | Elevation chart (once clicked): step 1 or 100 GPX points, or jump to the first / last; `Shift` for ×10 |
 | `[` `]` | Previous / next trail in the list (as filtered, skipping hidden ones) |
 | `;` `'` | Previous / next national point on the selected trail's profile, ringed and named on the map as a hover would; with no trail selected, in the list (as filtered, skipping hidden ones) |
 | `Enter` | Walk the selected trail in 3D, from the profile cursor |
