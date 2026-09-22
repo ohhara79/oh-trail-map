@@ -149,15 +149,14 @@ async function main(): Promise<void> {
   let hoverFrame = 0;
 
   // The elevation profile. profileOpen is whether you asked for it, and outlives
-  // a change of selection; profileTrail is the trail it is actually showing — the
-  // selected one while it is open, null otherwise. cursorIndex is the GPX point
-  // its cursor is on, and setCursor() the only writer of it.
+  // a change of selection. cursorTrail is the trail the cursor is on — the one
+  // playing, else the selected one — whether or not the panel shows it, so the
+  // dot on the map follows a selected trail with the panel closed too. cursorIndex
+  // is the GPX point the cursor is on, and setCursor() the only writer of it. A
+  // new cursorTrail starts with no point, so deselecting a trail clears it.
   let profileOpen = false;
-  let profileTrail: Trail | null = null;
+  let cursorTrail: Trail | null = null;
   let cursorIndex: number | null = null;
-  // The point the cursor was on when the panel last let go of a trail, so the same
-  // trail coming back — the profile closed and reopened — gets its point back.
-  let parkedCursor: { trail: Trail; index: number } | null = null;
   // The trail 3D playback is walking, if any. While it plays it takes the panel
   // over — the readout is the only place the point you are standing on is spelled
   // out in 3D — without touching profileOpen, so the panel goes back to whatever
@@ -312,7 +311,7 @@ async function main(): Promise<void> {
       if (!trail) return;
       // A point picked on this trail's profile is where the walk starts; taken
       // before selectTrail, which could move the panel off it.
-      const from = profileTrail === trail && cursorIndex !== null ? cursorIndex : undefined;
+      const from = cursorTrail === trail && cursorIndex !== null ? cursorIndex : undefined;
       // A hidden trail would be walked with no line under your feet.
       setVisible(trail, true, map);
       selectTrail(id);
@@ -597,25 +596,24 @@ async function main(): Promise<void> {
   }
 
   /**
-   * The panel, and the trail it is for, from playback, profileOpen and the
-   * selection. A trail playing in 3D wins: it is the trail you are standing on,
-   * the selection bar that holds the toggle is hidden there, and a tap on the
-   * scene is what puts the panel away with the rest of the controls. The playback
-   * bar's own button hides just the panel; the trail stays its trail, so the cursor
-   * keeps following the walk while it is away.
+   * The cursor's trail from playback and the selection, and whether the panel
+   * shows it from playback, profileOpen and playbackProfileOpen. A trail playing in
+   * 3D wins: it is the trail you are standing on, the selection bar that holds the
+   * toggle is hidden there, and a tap on the scene is what puts the panel away with
+   * the rest of the controls. A hidden panel keeps its trail and cursor, so the dot
+   * goes on following the selection, or the walk, while the chart is away.
    */
   function syncProfile(): void {
-    const selected = (profileOpen && selectedId !== null && findTrail(selectedId)) || null;
+    const selected = (selectedId !== null && findTrail(selectedId)) || null;
     const trail = playbackTrail ?? selected;
-    const hidden = playbackTrail !== null && !playbackProfileOpen;
+    const hidden = playbackTrail ? !playbackProfileOpen : !profileOpen;
     ui.setProfileShown(trail !== null && !hidden);
     ui.setPlaybackProfileShown(playbackProfileOpen);
     profilePanel.setHidden(hidden);
-    if (trail === profileTrail) return;
-    if (profileTrail && cursorIndex !== null) parkedCursor = { trail: profileTrail, index: cursorIndex };
-    profileTrail = trail;
-    // A point number means nothing on another trail; the parked one is for this one.
-    cursorIndex = trail && parkedCursor?.trail === trail ? parkedCursor.index : null;
+    if (trail === cursorTrail) return;
+    cursorTrail = trail;
+    // A point number means nothing on another trail.
+    cursorIndex = null;
     // A trail's id is its file name in data/gpx/ (see trailFiles.ts).
     const profile = trail ? buildProfile(trail) : null;
     profilePanel.show(profile, trail?.id, profile ? pointPasses(profile, points) : []);
@@ -631,9 +629,9 @@ async function main(): Promise<void> {
 
   /** Where the cursor's point is, for the two map dots. */
   function cursorAt(): { lat: number; lon: number; color: string } | null {
-    if (!profileTrail || cursorIndex === null) return null;
-    const profile = buildProfile(profileTrail);
-    return { lat: profile.lat[cursorIndex], lon: profile.lon[cursorIndex], color: profileTrail.color };
+    if (!cursorTrail || cursorIndex === null) return null;
+    const profile = buildProfile(cursorTrail);
+    return { lat: profile.lat[cursorIndex], lon: profile.lon[cursorIndex], color: cursorTrail.color };
   }
 
   /** The panel, the 2D dot and the 3D dot, from cursorIndex. */
@@ -760,11 +758,11 @@ async function main(): Promise<void> {
     if (at && name) hoverLabel.show(name, at.x, at.y);
     else hoverLabel.hide();
 
-    // With the profile open, the selected trail answers the mouse too: near it, the
-    // cursor moves to the nearest point. Only the cursor — a click there still
-    // clears the selection, as any click does while one is made.
-    if (profileTrail?.visible && hoverAt && !view3d && !mapMoving && canHover() && !popupOpen) {
-      const index = nearestPointIndex(map, hoverAt, profileTrail);
+    // While a trail is selected it answers the mouse too, panel open or not: near
+    // it, the cursor moves to the nearest point. Only the cursor — a click there
+    // still clears the selection, as any click does while one is made.
+    if (cursorTrail?.visible && hoverAt && !view3d && !mapMoving && canHover() && !popupOpen) {
+      const index = nearestPointIndex(map, hoverAt, cursorTrail);
       if (index !== null) setCursor(index);
     }
   }

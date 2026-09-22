@@ -59,8 +59,11 @@ npm run preview
   for unnamed, and with the cursor on one the readout names it on a line below
   the number and distance. Dragging near a pin snaps the cursor onto it;
   the keys and ◀ ▶ still step one GPX point at a time. In 2D, hovering near the selected trail moves the cursor to the
-  nearest point too; a click there still only clears the selection. A trail
-  playing in 3D takes the panel over, whether or not you had it open — see below.
+  nearest point too; a click there still only clears the selection. The cursor
+  and its dot belong to the selected trail, not the panel: they stay with the
+  profile closed, hovering still moves them then, and the panel opens on the
+  same point. Deselecting the trail clears the point. A trail playing in 3D
+  takes the panel over, whether or not you had it open — see below.
 - With a mouse, hovering shows what a click would pick before you click, in 2D
   and 3D orbit: a faint white casing under the trail, or a ring around the
   point, with its name beside the pointer. It follows the click's own rules —
