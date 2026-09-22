@@ -51,14 +51,15 @@ npm run preview
   trail list still selects its trail directly.
 - The selection bar's profile button opens the selected trail's elevation
   profile above it, in 2D and 3D, with the name of its GPX file in the chart's
-  bottom-right corner. Hover or drag along it — or focus it and use
+  bottom-right corner. Drag along it — or focus it and use
   ←/→ (Shift for 10, Home/End), or ◀ ▶ — to pick one GPX point: a dot marks it
   on the map, and the panel reads out its lat/lon, elevation, how long after the
   start, its number and how far along the trail. The national points the trail
   passes (within 30 m) sit on the line as small pins, amber for named and grey
   for unnamed — one per visit, so the same point again right after itself (GPS
   jitter) shows only its first pin — and with the cursor on one the readout names it on a line below
-  the number and distance. The cursor and its dot
+  the number and distance. A tap on a pin puts the cursor on its point; a drag
+  never snaps, so the GPX points beside a pin stay in reach. The cursor and its dot
   belong to the selected trail, not the panel: they stay with the profile
   closed, and the panel opens on the same point. Deselecting the trail clears the point. A trail playing in 3D
   takes the panel over, whether or not you had it open — see below.

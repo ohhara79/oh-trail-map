@@ -3,7 +3,8 @@
  * point and a readout of that point over the chart's top-left corner: its number,
  * lat/lon, elevation, and how far and how long into the trail it is. The national
  * points the trail passes sit on the line as small pins, and the readout names the
- * one the cursor is on, on a line of its own.
+ * one the cursor is on, on a line of its own. A tap on a pin puts the cursor on its
+ * point.
  *
  * It renders and reports, like pointsList.ts: main.ts owns which point the cursor
  * is on, hears about every move through onCursor, and hands the answer back with
@@ -26,6 +27,12 @@ const PAD_BOTTOM = 4;
 const MIN_ELE_SPAN = 30;
 /** A point's pin on the line: smaller than the cursor's dot (r 4), which it sits under. */
 const PASS_RADIUS = 3.5;
+/** How near a press must come to a pin's centre to land on its point — a finger's
+ *  more than a mouse's. Only a press on the pin: a drag past one never snaps. */
+const PIN_HIT_PX_MOUSE = 8;
+const PIN_HIT_PX_TOUCH = 14;
+/** How far a press on a pin must move before it lets go of the pin and scrubs. */
+const TAP_SLOP_PX = 5;
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 function el<T extends Element>(id: string): T {
@@ -71,6 +78,10 @@ export class ProfilePanel {
   private hi = 1;
   /** The pointer pressed on the chart and dragging the cursor. */
   private dragging: number | null = null;
+  /** Where a press that landed on a pin went down, until it moves off to scrub. */
+  private heldPinX: number | null = null;
+  /** The pins drawn, where they are drawn, for a press to find. */
+  private pins: { index: number; x: number; y: number }[] = [];
   /** Put away with its profile kept, so the cursor goes on following and the panel
    *  comes back on the same point. */
   private hiddenByUser = false;
@@ -84,16 +95,30 @@ export class ProfilePanel {
       if (!this.profile || e.button !== 0) return;
       // A mouse too scrubs only while pressed: by hovering, it moved the location
       // whenever it merely passed over the panel. Captured, so the drag goes on
-      // past the chart's edge.
+      // past the chart's edge. A press on a pin puts the cursor on its point
+      // instead, and holds it there until the drag moves off.
       this.dragging = e.pointerId;
       this.chart.setPointerCapture(e.pointerId);
-      this.scrubTo(e.clientX);
+      const rect = this.chart.getBoundingClientRect();
+      const pin = this.pinAt(e.clientX - rect.left, e.clientY - rect.top, e.pointerType);
+      if (pin === null) {
+        this.heldPinX = null;
+        this.scrubTo(e.clientX);
+      } else {
+        this.heldPinX = e.clientX;
+        if (pin !== this.cursor) this.cb.onCursor(pin);
+      }
     });
     this.chart.addEventListener('pointermove', (e) => {
-      if (e.pointerId === this.dragging) this.scrubTo(e.clientX);
+      if (e.pointerId !== this.dragging) return;
+      if (this.heldPinX !== null && Math.abs(e.clientX - this.heldPinX) <= TAP_SLOP_PX) return;
+      this.heldPinX = null;
+      this.scrubTo(e.clientX);
     });
     const release = (e: PointerEvent): void => {
-      if (e.pointerId === this.dragging) this.dragging = null;
+      if (e.pointerId !== this.dragging) return;
+      this.dragging = null;
+      this.heldPinX = null;
     };
     this.chart.addEventListener('pointerup', release);
     this.chart.addEventListener('pointercancel', release);
@@ -264,6 +289,7 @@ export class ProfilePanel {
   private drawPoints(): void {
     const profile = this.profile;
     this.pointsGroup.replaceChildren();
+    this.pins = [];
     if (!profile || !this.width) return;
     const hasEle = Number.isFinite(profile.eleMin);
     let last = '';
@@ -271,16 +297,31 @@ export class ProfilePanel {
       if (this.hiddenPoints.has(point.code) || point.code === last) continue;
       last = point.code;
       const ele = profile.ele[index];
+      const x = this.x(profile.s[index]);
+      const y = hasEle && !Number.isNaN(ele) ? this.y(ele) : this.height - PAD_BOTTOM;
+      this.pins.push({ index, x, y });
       const circle = document.createElementNS(SVG_NS, 'circle');
-      circle.setAttribute('cx', this.x(profile.s[index]).toFixed(1));
-      circle.setAttribute(
-        'cy',
-        (hasEle && !Number.isNaN(ele) ? this.y(ele) : this.height - PAD_BOTTOM).toFixed(1),
-      );
+      circle.setAttribute('cx', x.toFixed(1));
+      circle.setAttribute('cy', y.toFixed(1));
       circle.setAttribute('r', String(PASS_RADIUS));
       circle.setAttribute('fill', point.name ? PIN_COLOR_NAMED : PIN_COLOR_UNNAMED);
       this.pointsGroup.append(circle);
     }
+  }
+
+  /** The GPX point of the pin nearest (`x`, `y`) on the chart, if the press is near
+   *  enough to it. The viewBox is the chart's pixel size, so pins sit in its pixels. */
+  private pinAt(x: number, y: number, pointerType: string): number | null {
+    let found: number | null = null;
+    let nearest = pointerType === 'mouse' ? PIN_HIT_PX_MOUSE : PIN_HIT_PX_TOUCH;
+    for (const pin of this.pins) {
+      const d = Math.hypot(pin.x - x, pin.y - y);
+      if (d <= nearest) {
+        nearest = d;
+        found = pin.index;
+      }
+    }
+    return found;
   }
 
   /** The point on, closest to GPX point `i` and within PASS_DISTANCE of it. */
