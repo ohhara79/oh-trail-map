@@ -50,6 +50,8 @@
             <p id="about-name"></p>
             <p><a id="about-email"></a></p>
             <p><a id="about-homepage" target="_blank" rel="noopener"></a></p>
+            <!-- Only where there is a keyboard to press them with; see applyAbout(). -->
+            <p id="about-keys"><button id="shortcuts-open" type="button" class="link-button">Keyboard shortcuts</button> <kbd>?</kbd></p>
           </footer>
         </div>
       </aside>
@@ -227,6 +229,42 @@
         </div>
       </div>
       <div id="notices"></div>
+      <!-- The ? sheet, opened and closed by shortcuts.ts. Keep in step with the keys
+           there and with the README's list. -->
+      <dialog id="shortcuts" aria-labelledby="shortcuts-title">
+        <header class="row">
+          <h2 id="shortcuts-title" class="grow">Keyboard shortcuts</h2>
+          <button id="shortcuts-close" type="button" title="Close" aria-label="Close">&times;</button>
+        </header>
+        <h3>Anywhere</h3>
+        <dl>
+          <dt><kbd>?</kbd></dt><dd>This list</dd>
+          <dt><kbd>/</kbd></dt><dd>Filter trails by name</dd>
+          <dt><kbd>L</kbd></dt><dd>Show or hide the panel</dd>
+          <dt><kbd>3</kbd></dt><dd>Switch between 2D and 3D</dd>
+          <dt><kbd>E</kbd></dt><dd>Elevation profile</dd>
+          <dt><kbd>,</kbd> <kbd>.</kbd></dt><dd>Previous / next GPX point (<kbd>Shift</kbd> for 10)</dd>
+          <dt><kbd>Enter</kbd></dt><dd>Walk the selected trail in 3D</dd>
+          <dt><kbd>C</kbd></dt><dd>Zoom to the selected trail</dd>
+          <dt><kbd>G</kbd></dt><dd>Show and follow your location</dd>
+          <dt><kbd>B</kbd></dt><dd>Next basemap</dd>
+          <dt><kbd>H</kbd></dt><dd>Hide or show national points</dd>
+          <dt><kbd>Esc</kbd></dt><dd>Step back: filter, selection, walk, panel</dd>
+        </dl>
+        <h3>2D map</h3>
+        <dl>
+          <dt><kbd>+</kbd> <kbd>&minus;</kbd></dt><dd>Zoom (once the map has been clicked)</dd>
+          <dt><kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&rarr;</kbd> <kbd>&darr;</kbd></dt><dd>Pan</dd>
+        </dl>
+        <h3>3D</h3>
+        <dl>
+          <dt><kbd>V</kbd></dt><dd>Walk at eye height, or back to orbit</dd>
+          <dt><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></dt><dd>Walk (or the arrows; <kbd>Shift</kbd> to run)</dd>
+          <dt><kbd>M</kbd></dt><dd>2D minimap</dd>
+          <dt><kbd>Space</kbd> <kbd>P</kbd></dt><dd>Pause or play the trail</dd>
+          <dt><kbd>X</kbd></dt><dd>Playback speed</dd>
+        </dl>
+      </dialog>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

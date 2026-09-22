@@ -153,6 +153,18 @@ export class Ui {
     this.app.dataset.panel = open ? 'open' : 'closed';
   }
 
+  togglePanel(): void {
+    this.setPanel(this.app.dataset.panel !== 'open');
+  }
+
+  /** Opens the panel with the cursor in the trail filter, its text selected so
+   *  typing replaces the last query. */
+  focusTrailSearch(): void {
+    this.setPanel(true);
+    this.search.focus();
+    this.search.select();
+  }
+
   applySettings(settings: Settings): void {
     // Resolved rather than read raw: a saved id whose basemap has since been
     // removed must check the radio for the fallback the map actually loaded.

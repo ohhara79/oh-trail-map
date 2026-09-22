@@ -1094,3 +1094,33 @@ button:hover { background: #f5f6f8; }
   #mode3d { --icon-w: 36px; --eye-w: 56px; }
   .options label { padding: 6px 0; }
 }
+
+/* -- keyboard shortcuts ---------------------------------------------------------
+   The footer's way into the ? sheet, dressed as the links beside it. */
+.link-button {
+  padding: 0; border: 0; background: none; font: inherit;
+  color: var(--accent); cursor: pointer;
+}
+.link-button:hover { text-decoration: underline; }
+kbd {
+  display: inline-block; min-width: 1.6em; padding: 0 5px;
+  border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px;
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-align: center; color: var(--fg); background: var(--bg);
+}
+#shortcuts {
+  width: min(420px, calc(100vw - 32px)); max-height: calc(100dvh - 32px);
+  padding: 14px 18px 18px; border: 1px solid var(--border); border-radius: 10px;
+  color: var(--fg); background: var(--bg);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, .25);
+}
+#shortcuts::backdrop { background: rgba(0, 0, 0, .3); }
+#shortcuts h2 { margin: 0; font-size: 16px; }
+#shortcuts h3 { margin: 14px 0 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
+#shortcuts dl {
+  display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px;
+  margin: 0; align-items: baseline;
+}
+#shortcuts dt { white-space: nowrap; }
+#shortcuts dd { margin: 0; }
+#shortcuts-close { padding: 0 8px; font-size: 18px; line-height: 1.4; }

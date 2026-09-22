@@ -126,6 +126,33 @@ npm run preview
 - Works on a phone: the map stays full-width and the control panel becomes a
   drawer over it, opened with the ☰ button in the top-left.
 
+## Keyboard shortcuts
+
+On a PC, press `?` for this list in the app (also linked from the panel's footer).
+Letters work with the Korean IME on, do nothing while typing in a filter box, and
+leave Ctrl/Alt/Cmd combinations to the browser.
+
+| Key | Action |
+|---|---|
+| `?` | Show or hide the shortcut list |
+| `/` | Open the panel and filter trails by name |
+| `L` | Show or hide the panel |
+| `3` | Switch between 2D and 3D |
+| `E` | Elevation profile (the playback one while a trail plays) |
+| `,` `.` | Previous / next GPX point on the profile; `Shift` for 10, hold to repeat |
+| `Enter` | Walk the selected trail in 3D, from the profile cursor |
+| `C` | Zoom to the selected trail |
+| `G` | Show and follow your location |
+| `B` | Next basemap |
+| `H` | Hide or show every national point |
+| `Esc` | Step back: filter, selection, playback, walk, panel |
+| `+` `-`, arrows | Zoom and pan the 2D map (once it has been clicked) |
+| `V` | 3D: walk at eye height, or back to orbit |
+| `W` `A` `S` `D`, arrows | 3D walk; `Shift` to run |
+| `M` | 3D walk/playback: the 2D minimap |
+| `Space`, `P` | Pause or play the trail |
+| `X` | Playback speed |
+
 ## Samples
 
 `samples/` holds two synthetic GPX tracks near Bukhansan, Seoul (~6.0 km /

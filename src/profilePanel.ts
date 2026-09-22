@@ -240,7 +240,7 @@ export class ProfilePanel {
 
   /** Moves the cursor by `delta` points; from no cursor, onto the first point.
    *  False when it could not move: no trail, or already at that end. */
-  private step(delta: number): boolean {
+  step(delta: number): boolean {
     const profile = this.profile;
     if (!profile) return false;
     const last = profile.s.length - 1;

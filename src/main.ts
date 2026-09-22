@@ -1,7 +1,7 @@
 import L from 'leaflet';
 import './style.css';
 
-import { basemapById } from './basemaps';
+import { basemapById, BASEMAPS } from './basemaps';
 import { cachedElevation, elevationTile, loadElevation } from './dem';
 import { compassNeedsPermission, requestCompassPermission, type Heading } from './heading';
 import { createMap, startLocating } from './map';
@@ -28,6 +28,7 @@ import {
   saveSettings,
   type TrailRecord,
 } from './store';
+import { installShortcuts } from './shortcuts';
 import { Ui } from './ui';
 import { loadTrailFiles } from './trailFiles';
 // Type-only, and so erased: the module itself is loaded on demand in open3d(),
@@ -86,7 +87,11 @@ function applyAbout(): void {
   homepageEl.href = homepage;
   homepageEl.parentElement!.hidden = !homepage;
 
-  document.getElementById('about')!.hidden = !(name || email || homepage);
+  // Shortcuts need a keyboard, which a mouse is the best sign of there being.
+  const keys = canHover();
+  document.getElementById('about-keys')!.hidden = !keys;
+
+  document.getElementById('about')!.hidden = !(name || email || homepage || keys);
 }
 
 function findTrail(id: string): Trail | undefined {
@@ -239,28 +244,9 @@ async function main(): Promise<void> {
       restyleAll();
       refresh();
     },
-    onZoomTo: (id) => {
-      if (view3d) {
-        view3d.fitTrail(id);
-        return;
-      }
-      const trail = findTrail(id);
-      // Capped at the source's native level: framing a trail is automatic, and
-      // a 200 m loop would otherwise land on upscaled tiles you never asked for.
-      // Zooming in by hand still goes deeper.
-      if (trail?.bounds.isValid())
-        map.fitBounds(trail.bounds, {
-          padding: [30, 30],
-          maxZoom: basemapById(settings.basemapId).maxZoom,
-        });
-    },
+    onZoomTo: (id) => zoomToTrail(id),
     onSelect: (id) => selectTrail(id),
-    onBasemapChange: (id) => {
-      settings = { ...settings, basemapId: id };
-      handle.setBasemap(id);
-      view3d?.setBasemap(id);
-      void saveSettings(settings);
-    },
+    onBasemapChange: (id) => setBasemap(id),
     onFilterChange: () => refresh(),
     onLocate: () => {
       if (blockedMessage) {
@@ -352,6 +338,49 @@ async function main(): Promise<void> {
   });
 
   ui.applySettings(settings);
+
+  installShortcuts({
+    togglePanel: () => ui.togglePanel(),
+    focusSearch: () => ui.focusTrailSearch(),
+    stepProfile: (delta) => void profilePanel.step(delta),
+    zoomToSelected: () => {
+      if (selectedId !== null) zoomToTrail(selectedId);
+    },
+    nextBasemap: () => {
+      const at = BASEMAPS.indexOf(basemapById(settings.basemapId));
+      setBasemap(BASEMAPS[(at + 1) % BASEMAPS.length].id);
+      // The radios only learn of a change they did not make from here.
+      ui.applySettings(settings);
+    },
+    // All off while any is on, the way the list's master checkbox reads.
+    togglePoints: () => {
+      const codes = [...pointByCode.keys()];
+      setPointsHidden(codes, codes.some((code) => !hiddenPoints.has(code)));
+    },
+  });
+
+  function zoomToTrail(id: string): void {
+    if (view3d) {
+      view3d.fitTrail(id);
+      return;
+    }
+    const trail = findTrail(id);
+    // Capped at the source's native level: framing a trail is automatic, and
+    // a 200 m loop would otherwise land on upscaled tiles you never asked for.
+    // Zooming in by hand still goes deeper.
+    if (trail?.bounds.isValid())
+      map.fitBounds(trail.bounds, {
+        padding: [30, 30],
+        maxZoom: basemapById(settings.basemapId).maxZoom,
+      });
+  }
+
+  function setBasemap(id: string): void {
+    settings = { ...settings, basemapId: id };
+    handle.setBasemap(id);
+    view3d?.setBasemap(id);
+    void saveSettings(settings);
+  }
 
   // Checked by constructor presence rather than by creating a context, which
   // would spin up a GPU context on every page load just to throw it away. A
