@@ -56,7 +56,8 @@ npm run preview
   on the map, and the panel reads out its lat/lon, elevation, how long after the
   start, its number and how far along the trail. The national points the trail
   passes (within 30 m) sit on the line as small pins, amber for named and grey
-  for unnamed, and with the cursor on one the readout names it on a line below
+  for unnamed — one per visit, so the same point again right after itself (GPS
+  jitter) shows only its first pin — and with the cursor on one the readout names it on a line below
   the number and distance. The cursor and its dot
   belong to the selected trail, not the panel: they stay with the profile
   closed, and the panel opens on the same point. Deselecting the trail clears the point. A trail playing in 3D

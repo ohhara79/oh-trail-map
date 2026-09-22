@@ -258,14 +258,18 @@ export class ProfilePanel {
   }
 
   /** A pin on the line for each pass of a point that is on, coloured as its map pin.
-   *  Without elevation it sits on the flat baseline the line is drawn as then. */
+   *  Without elevation it sits on the flat baseline the line is drawn as then. A pass
+   *  of the same point as the pin before it — GPS jitter in and out of PASS_DISTANCE —
+   *  draws nothing, so one visit shows one pin, at its first pass. */
   private drawPoints(): void {
     const profile = this.profile;
     this.pointsGroup.replaceChildren();
     if (!profile || !this.width) return;
     const hasEle = Number.isFinite(profile.eleMin);
+    let last = '';
     for (const { index, point } of this.passes) {
-      if (this.hiddenPoints.has(point.code)) continue;
+      if (this.hiddenPoints.has(point.code) || point.code === last) continue;
+      last = point.code;
       const ele = profile.ele[index];
       const circle = document.createElementNS(SVG_NS, 'circle');
       circle.setAttribute('cx', this.x(profile.s[index]).toFixed(1));
