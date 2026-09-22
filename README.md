@@ -135,7 +135,6 @@ leave Ctrl/Alt/Cmd combinations to the browser.
 | Key | Action |
 |---|---|
 | `?` | Show or hide the shortcut list |
-| `/` | Open the panel and filter trails by name |
 | `L` | Show or hide the panel |
 | `3` | Switch between 2D and 3D |
 | `E` | Elevation profile (the playback one while a trail plays) |

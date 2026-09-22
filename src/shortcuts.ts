@@ -13,8 +13,6 @@
 export type ShortcutCallbacks = {
   /** `L`: the side panel, open or closed. */
   togglePanel: () => void;
-  /** `/`: open the panel with the trail filter focused. */
-  focusSearch: () => void;
   /** `,` and `.`: move the profile cursor by this many points. */
   stepProfile: (delta: number) => void;
   /** `[` and `]`: the previous or next trail in the panel list. */
@@ -126,7 +124,6 @@ export function installShortcuts(cb: ShortcutCallbacks): void {
     }
 
     const action: (() => void) | undefined = {
-      Slash: cb.focusSearch,
       KeyL: cb.togglePanel,
       KeyC: cb.zoomToSelected,
       KeyB: cb.nextBasemap,

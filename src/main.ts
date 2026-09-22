@@ -383,7 +383,6 @@ async function main(): Promise<void> {
 
   installShortcuts({
     togglePanel: () => ui.togglePanel(),
-    focusSearch: () => ui.focusTrailSearch(),
     stepProfile: (delta) => void profilePanel.step(delta),
     // The rows the list shows, in its order, less those switched off: each step
     // does what a click on the neighbouring row would, and lands on something drawn.
