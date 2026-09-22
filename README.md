@@ -153,6 +153,7 @@ leave Ctrl/Alt/Cmd combinations to the browser.
 | `W` `A` `S` `D`, arrows | 3D walk; `Shift` to run |
 | `N` | 3D: face north and level, as the compass button does |
 | `M` | 3D walk/playback: the 2D minimap |
+| `K` | 3D walk/playback: the minimap small or large, as a click on it does |
 | `Space`, `P` | Pause or play the trail |
 | `X` | Playback speed |
 

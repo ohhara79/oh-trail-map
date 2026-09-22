@@ -411,6 +411,7 @@ async function main(): Promise<void> {
       const code = stepIn(codes, selectedPointCode, delta);
       if (code !== null) goToPoint(code);
     },
+    toggleMinimapSize,
     zoomToSelected: () => {
       if (selectedId !== null) zoomToTrail(selectedId);
     },
@@ -678,6 +679,15 @@ async function main(): Promise<void> {
     // frame the rule reveals it, rather than showing where you used to be until the
     // next camera frame — or, in a paused playback, indefinitely.
     if (minimapOn && cameraAt) followCamera(cameraAt);
+  }
+
+  /** A click on the inset, or `K`: the other size, but only for a minimap that is
+   *  showing — in orbit, or turned off, there is nothing to see it change. */
+  function toggleMinimapSize(): void {
+    const mode = app.dataset.mode3d;
+    if (!view3d || !minimapOn || (mode !== 'walk' && mode !== 'playback')) return;
+    minimapLarge = !minimapLarge;
+    syncMinimap();
   }
 
   /** The single place the locate button's appearance is derived. */
@@ -1005,8 +1015,7 @@ async function main(): Promise<void> {
     // off is the button's job, since a click on a minimap that is gone cannot ask
     // for it back.
     if (view3d) {
-      minimapLarge = !minimapLarge;
-      syncMinimap();
+      toggleMinimapSize();
       return;
     }
     if (clearMapSelection()) return;

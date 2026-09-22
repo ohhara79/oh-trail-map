@@ -20,6 +20,8 @@ export type ShortcutCallbacks = {
   /** `;` and `'`: the previous or next national point on the selected trail's
    *  profile, or in the panel list with no trail selected. */
   stepPoint: (delta: 1 | -1) => void;
+  /** `K`: the 3D minimap, small or large. */
+  toggleMinimapSize: () => void;
   /** `C`: frame the selected trail. */
   zoomToSelected: () => void;
   /** `B`: the next basemap. */
@@ -130,6 +132,7 @@ export function installShortcuts(cb: ShortcutCallbacks): void {
       KeyC: cb.zoomToSelected,
       KeyB: cb.nextBasemap,
       KeyH: cb.togglePoints,
+      KeyK: cb.toggleMinimapSize,
       BracketLeft: () => cb.stepTrail(-1),
       BracketRight: () => cb.stepTrail(1),
       Semicolon: () => cb.stepPoint(-1),
