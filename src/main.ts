@@ -177,6 +177,9 @@ async function main(): Promise<void> {
   let profileOpen = false;
   let cursorTrail: Trail | null = null;
   let cursorIndex: number | null = null;
+  // The pin `;` `'` last stepped the cursor onto, previewed as a hover would be
+  // while the cursor stays there. See steppedPoint().
+  let steppedPass: { trail: Trail; index: number; point: NationalPoint } | null = null;
   // The trail 3D playback is walking, if any. While it plays it takes the panel
   // over — the readout is the only place the point you are standing on is spelled
   // out in 3D — without touching profileOpen, so the panel goes back to whatever
@@ -397,7 +400,11 @@ async function main(): Promise<void> {
     // cursor: the list would fly off the trail. None left that way is nothing.
     stepPoint: (delta) => {
       if (cursorTrail) {
-        profilePanel.stepPass(delta);
+        const pass = profilePanel.stepPass(delta);
+        if (pass) {
+          steppedPass = { trail: cursorTrail, ...pass };
+          applySteppedPoint();
+        }
         return;
       }
       const codes = pointsList.renderedCodes().filter((code) => !hiddenPoints.has(code));
@@ -527,6 +534,9 @@ async function main(): Promise<void> {
         view.setHeading(lastHeading);
         view.setFollowing(following);
         view.setProfileCursor(cursorAt());
+        view.setSteppedPoint(steppedPoint());
+        // Off the 2D map, which is only the minimap now.
+        scheduleHover();
         app.dataset.view = '3d';
         ui.set3dState('on');
         return view;
@@ -572,6 +582,8 @@ async function main(): Promise<void> {
     // Uncapped: 2D reaches MAX_ZOOM, which is exactly what orbit tops out at, so
     // however far in you were is a zoom 2D can hold.
     map.setView([back.lat, back.lon], back.zoom, { animate: false });
+    // Back onto the 2D map, where no move need have fired.
+    scheduleHover();
     // setView fires its move before the view is 2D's again; say it now anyway, in
     // case the view was already there and no move fired at all.
     read2d();
@@ -731,6 +743,22 @@ async function main(): Promise<void> {
     // the dot would sit on the lens rather than mark anything. The 2D dot still
     // gets it, and is right the moment 3D closes.
     view3d?.setProfileCursor(playbackTrail ? null : at);
+    applySteppedPoint();
+  }
+
+  /** The pin `;` `'` stepped onto, while the cursor is still on it and it is
+   *  drawn. Derived from the cursor, so whatever moves the cursor off it — a
+   *  scrub, `,` `.`, another trail — ends the preview without clearing anything. */
+  function steppedPoint(): NationalPoint | null {
+    if (!steppedPass || steppedPass.trail !== cursorTrail || steppedPass.index !== cursorIndex) return null;
+    return hiddenPoints.has(steppedPass.point.code) ? null : steppedPass.point;
+  }
+
+  /** Both views' previews of steppedPoint(). Not while playing, where walking
+   *  names what is near. */
+  function applySteppedPoint(): void {
+    scheduleHover();
+    view3d?.setSteppedPoint(playbackTrail ? null : steppedPoint());
   }
 
   /** Opens a point's popup and remembers whose it is, so hiding that point can
@@ -798,7 +826,7 @@ async function main(): Promise<void> {
     pointsLayer.sync(hiddenPoints);
     profilePanel.setHiddenPoints(hiddenPoints);
     if (popupPoint && hiddenPoints.has(popupPoint.code)) closePointPopup();
-    scheduleHover();
+    applySteppedPoint();
     view3d?.syncPoints();
   }
 
@@ -838,12 +866,20 @@ async function main(): Promise<void> {
     const at = !view3d && !mapMoving && canHover() && !popupOpen && selectedId === null ? hoverAt : null;
     const pin = at ? pointsLayer.pinAt(at) : null;
     const trail = at && !pin ? trailAt(map, at, trails) : null;
-    pointsLayer.setHovered(pin?.code ?? null);
+    // With nothing under the mouse — always so with a trail selected — the pin
+    // `;` `'` stepped onto, labelled beside the pin itself while it is on screen.
+    const stepped = !view3d && !pin && !trail ? steppedPoint() : null;
+    const steppedAt = stepped ? map.latLngToContainerPoint([stepped.lat, stepped.lon]) : null;
+    const size = map.getSize();
+    const steppedOn =
+      steppedAt !== null && steppedAt.x >= 0 && steppedAt.y >= 0 && steppedAt.x <= size.x && steppedAt.y <= size.y;
+    pointsLayer.setHovered(pin?.code ?? stepped?.code ?? null);
     hoverHalo.show(trail);
     // Leaflet cannot know to give a pointer to either: both are picked geometrically.
     map.getContainer().classList.toggle('map-pick', pin !== null || trail !== null);
     const name = pin ? pin.name || pin.code : trail?.name;
     if (at && name) hoverLabel.show(name, at.x, at.y);
+    else if (stepped && steppedOn) hoverLabel.show(stepped.name || stepped.code, steppedAt.x, steppedAt.y);
     else hoverLabel.hide();
   }
 
@@ -1008,6 +1044,10 @@ async function main(): Promise<void> {
   map.on('moveend', () => {
     mapMoving = false;
     scheduleHover();
+  });
+  // The stepped pin's label rides along with a pan or zoom.
+  map.on('move', () => {
+    if (steppedPoint()) scheduleHover();
   });
   // Growing into the minimap, or toggling its size, keeps the top-left corner
   // where it was (see createMap), which moves the centre off the eye — and a still

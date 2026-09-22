@@ -138,6 +138,9 @@ export type View3d = {
   setFollowing(on: boolean): void;
   /** The dot for the GPX point the profile's cursor is on, or null for none. */
   setProfileCursor(at: { lat: number; lon: number; color: string } | null): void;
+  /** The pin `;` `'` stepped the profile cursor onto, to preview as a hover would,
+   *  or null for none. */
+  setSteppedPoint(point: NationalPoint | null): void;
   fitTrail(id: string): void;
   panTo(lat: number, lon: number): void;
   /** Plays trail `id` from GPX point `fromPoint`, or from its start. */
@@ -276,6 +279,9 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
    *  the same thing does not restyle the map. */
   let hoveredTrail: string | null = null;
   let hoveredPoint: number | null = null;
+  /** The pin `;` `'` stepped the profile cursor onto, previewed in orbit as a hover
+   *  would be while the mouse picks nothing. main.ts decides it; see setSteppedPoint. */
+  let steppedPoint: NationalPoint | null = null;
 
   const hud = new Hud({
     // A toggle: pressed while walking or playing, so a press from either is back to orbit.
@@ -616,6 +622,9 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     if (mode !== 'orbit') {
       liftPopup();
       syncNearby();
+    } else if (steppedPoint) {
+      // The stepped point's label rides along with the camera.
+      scheduleHover();
     }
     reportReadout();
   });
@@ -770,7 +779,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
 
   /** The single place the 3D hover preview is derived, by the orbit click's rules:
    *  nothing new while a popup is open or a trail is selected, then pickAt(). Walking
-   *  aims with the crosshair instead, and a moving camera is not about to click. */
+   *  aims with the crosshair instead, and a moving camera is not about to click.
+   *  With nothing picked, the pin `;` `'` stepped onto, labelled beside its dot. */
   function syncHover(): void {
     const quiet =
       mode !== 'orbit' ||
@@ -782,7 +792,13 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     const at = quiet ? null : hoverAt;
     const pick = at ? pickAt(at.x, at.y) : null;
     const trail = pick?.trail ?? null;
-    const pointIndex = pick?.point ? points.indexOf(pick.point) : null;
+    const stepped =
+      mode === 'orbit' && tween === null && !pick && steppedPoint && !getScene().hiddenPoints.has(steppedPoint.code)
+        ? steppedPoint
+        : null;
+    const pickedPoint = pick?.point ?? stepped;
+    // main.ts's copy of the point, not this module's: matched by its 지점번호.
+    const pointIndex = pickedPoint ? points.findIndex((p) => p.code === pickedPoint.code) : null;
     if (trail !== hoveredTrail) {
       hoveredTrail = trail;
       map.setFilter(LAYER_TRAIL_HOVER, selectedFilter(trail));
@@ -798,8 +814,19 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     const name = pick?.point
       ? pick.point.name || pick.point.code
       : getScene().trails.find((t) => t.id === pick?.trail)?.name;
+    const steppedAt = stepped && steppedOnScreen(stepped);
     if (at && name) hoverLabel.show(name, at.x, at.y);
+    else if (stepped && steppedAt) hoverLabel.show(stepped.name || stepped.code, steppedAt.x, steppedAt.y);
     else hoverLabel.hide();
+  }
+
+  /** Where the stepped point's dot is on the canvas, or null off it. */
+  function steppedOnScreen(point: NationalPoint): { x: number; y: number } | null {
+    const lngLat = new LngLat(point.lon, point.lat);
+    if (!map.getBounds().contains(lngLat)) return null;
+    const p = map.project(lngLat);
+    const canvas = map.getCanvas();
+    return p.x >= 0 && p.y >= 0 && p.x <= canvas.clientWidth && p.y <= canvas.clientHeight ? p : null;
   }
 
   map.on('mousemove', (e: MapMouseEvent) => {
@@ -1207,6 +1234,11 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     setFollowing(on) {
       following = on;
       syncSteering();
+    },
+    setSteppedPoint(point) {
+      if (point === steppedPoint) return;
+      steppedPoint = point;
+      scheduleHover();
     },
     setProfileCursor(at) {
       if (!at) {
