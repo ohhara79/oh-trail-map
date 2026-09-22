@@ -33,6 +33,13 @@ const PIN_HIT_PX_MOUSE = 8;
 const PIN_HIT_PX_TOUCH = 14;
 /** How far a press on a pin must move before it lets go of the pin and scrubs. */
 const TAP_SLOP_PX = 5;
+/** Holding ◀ or ▶ steps again after HOLD_DELAY_MS, then every REPEAT_MS, taking
+ *  bigger steps the longer it is held: 1 point for a second, 5 up to 2.5 s, then 20. */
+const HOLD_DELAY_MS = 400;
+const REPEAT_MS = 50;
+function holdStep(heldMs: number): number {
+  return heldMs < 1000 ? 1 : heldMs < 2500 ? 5 : 20;
+}
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 function el<T extends Element>(id: string): T {
@@ -82,6 +89,8 @@ export class ProfilePanel {
   private heldPinX: number | null = null;
   /** The pins drawn, where they are drawn, for a press to find. */
   private pins: { index: number; x: number; y: number }[] = [];
+  /** The wait, then the repeat, of a held ◀ or ▶. */
+  private holdTimer: number | null = null;
   /** Put away with its profile kept, so the cursor goes on following and the panel
    *  comes back on the same point. */
   private hiddenByUser = false;
@@ -140,8 +149,44 @@ export class ProfilePanel {
       e.stopPropagation();
     });
 
-    this.prev.addEventListener('click', () => this.step(-1));
-    this.next.addEventListener('click', () => this.step(1));
+    this.holdArrow(this.prev, -1);
+    this.holdArrow(this.next, 1);
+  }
+
+  /** ◀ or ▶: a press steps at once and, held, keeps stepping faster (see HOLD_DELAY_MS).
+   *  Its click steps only from the keyboard; a pointer's has stepped already. */
+  private holdArrow(button: HTMLButtonElement, dir: number): void {
+    button.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      // Else a long touch selects the glyph and opens the Copy callout.
+      e.preventDefault();
+      this.stopHold();
+      button.setPointerCapture(e.pointerId);
+      if (!this.step(dir)) return;
+      const start = performance.now();
+      this.holdTimer = window.setTimeout(() => {
+        this.holdTimer = window.setInterval(() => {
+          if (!this.step(dir * holdStep(performance.now() - start))) this.stopHold();
+        }, REPEAT_MS);
+      }, HOLD_DELAY_MS);
+    });
+    // A disabled button at either end may never see the pointer go up, but it
+    // loses the capture.
+    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture'] as const) {
+      button.addEventListener(type, () => this.stopHold());
+    }
+    button.addEventListener('contextmenu', (e) => e.preventDefault());
+    button.addEventListener('click', (e) => {
+      if (e.detail === 0) this.step(dir);
+    });
+  }
+
+  private stopHold(): void {
+    if (this.holdTimer === null) return;
+    // One id space for both, so either clears it.
+    clearTimeout(this.holdTimer);
+    clearInterval(this.holdTimer);
+    this.holdTimer = null;
   }
 
   /** Shows the panel for `profile`, read from `fileName`, with the national points
@@ -149,6 +194,7 @@ export class ProfilePanel {
    *  is. */
   show(profile: Profile | null, fileName = '', passes: readonly PointPass[] = []): void {
     if (profile === this.profile) return;
+    this.stopHold();
     this.profile = profile;
     this.passes = passes;
     this.cursor = null;
@@ -192,13 +238,16 @@ export class ProfilePanel {
     if (index !== this.cursor) this.cb.onCursor(index);
   }
 
-  /** Moves the cursor by `delta` points; from no cursor, onto the first point. */
-  private step(delta: number): void {
+  /** Moves the cursor by `delta` points; from no cursor, onto the first point.
+   *  False when it could not move: no trail, or already at that end. */
+  private step(delta: number): boolean {
     const profile = this.profile;
-    if (!profile) return;
+    if (!profile) return false;
     const last = profile.s.length - 1;
     const index = this.cursor === null ? 0 : Math.min(last, Math.max(0, this.cursor + delta));
-    if (index !== this.cursor) this.cb.onCursor(index);
+    if (index === this.cursor) return false;
+    this.cb.onCursor(index);
+    return true;
   }
 
   private x(s: number): number {
