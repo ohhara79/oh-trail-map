@@ -79,6 +79,9 @@ npm run preview
     standing, 1 km at 20 m, 5 km at 80 m), and click or tap to open or select it; the selected trail's bar shows while walking too.
     Walking towards a national point you can see (within 100 m) shows its name beside its ball,
     in playback too; it opens only when you aim at it and tap.
+    Stand on a ball — a point's, or the profile cursor's when you step off a
+    playback — and it drops out rather than swallow the view from the inside;
+    its shadow stays on the ground, and it is back as soon as you move off.
     The locate button takes you to your location and keeps following as you
     move, until you walk away or click it again. During playback it leaves the
     trail first. While following, you also face the way you are facing (the

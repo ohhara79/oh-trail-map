@@ -39,12 +39,33 @@ export type PointBalls = CustomLayerInterface & {
   /** One more ball, in `color`, over the GPX point the profile's cursor is on, or
    *  none. Drawn like a point's, and never picked: the orbit dot opens nothing either. */
   setCursor(at: { lat: number; lon: number; color: string } | null): void;
+  /** Where the eye is, so a ball you are standing in can be left out — see
+   *  NEAR_CULL. Null in orbit, where no ball is drawn anyway, and through the flight
+   *  down into walking, which has no walker yet. */
+  setEye(at: { lat: number; lon: number; alt: number } | null): void;
 };
 
 /** Rings from pole to pole, and segments around each. Enough that the edge of a
  *  ball at your feet does not show its corners. */
 const STACKS = 16;
 const SLICES = 24;
+
+/**
+ * A ball whose centre is nearer the eye than this is not drawn at all.
+ *
+ * Walking, the eye is 1.7 m up and a ball's centre 2 m, so standing on its spot puts
+ * the camera 0.3 m from that centre — inside a sphere of radius 1, with the near plane
+ * 0.28 m out (see the firstPerson.ts module comment) and nothing left to clip it away.
+ * What you see then is the sphere's own inside, edge to edge, and the view is gone
+ * until you walk off. Leaving playback stands you on the cursor's point exactly like
+ * that, and walking straight onto a national point does the same.
+ *
+ * The margin over BALL_RADIUS drops the ball a stride before you reach it rather than
+ * at its skin. At this distance it already spans 2·asin(BALL_RADIUS / NEAR_CULL) = 60°,
+ * more than the 50° WALK_FOV, so there is nothing left of it to see anyway — which is
+ * what makes 2 m the right amount and not 1.5 or 4.
+ */
+export const NEAR_CULL = BALL_RADIUS + 1;
 
 const VERTEX = `#version 300 es
 uniform mat4 u_matrix;
@@ -125,6 +146,7 @@ export function createPointBalls(
   // One slot past the points for the cursor's ball.
   const instances = new Float32Array((points.length + 1) * 6);
   let cursor: { lat: number; lon: number; color: [number, number, number] } | null = null;
+  let eye: { lat: number; lon: number; alt: number } | null = null;
   const matrix = new Float32Array(16);
   /** mainMatrix as last drawn with, for project(). */
   let drawn: Float64Array | null = null;
@@ -194,6 +216,15 @@ export function createPointBalls(
       // Every frame, since terrain tiles keep arriving and a finer one moves the
       // ground by metres. A few hundred lookups is nothing next to the draw.
       const skip = hidden();
+      // The eye in the same local metres as the instances, so the cull is measured in
+      // the frame the shader scales BALL_RADIUS in and NEAR_CULL means the same thing
+      // as the size you see.
+      const eyeAt = eye && MercatorCoordinate.fromLngLat([eye.lon, eye.lat], eye.alt);
+      const ex = eyeAt ? (eyeAt.x - origin.x) / unit : 0;
+      const ey = eyeAt ? (eyeAt.y - origin.y) / unit : 0;
+      const ez = eyeAt ? eyeAt.z / unit : 0;
+      const near = (x: number, y: number, z: number) =>
+        eyeAt !== null && (x - ex) ** 2 + (y - ey) ** 2 + (z - ez) ** 2 < NEAR_CULL ** 2;
       let count = 0;
       for (let i = 0; i < points.length; i++) {
         const point = points[i];
@@ -201,20 +232,29 @@ export function createPointBalls(
         grounds[i] = ground ?? NaN;
         if (ground === null) continue;
         const at = MercatorCoordinate.fromLngLat([point.lon, point.lat], ground + BALL_HEIGHT);
-        instances.set(
-          [(at.x - origin.x) / unit, (at.y - origin.y) / unit, at.z / unit, ...colors[i]],
-          count * 6,
-        );
+        const x = (at.x - origin.x) / unit;
+        const y = (at.y - origin.y) / unit;
+        const z = at.z / unit;
+        // Back to NaN, the same as a ball whose terrain has not loaded: grounds is
+        // what pick() aims against, and it is only ever the balls drawn last frame.
+        // So the crosshair stops reaching one the moment it stops being there.
+        if (near(x, y, z)) {
+          grounds[i] = NaN;
+          continue;
+        }
+        instances.set([x, y, z, ...colors[i]], count * 6);
         count++;
       }
       const cursorGround = cursor && map.queryTerrainElevation([cursor.lon, cursor.lat]);
       if (cursor && cursorGround != null) {
         const at = MercatorCoordinate.fromLngLat([cursor.lon, cursor.lat], cursorGround + BALL_HEIGHT);
-        instances.set(
-          [(at.x - origin.x) / unit, (at.y - origin.y) / unit, at.z / unit, ...cursor.color],
-          count * 6,
-        );
-        count++;
+        const x = (at.x - origin.x) / unit;
+        const y = (at.y - origin.y) / unit;
+        const z = at.z / unit;
+        if (!near(x, y, z)) {
+          instances.set([x, y, z, ...cursor.color], count * 6);
+          count++;
+        }
       }
       if (count === 0) return;
 
@@ -272,6 +312,14 @@ export function createPointBalls(
     setCursor(at) {
       cursor = at && { lat: at.lat, lon: at.lon, color: rgb(at.color) };
       map.triggerRepaint();
+    },
+
+    setEye(at) {
+      // No repaint asked for here, unlike setCursor: this is called every frame, and a
+      // repaint a frame would keep the map drawing while you stand still. Nothing is
+      // lost, because the cull can only change when the camera moves, and a camera
+      // that moves has already jumped the map (firstPerson.ts place()).
+      eye = at;
     },
 
     project(lon, lat, alt) {

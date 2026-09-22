@@ -39,7 +39,7 @@ import { haversine } from './gpx';
 import { canHover, createHoverLabel } from './hoverLabel';
 import { LOCATE_ICON_HTML } from './map';
 import type { NationalPoint } from './nationalPoint';
-import { createPointBalls, LAYER_POINT_BALLS } from './pointBalls';
+import { createPointBalls, LAYER_POINT_BALLS, NEAR_CULL } from './pointBalls';
 import { createPointDots, LAYER_POINT_DOTS } from './pointDots';
 import { loadNationalPoints, PIN_RADIUS, PIN_STROKE, popupContent } from './points';
 import {
@@ -651,6 +651,13 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       // makes, so the label never names a ball a tap could not reach.
       const ground = map.queryTerrainElevation([point.lon, point.lat]);
       if (ground === null || !inSight(point.lat, point.lon, ground + BALL_HEIGHT)) continue;
+      // Nor a ball that is not drawn at all: the one you are standing in is left out
+      // of the frame (NEAR_CULL in pointBalls.ts), and this label hangs beside a ball.
+      // To the centre and in three dimensions, the way the layer measures. Along the
+      // ground it would agree at eye height and nowhere else — at 20 m and 80 m you
+      // pass right over a point, never inside its ball, and the name is the whole
+      // reason to fly over one.
+      if (Math.hypot(d, ground + BALL_HEIGHT - walker.altitude) < NEAR_CULL) continue;
       nearest = point;
       nearestDistance = d;
     }
@@ -914,6 +921,9 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       // minimap likewise.
       hud.setAttitude(next.pose.yaw, next.pose.look);
       reportCamera(next.pose);
+      // The altitude place() just used, so the ball layer culls against the camera it
+      // is about to draw with rather than the one before it.
+      balls.setEye({ lat: next.pose.lat, lon: next.pose.lon, alt: next.altitude });
       // Before the early return below, so walking reports no point the same way
       // playing reports one.
       syncPlaybackPoint();
@@ -949,6 +959,10 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
         6000,
       );
     }
+    // Before the loop's first frame, which is a frame behind the one MapLibre draws
+    // for the camera the flight down has just landed on: without this, arriving with
+    // a ball under the crosshair flashes its inside for that frame.
+    balls.setEye({ lat: next.pose.lat, lon: next.pose.lon, alt: next.altitude });
     return next;
   }
 
@@ -956,6 +970,9 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
    *  limits: the flight back up starts past the orbit's pitch limit. */
   function stopWalking(): { pose: Pose; ground: number } | null {
     const stood = walker ? { pose: { ...walker.pose }, ground: walker.groundHeight } : null;
+    // Orbit draws no balls, but the flight up runs frames with none of this loop's,
+    // and an eye left behind would cull against where you used to stand.
+    balls.setEye(null);
     walker?.destroy();
     controls?.destroy();
     walker = null;
