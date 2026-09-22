@@ -57,8 +57,7 @@ npm run preview
   start, its number and how far along the trail. The national points the trail
   passes (within 30 m) sit on the line as small pins, amber for named and grey
   for unnamed, and with the cursor on one the readout names it on a line below
-  the number and distance. Dragging near a pin snaps the cursor onto it;
-  the keys and ◀ ▶ still step one GPX point at a time. The cursor and its dot
+  the number and distance. The cursor and its dot
   belong to the selected trail, not the panel: they stay with the profile
   closed, and the panel opens on the same point. Deselecting the trail clears the point. A trail playing in 3D
   takes the panel over, whether or not you had it open — see below.
