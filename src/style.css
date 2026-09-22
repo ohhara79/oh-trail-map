@@ -423,17 +423,6 @@ button:hover { background: #f5f6f8; }
   background: none;
   border: 0;
 }
-/* The icon is a square box around a round dot. Left interactive, the empty corners
-   would swallow clicks meant for a trail passing underneath — and since a marker
-   that listens for 'click' stops the event reaching the map handler (see
-   createPointsLayer), that trail would simply be unselectable there, with nothing
-   on screen to say why. So only the ink takes the click; Leaflet still finds the marker
-   by walking up from the <circle> to the icon element it registered. The doubled class
-   is not decoration: it is the specificity needed to beat leaflet.css's own
-   .leaflet-marker-icon.leaflet-interactive rule. */
-.leaflet-marker-icon.point-pin { pointer-events: none; }
-.point-pin-body { pointer-events: auto; }
-
 .point-pin-body {
   fill: currentColor;
   /* A casing, for the same reason the trail halo has two: no single colour reads on

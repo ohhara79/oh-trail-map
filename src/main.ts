@@ -141,8 +141,6 @@ async function main(): Promise<void> {
   const hoverLabel = createHoverLabel(map.getContainer());
   /** Where the mouse is over the map, or null when it is not. */
   let hoverAt: L.Point | null = null;
-  /** The pin under the mouse. A pin takes the click over any trail beneath it. */
-  let hoveredPin: NationalPoint | null = null;
   /** Between movestart and moveend: the map is sliding under a pointer that has
    *  not moved, and a drag is not about to click anything. */
   let mapMoving = false;
@@ -201,18 +199,7 @@ async function main(): Promise<void> {
   /** The 지점번호 the panel list draws as selected: whichever point has a popup
    *  open in the view you are looking at. View state, like selectedId. */
   let selectedPointCode: string | null = null;
-  const pointsLayer = createPointsLayer(
-    map,
-    points,
-    (point) => {
-      if (clearMapSelection()) return;
-      openPoint(point);
-    },
-    (point) => {
-      hoveredPin = point;
-      scheduleHover();
-    },
-  );
+  const pointsLayer = createPointsLayer(map, points);
   // Added once and never removed: sync() below decides which pins are in it.
   pointsLayer.layer.addTo(map);
   pointsLayer.sync(hiddenPoints);
@@ -712,8 +699,6 @@ async function main(): Promise<void> {
     pointsLayer.sync(hiddenPoints);
     profilePanel.setHiddenPoints(hiddenPoints);
     if (popupPoint && hiddenPoints.has(popupPoint.code)) closePointPopup();
-    // A pin removed from under the mouse never reports the mouse leaving it.
-    if (hoveredPin && hiddenPoints.has(hoveredPin.code)) hoveredPin = null;
     scheduleHover();
     view3d?.syncPoints();
   }
@@ -745,19 +730,19 @@ async function main(): Promise<void> {
   /**
    * The single place the 2D hover preview is derived. It asks what a click at the
    * mouse would do in the order the click handlers do: nothing new while a popup
-   * is open or a trail is selected (that click only clears), then the pin under
-   * the mouse, then trailAt() — the click's own function, so the preview and the
-   * click cannot disagree.
+   * is open or a trail is selected (that click only clears), then pinAt(), then
+   * trailAt() — the click's own functions, so the preview and the click cannot
+   * disagree.
    */
   function syncHover(): void {
     const popupOpen = pointPopup?.isOpen() ?? false;
     const at = !view3d && !mapMoving && canHover() && !popupOpen && selectedId === null ? hoverAt : null;
-    const pin = at ? hoveredPin : null;
+    const pin = at ? pointsLayer.pinAt(at) : null;
     const trail = at && !pin ? trailAt(map, at, trails) : null;
     pointsLayer.setHovered(pin?.code ?? null);
     hoverHalo.show(trail);
-    // The pointer a pin already gets from Leaflet, given to a trail within reach.
-    map.getContainer().classList.toggle('map-pick', trail !== null);
+    // Leaflet cannot know to give a pointer to either: both are picked geometrically.
+    map.getContainer().classList.toggle('map-pick', pin !== null || trail !== null);
     const name = pin ? pin.name || pin.code : trail?.name;
     if (at && name) hoverLabel.show(name, at.x, at.y);
     else hoverLabel.hide();
@@ -876,10 +861,10 @@ async function main(): Promise<void> {
     if (e.key.startsWith('Arrow')) stopFollowing();
   });
 
-  // One handler for every click off the pins. No listener is attached to the
-  // polylines themselves, so every click reaches the map and trailAt() decides
-  // what was hit. While a trail is selected or a popup is open, any click only
-  // clears it; a trail is picked only from a clear map.
+  // One handler for every click on the map. No listener is attached to the pins or
+  // the polylines, so every click reaches it and pinAt() then trailAt() decide what
+  // was hit. While a trail is selected or a popup is open, any click only clears
+  // it; a pin or a trail is picked only from a clear map.
   map.on('click', (e) => {
     // Only reachable as the 3D minimap, whose one control is its size — turning it
     // off is the button's job, since a click on a minimap that is gone cannot ask
@@ -890,13 +875,18 @@ async function main(): Promise<void> {
       return;
     }
     if (clearMapSelection()) return;
+    // A pin first: it takes the click over any trail beneath it.
+    const pin = pointsLayer.pinAt(e.containerPoint);
+    if (pin) {
+      openPoint(pin);
+      return;
+    }
     const hit = trailAt(map, e.containerPoint, trails);
     if (hit) selectTrail(hit.id);
   });
 
   // The hover preview's inputs; syncHover() above turns them into what is shown.
-  // Over a pin as well: the pins do not listen for mousemove, so it still reaches
-  // the map. Over a control or an open popup it does too, where there is nothing
+  // Over a pin as well: the pins are not interactive, so it still reaches the map. Over a control or an open popup it does too, where there is nothing
   // on the map to pick, so those count as off the map.
   const mapPane = map.getPane('mapPane')!;
   const mapContainer = map.getContainer();

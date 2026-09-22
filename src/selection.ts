@@ -36,9 +36,25 @@ const TOLERANCE_FINE = 15;
 const TOLERANCE_COARSE = 22;
 
 export function tolerance(): number {
-  return window.matchMedia('(pointer: coarse)').matches
-    ? TOLERANCE_COARSE
-    : TOLERANCE_FINE;
+  return coarsePointer() ? TOLERANCE_COARSE : TOLERANCE_FINE;
+}
+
+/**
+ * How close to a national point's centre a click has to land, in CSS pixels. The
+ * dot is drawn 6.5px across the radius; hit-testing only that ink missed a mouse
+ * click just off its edge and most taps outright, and a miss fell through to the
+ * trail the point sits on. Tighter than tolerance(), because a pin takes the click
+ * over any trail beneath it, and a pin on a trail must not swallow the trail.
+ */
+const PIN_REACH_FINE = 12;
+const PIN_REACH_COARSE = 20;
+
+export function pinReach(): number {
+  return coarsePointer() ? PIN_REACH_COARSE : PIN_REACH_FINE;
+}
+
+function coarsePointer(): boolean {
+  return window.matchMedia('(pointer: coarse)').matches;
 }
 
 /**

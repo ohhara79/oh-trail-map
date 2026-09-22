@@ -14,6 +14,7 @@
 import L from 'leaflet';
 import rawTsv from '../data/national_points_w_name.tsv?raw';
 import { parseNationalPoints, type NationalPoint } from './nationalPoint';
+import { pinReach } from './selection';
 import { fold } from './trails';
 
 /**
@@ -219,6 +220,8 @@ export type PointsLayer = {
   sync(hidden: ReadonlySet<string>): void;
   /** Rings the pin a click would open, or no pin for null. */
   setHovered(code: string | null): void;
+  /** The drawn pin a click at `at` (container pixels) opens, or null. */
+  pinAt(at: L.Point): NationalPoint | null;
 };
 
 /**
@@ -226,23 +229,14 @@ export type PointsLayer = {
  * pins are drawn is decided by what is in the group, which sync() sets from the
  * panel list's hidden set.
  *
- * These markers are the one layer in the app that is deliberately interactive.
- * Everywhere else — the halo (selection.ts), the location marker (map.ts) — opts
- * out so that clicks reach the single map handler in main.ts and trailAt() decides
- * what was hit. Here each marker listens for 'click', and Leaflet's
- * _findEventTargets only falls back to the map when no layer listened, so a click
- * on a pin goes to `onPinClick` and never to the map handler. No bindPopup: its
- * click listener opens the popup unconditionally, where main.ts only opens one
- * when nothing is selected yet.
+ * The markers are not interactive. A click on one reaches the single map handler
+ * in main.ts like any other, which asks pinAt() before trailAt(): picking is
+ * geometric for pins as it is for trails, so the reach is pinReach() whatever the
+ * dot's drawn size, and where pins crowd the nearest one wins rather than whichever
+ * happens to be stacked on top. No bindPopup: its click listener opens the popup
+ * unconditionally, where main.ts only opens one when nothing is selected yet.
  */
-export function createPointsLayer(
-  map: L.Map,
-  points: NationalPoint[],
-  onPinClick: (point: NationalPoint) => void,
-  /** The pin under the mouse, or null once it leaves. Needed apart from the map's
-   *  mousemove, which cannot tell a pin from the map beneath it. */
-  onPinHover: (point: NationalPoint | null) => void,
-): PointsLayer {
+export function createPointsLayer(map: L.Map, points: NationalPoint[]): PointsLayer {
   map.createPane(PIN_PANE).style.zIndex = PIN_PANE_Z_INDEX;
   const group = L.layerGroup();
 
@@ -259,7 +253,7 @@ export function createPointsLayer(
 
   // Keyed on 지점번호, which parseNationalPoints has already deduplicated, so it is
   // unique by construction — and it is the same string Settings.hiddenPoints holds.
-  const markers = new Map<string, L.Marker>();
+  const markers = new Map<string, { marker: L.Marker; point: NationalPoint }>();
   let hoveredCode: string | null = null;
 
   for (const point of points) {
@@ -274,32 +268,24 @@ export function createPointsLayer(
         // The centre, not a corner: the point is where the dot is.
         iconAnchor: [PIN_CENTRE, PIN_CENTRE],
       }),
+      // See createPointsLayer: pinAt() does the hit-testing.
+      interactive: false,
       // Leaflet gives every marker a tabindex by default. Hundreds of them between the
       // map and the rest of the page is a tab trap, and the pins carry no
       // information the popup does not repeat on click.
       keyboard: false,
-      // Where the points are dense they overlap heavily, so the one under the cursor
-      // has to come to the front to be clickable at all.
-      riseOnHover: true,
       // Leaflet stacks markers by screen y plus this offset, so every named pin sits
       // over every unnamed one it overlaps — where pins crowd together, the named one
-      // is the one worth seeing. The rise has
-      // to clear that gap, or a grey pin under an amber one could never be hovered
-      // to the front: Leaflet's default riseOffset is only 250.
+      // is the one worth seeing, and the one pinAt() prefers on a tie.
       zIndexOffset: point.name ? 1000 : 0,
-      riseOffset: 2000,
-      // No title: the hover label main.ts shows names the pin already, sooner.
-    })
-      .on('click', () => onPinClick(point))
-      .on('mouseover', () => onPinHover(point))
-      .on('mouseout', () => onPinHover(null));
-    markers.set(point.code, marker);
+    });
+    markers.set(point.code, { marker, point });
   }
 
   return {
     layer: group,
     sync(hidden) {
-      for (const [code, marker] of markers) {
+      for (const [code, { marker }] of markers) {
         const show = !hidden.has(code);
         // The same reason setVisible() in main.ts returns early: hiding one point
         // must not pay to re-add the 271 markers that are already where they
@@ -312,12 +298,27 @@ export function createPointsLayer(
     setHovered(code) {
       if (code === hoveredCode) return;
       const ring = (c: string | null, on: boolean) => {
-        const el = c === null ? undefined : markers.get(c)?.getElement();
+        const el = c === null ? undefined : markers.get(c)?.marker.getElement();
         el?.classList.toggle('is-hovered', on);
       };
       ring(hoveredCode, false);
       ring(code, true);
       hoveredCode = code;
+    },
+    pinAt(at) {
+      let best: NationalPoint | null = null;
+      let bestDistance = pinReach();
+      for (const { marker, point } of markers.values()) {
+        if (!group.hasLayer(marker)) continue;
+        // A named pin is drawn over an unnamed one (zIndexOffset above), so on
+        // dots that overlap it wins by the pixel it takes to settle a tie.
+        const distance = at.distanceTo(map.latLngToContainerPoint(marker.getLatLng())) - (point.name ? 1 : 0);
+        if (distance <= bestDistance) {
+          best = point;
+          bestDistance = distance;
+        }
+      }
+      return best;
     },
   };
 }

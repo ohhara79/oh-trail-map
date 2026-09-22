@@ -41,7 +41,7 @@ import { LOCATE_ICON_HTML } from './map';
 import type { NationalPoint } from './nationalPoint';
 import { createPointBalls, LAYER_POINT_BALLS } from './pointBalls';
 import { createPointDots, LAYER_POINT_DOTS } from './pointDots';
-import { loadNationalPoints, popupContent } from './points';
+import { loadNationalPoints, PIN_RADIUS, PIN_STROKE, popupContent } from './points';
 import {
   BALL_HEIGHT,
   BALL_RADIUS,
@@ -68,7 +68,7 @@ import {
   trailWidths,
   visibleFilter,
 } from './scene3d';
-import { tolerance } from './selection';
+import { pinReach, tolerance } from './selection';
 import { Playback, buildPath, distanceAtPoint, sampleAt } from './trailPlayback';
 import { indexAtDistance } from './trailProfile';
 import type { Trail } from './trails';
@@ -440,8 +440,9 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   /** What an orbit click at (x, y) on the canvas opens or selects, once nothing is
    *  selected. The click and the hover preview both ask here, so they agree. */
   function pickAt(x: number, y: number): { point?: NationalPoint; trail?: string } | null {
-    // A point first, as in 2D, where a pin swallows the click.
-    const point = pointAt(LAYER_POINTS, x, y, 6);
+    // A point first, as in 2D, where a pin takes the click. The query already counts
+    // the drawn dot, so the pad is what pinReach() adds beyond its edge.
+    const point = pointAt(LAYER_POINTS, x, y, pinReach() - (PIN_RADIUS + PIN_STROKE));
     if (point) return { point };
     const trail = trailIn(x, y, tolerance());
     return trail ? { trail } : null;
