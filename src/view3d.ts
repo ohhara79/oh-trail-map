@@ -1117,9 +1117,9 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
 
   // Escape undoes the most local thing first: playback back to walking, walking
   // back to orbit, and only in orbit does it reach the panel's own handler in
-  // ui.ts. Capture phase, so this runs before that one and can stop it. A mouse
-  // captured by pointer lock never sees this: the browser spends that Escape on
-  // releasing it.
+  // ui.ts, which steps back to 2D once it has nothing left to undo. Capture
+  // phase, so this runs before that one and can stop it. A mouse captured by
+  // pointer lock never sees this: the browser spends that Escape on releasing it.
   function onKeyDown(e: KeyboardEvent): void {
     if (e.key !== 'Escape' || mode === 'orbit' || typingTarget()) return;
     setMode(mode === 'playback' ? 'walk' : 'orbit');

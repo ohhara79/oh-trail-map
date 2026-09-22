@@ -31,6 +31,9 @@ export type UiCallbacks = {
    *  playing a trail, or put it away. One button for both modes, that bar being
    *  the one thing on screen in each of them. */
   onToggleMinimap: () => void;
+  /** Esc with nothing left in the panel to undo — no filter text, no selection,
+   *  panel closed. */
+  onEscape: () => void;
 };
 
 /** What the locate button is currently saying: not following; following but
@@ -135,7 +138,13 @@ export class Ui {
         this.cb.onSelect(null);
         return;
       }
-      this.setPanel(false);
+      if (this.app.dataset.panel === 'open') {
+        this.setPanel(false);
+        return;
+      }
+      // Nothing of the panel's left to undo, so the next thing out is whatever
+      // main.ts is showing: 3D, back to 2D.
+      this.cb.onEscape();
     });
 
     // The map is the point, so start with it unobstructed at every width. Not

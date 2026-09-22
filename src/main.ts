@@ -299,6 +299,9 @@ async function main(): Promise<void> {
       if (view3d) close3d();
       else void open3d();
     },
+    onEscape: () => {
+      if (view3d) close3d();
+    },
     onWalkTrail: (id) => {
       const trail = findTrail(id);
       if (!trail) return;

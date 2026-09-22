@@ -113,7 +113,7 @@ npm run preview
     away — it starts showing, and stays as you leave it until you reload.
   - **On a phone**: a joystick moves you, dragging looks around, and **Gyro**
     turns the view with the phone.
-  - **Esc**: steps back from playback to walk, then to orbit.
+  - **Esc**: steps back from playback to walk, then to orbit, then to 2D.
 
   Terrain comes from AWS Terrain Tiles (SRTM, ~30 m), so the mountain has its
   true shape but no cliffs or trees, and the ground near your feet is soft. 3D
@@ -147,7 +147,7 @@ leave Ctrl/Alt/Cmd combinations to the browser.
 | `G` | Show and follow your location |
 | `B` | Next basemap |
 | `H` | Hide or show every national point |
-| `Esc` | Step back: filter, selection, playback, walk, panel |
+| `Esc` | Step back: filter, selection, playback, walk, panel, 3D |
 | `+` `-`, arrows | Zoom and pan the 2D map (once it has been clicked) |
 | `V` | 3D: walk at eye height, or back to orbit |
 | `W` `A` `S` `D`, arrows | 3D walk; `Shift` to run |
