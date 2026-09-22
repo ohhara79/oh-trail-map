@@ -151,6 +151,7 @@ leave Ctrl/Alt/Cmd combinations to the browser.
 | `+` `-`, arrows | Zoom and pan the 2D map (once it has been clicked) |
 | `V` | 3D: walk at eye height, or back to orbit |
 | `W` `A` `S` `D`, arrows | 3D walk; `Shift` to run |
+| `N` | 3D: face north and level, as the compass button does |
 | `M` | 3D walk/playback: the 2D minimap |
 | `Space`, `P` | Pause or play the trail |
 | `X` | Playback speed |

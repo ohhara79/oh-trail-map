@@ -242,6 +242,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   // and tilt the map, so a press that slid off still moved the camera. Without that,
   // only a press and release on the button fires its click (reset north and pitch).
   compass._handler.off();
+  // An id for the `N` shortcut, which presses it by id (see shortcuts.ts).
+  container.querySelector<HTMLButtonElement>('.maplibregl-ctrl-compass')!.id = 'compass3d';
 
   // The same reason as createMap in map.ts: the panel collapsing changes the
   // container's size without a window resize.

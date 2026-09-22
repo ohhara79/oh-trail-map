@@ -38,6 +38,8 @@ const BUTTONS: Record<string, string[]> = {
   KeyP: ['play3d'],
   KeyX: ['speed3d'],
   KeyM: ['minimap3d'],
+  // The attitude disc at eye height, MapLibre's compass in orbit; 2D has neither.
+  KeyN: ['attitude3d', 'compass3d'],
   Enter: ['selection-walk'],
 };
 
