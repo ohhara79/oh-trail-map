@@ -420,6 +420,13 @@ async function main(): Promise<void> {
       const codes = [...pointByCode.keys()];
       setPointsHidden(codes, codes.some((code) => !hiddenPoints.has(code)));
     },
+    // Every trail, like `H` and every point: not only the rows the filter shows.
+    toggleTrails: () => {
+      const visible = !trails.some((t) => t.visible);
+      for (const trail of trails) setVisible(trail, visible, map);
+      restyleAll();
+      refresh();
+    },
   });
 
   function zoomToTrail(id: string): void {

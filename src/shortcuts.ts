@@ -28,6 +28,8 @@ export type ShortcutCallbacks = {
   nextBasemap: () => void;
   /** `H`: every national point off, or back on if they already are. */
   togglePoints: () => void;
+  /** `T`: every trail off, or back on if they already are. */
+  toggleTrails: () => void;
 };
 
 /** Keys that press a button, by e.code; the first one showing is pressed. */
@@ -132,6 +134,7 @@ export function installShortcuts(cb: ShortcutCallbacks): void {
       KeyC: cb.zoomToSelected,
       KeyB: cb.nextBasemap,
       KeyH: cb.togglePoints,
+      KeyT: cb.toggleTrails,
       KeyK: cb.toggleMinimapSize,
       BracketLeft: () => cb.stepTrail(-1),
       BracketRight: () => cb.stepTrail(1),
