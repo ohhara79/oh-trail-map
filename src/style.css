@@ -312,7 +312,8 @@ button:hover { background: #f5f6f8; }
 }
 
 /* Inert outside the drawer breakpoint. Kept in the DOM (never [hidden]) so it
-   can fade with the drawer. */
+   can fade with the drawer. Inside it, the drawer query below lifts it over the
+   floating map buttons. */
 #backdrop {
   position: absolute; inset: 0; z-index: 1050;
   background: rgba(0,0,0,.4);
@@ -600,7 +601,7 @@ button:hover { background: #f5f6f8; }
 /* The location marker's box, which Leaflet sizes through iconSize. */
 .maplibregl-marker.locate-icon { width: 48px; height: 48px; }
 
-/* Below the drawer and its backdrop (1100 / 1050), which cover the map on a phone. */
+/* Below the drawer and its backdrop (1160 / 1150), which cover the map on a phone. */
 .hud-bar {
   position: absolute; z-index: 1000;
   display: flex; align-items: center; gap: 4px;
@@ -1057,6 +1058,12 @@ button:hover { background: #f5f6f8; }
     transition: transform .22s ease;
   }
   #app[data-panel='open'] #backdrop { opacity: 1; pointer-events: auto; }
+  /* Over the app's own map buttons (#view3d, #locate, #compass, #attitude3d at
+     1100), which otherwise stayed lit and tappable above the dim while the zoom
+     and compass controls (1000) went under it. Now every button dims alike, and a
+     tap on any of them just closes the drawer. Still under #notices (1200). */
+  #backdrop { z-index: 1150; }
+  #sidebar { z-index: 1160; }
 
   /* Stop short of the bottom-right zoom control. */
   #notices { left: 12px; right: 56px; transform: none; }
