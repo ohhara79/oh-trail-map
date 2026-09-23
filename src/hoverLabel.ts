@@ -11,6 +11,8 @@ export type HoverLabel = {
   /** Shows `text` beside (x, y), in `container`'s coordinates. */
   show(text: string, x: number, y: number): void;
   hide(): void;
+  /** Takes the label out of its container, for a view that is going away. */
+  remove(): void;
 };
 
 /**
@@ -40,6 +42,9 @@ export function createHoverLabel(container: HTMLElement): HoverLabel {
     },
     hide() {
       el.hidden = true;
+    },
+    remove() {
+      el.remove();
     },
   };
 }

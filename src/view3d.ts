@@ -1328,6 +1328,9 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       cancelAnimationFrame(hoverFrame);
       cancelAnimationFrame(pulseFrame);
       locationMarker.remove();
+      // Its own element in the container, which the next 3D view reuses: left
+      // behind, a name showing when you left would stay on screen for good.
+      hoverLabel.remove();
       // Frees the GL context and its tile textures. The module stays cached, so
       // opening 3D again costs no download.
       map.remove();
