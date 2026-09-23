@@ -25,6 +25,16 @@ body {
    browser chrome and #app's overflow:hidden makes it unreachable. */
 #app { position: relative; display: flex; height: 100vh; height: 100dvh; overflow: hidden; }
 
+/* Outside the panel everything is a control or a read-out over the map, and
+   many of them are held or dragged: a long touch there must not select text or
+   open the Copy callout. The panel and the ? sheet are text to read and copy
+   (names, the author's email), and fields must stay typeable: iOS Safari will
+   not take input under an inherited -webkit-user-select: none. */
+#app { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+:is(#sidebar, #shortcuts, input, textarea) {
+  user-select: text; -webkit-user-select: text; -webkit-touch-callout: default;
+}
+
 #sidebar {
   width: var(--sidebar-width);
   flex: 0 0 var(--sidebar-width);
@@ -888,13 +898,11 @@ button:hover { background: #f5f6f8; }
 #profile-line4.profile-point-name { font-weight: 500; }
 /* ◀ over ▶, beside the chart rather than under it. See-through like the panel,
    with the labels' halo on the glyphs and a light tint to show they press. Held,
-   they keep stepping (holdArrow in profilePanel.ts), so a long touch must not
-   select the glyph or open the Copy callout. */
+   they keep stepping (holdArrow in profilePanel.ts). */
 .profile-side { display: flex; flex-direction: column; gap: 4px; }
 #profile .profile-side button {
   flex: 1; min-width: 30px; padding: 0 6px;
   background: transparent;
-  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   touch-action: none;
   text-shadow: 0 0 2px #fff, 0 0 2px #fff;
 }
