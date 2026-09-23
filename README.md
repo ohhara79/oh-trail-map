@@ -60,7 +60,9 @@ npm run preview
   jitter) shows only its first pin — and with the cursor on one the readout names it on a line below
   the number and distance. A tap on a pin puts the cursor on its point; a drag
   snaps onto a pin, or onto the trail's start or end, when it passes close by,
-  and ←/→ or ◀ ▶ step one GPX point at a time to the points beside it. The cursor and its dot
+  and ←/→ or ◀ ▶ step one GPX point at a time to the points beside it. With the
+  cursor on a pin, however it got there, the map rings and names that point as a
+  hover would. The cursor and its dot
   belong to the selected trail, not the panel: they stay with the profile
   closed, and the panel opens on the same point. Deselecting the trail clears the point. A trail playing in 3D
   takes the panel over, whether or not you had it open — see below.
@@ -145,7 +147,7 @@ leave Ctrl/Alt/Cmd combinations to the browser.
 | `,` `.` | Previous / next GPX point on the profile; `Shift` for 10, hold to repeat |
 | arrows, `PgUp` `PgDn`, `Home` `End` | Elevation chart (once clicked): step 1 or 100 GPX points, or jump to the first / last; `Shift` for ×10 |
 | `[` `]` | Previous / next trail in the list (as filtered, skipping hidden ones) |
-| `;` `'` | Previous / next national point on the selected trail's profile, ringed and named on the map as a hover would; with no trail selected, in the list (as filtered, skipping hidden ones) |
+| `;` `'` | Previous / next national point on the selected trail's profile; with no trail selected, in the list (as filtered, skipping hidden ones) |
 | `Enter` | Walk the selected trail in 3D, from the profile cursor |
 | `C` | Zoom to the selected trail |
 | `G` | Show and follow your location |

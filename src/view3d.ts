@@ -138,9 +138,9 @@ export type View3d = {
   setFollowing(on: boolean): void;
   /** The dot for the GPX point the profile's cursor is on, or null for none. */
   setProfileCursor(at: { lat: number; lon: number; color: string } | null): void;
-  /** The pin `;` `'` stepped the profile cursor onto, to preview as a hover would,
-   *  or null for none. */
-  setSteppedPoint(point: NationalPoint | null): void;
+  /** The pin the profile cursor is on, to preview as a hover would, or null for
+   *  none. */
+  setCursorPoint(point: NationalPoint | null): void;
   fitTrail(id: string): void;
   panTo(lat: number, lon: number): void;
   /** Plays trail `id` from GPX point `fromPoint`, or from its start. */
@@ -281,9 +281,9 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
    *  the same thing does not restyle the map. */
   let hoveredTrail: string | null = null;
   let hoveredPoint: number | null = null;
-  /** The pin `;` `'` stepped the profile cursor onto, previewed in orbit as a hover
-   *  would be while the mouse picks nothing. main.ts decides it; see setSteppedPoint. */
-  let steppedPoint: NationalPoint | null = null;
+  /** The pin the profile cursor is on, previewed in orbit as a hover would be
+   *  while the mouse picks nothing. main.ts decides it; see setCursorPoint. */
+  let cursorPoint: NationalPoint | null = null;
 
   const hud = new Hud({
     // A toggle: pressed while walking or playing, so a press from either is back to orbit.
@@ -624,8 +624,8 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     if (mode !== 'orbit') {
       liftPopup();
       syncNearby();
-    } else if (steppedPoint) {
-      // The stepped point's label rides along with the camera.
+    } else if (cursorPoint) {
+      // The cursor's point's label rides along with the camera.
       scheduleHover();
     }
     reportReadout();
@@ -789,7 +789,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   /** The single place the 3D hover preview is derived, by the orbit click's rules:
    *  nothing new while a popup is open or a trail is selected, then pickAt(). Walking
    *  aims with the crosshair instead, and a moving camera is not about to click.
-   *  With nothing picked, the pin `;` `'` stepped onto, labelled beside its dot. */
+   *  With nothing picked, the pin the profile cursor is on, labelled beside its dot. */
   function syncHover(): void {
     const quiet =
       mode !== 'orbit' ||
@@ -801,11 +801,11 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     const at = quiet ? null : hoverAt;
     const pick = at ? pickAt(at.x, at.y) : null;
     const trail = pick?.trail ?? null;
-    const stepped =
-      mode === 'orbit' && tween === null && !pick && steppedPoint && !getScene().hiddenPoints.has(steppedPoint.code)
-        ? steppedPoint
+    const onCursor =
+      mode === 'orbit' && tween === null && !pick && cursorPoint && !getScene().hiddenPoints.has(cursorPoint.code)
+        ? cursorPoint
         : null;
-    const pickedPoint = pick?.point ?? stepped;
+    const pickedPoint = pick?.point ?? onCursor;
     // main.ts's copy of the point, not this module's: matched by its 지점번호.
     const pointIndex = pickedPoint ? points.findIndex((p) => p.code === pickedPoint.code) : null;
     if (trail !== hoveredTrail) {
@@ -823,14 +823,14 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     const name = pick?.point
       ? pick.point.name || pick.point.code
       : getScene().trails.find((t) => t.id === pick?.trail)?.name;
-    const steppedAt = stepped && steppedOnScreen(stepped);
+    const onCursorAt = onCursor && cursorPointOnScreen(onCursor);
     if (at && name) hoverLabel.show(name, at.x, at.y);
-    else if (stepped && steppedAt) hoverLabel.show(stepped.name || stepped.code, steppedAt.x, steppedAt.y);
+    else if (onCursor && onCursorAt) hoverLabel.show(onCursor.name || onCursor.code, onCursorAt.x, onCursorAt.y);
     else hoverLabel.hide();
   }
 
-  /** Where the stepped point's dot is on the canvas, or null off it. */
-  function steppedOnScreen(point: NationalPoint): { x: number; y: number } | null {
+  /** Where the cursor's point's dot is on the canvas, or null off it. */
+  function cursorPointOnScreen(point: NationalPoint): { x: number; y: number } | null {
     const lngLat = new LngLat(point.lon, point.lat);
     if (!map.getBounds().contains(lngLat)) return null;
     const p = map.project(lngLat);
@@ -1254,9 +1254,9 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
       following = on;
       syncSteering();
     },
-    setSteppedPoint(point) {
-      if (point === steppedPoint) return;
-      steppedPoint = point;
+    setCursorPoint(point) {
+      if (point === cursorPoint) return;
+      cursorPoint = point;
       scheduleHover();
     },
     setProfileCursor(at) {

@@ -273,6 +273,40 @@ export class ProfilePanel {
    *  at the ends, as step does. */
   stepPass(delta: 1 | -1): PointPass | null {
     if (!this.profile) return null;
+    const pins = this.pinPasses();
+    const cursor = this.cursor;
+    if (delta < 0) pins.reverse();
+    const pin = pins.find(({ index: i }) => cursor === null || (delta > 0 ? i > cursor : i < cursor));
+    if (!pin) return null;
+    this.cb.onCursor(pin.index);
+    return pin;
+  }
+
+  /** The pin at GPX point `index`, if there is one: the national point the cursor
+   *  is on when it is there. Two points can share their closest GPX point, and then
+   *  it is the nearer, as the readout names. Read off the passes, so it answers with
+   *  the panel put away too. */
+  passAt(index: number | null): PointPass | null {
+    const profile = this.profile;
+    if (!profile || index === null) return null;
+    const here = { lat: profile.lat[index], lon: profile.lon[index] };
+    let found: PointPass | null = null;
+    let nearest = Infinity;
+    for (const pass of this.pinPasses()) {
+      if (pass.index !== index) continue;
+      const d = haversine(here, pass.point);
+      if (d < nearest) {
+        nearest = d;
+        found = pass;
+      }
+    }
+    return found;
+  }
+
+  /** The passes that get a pin: those of a point that is on, less a pass of the
+   *  same point as the pin before it — GPS jitter in and out of PASS_DISTANCE — so
+   *  one visit is one pin, at its first pass. */
+  private pinPasses(): PointPass[] {
     const pins: PointPass[] = [];
     let last = '';
     for (const pass of this.passes) {
@@ -280,12 +314,7 @@ export class ProfilePanel {
       last = pass.point.code;
       pins.push(pass);
     }
-    const cursor = this.cursor;
-    if (delta < 0) pins.reverse();
-    const pin = pins.find(({ index: i }) => cursor === null || (delta > 0 ? i > cursor : i < cursor));
-    if (!pin) return null;
-    this.cb.onCursor(pin.index);
-    return pin;
+    return pins;
   }
 
   private x(s: number): number {
@@ -369,20 +398,15 @@ export class ProfilePanel {
     this.syncCursor();
   }
 
-  /** A pin on the line for each pass of a point that is on, coloured as its map pin.
-   *  Without elevation it sits on the flat baseline the line is drawn as then. A pass
-   *  of the same point as the pin before it — GPS jitter in and out of PASS_DISTANCE —
-   *  draws nothing, so one visit shows one pin, at its first pass. */
+  /** A pin on the line for each of pinPasses(), coloured as its map pin. Without
+   *  elevation it sits on the flat baseline the line is drawn as then. */
   private drawPoints(): void {
     const profile = this.profile;
     this.pointsGroup.replaceChildren();
     this.pins = [];
     if (!profile || !this.width) return;
     const hasEle = Number.isFinite(profile.eleMin);
-    let last = '';
-    for (const { index, point } of this.passes) {
-      if (this.hiddenPoints.has(point.code) || point.code === last) continue;
-      last = point.code;
+    for (const { index, point } of this.pinPasses()) {
       const ele = profile.ele[index];
       const x = this.x(profile.s[index]);
       const y = hasEle && !Number.isNaN(ele) ? this.y(ele) : this.height - PAD_BOTTOM;
