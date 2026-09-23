@@ -750,12 +750,12 @@ async function main(): Promise<void> {
     applyCursorPoint();
   }
 
-  /** The national point whose pin the profile cursor is on, however it got there —
-   *  a drag snapping onto it, a tap on it, `;` `'`, `,` `.` — previewed as a hover
-   *  would be. Derived from the cursor, so whatever moves the cursor off it ends the
+  /** The national point the profile's readout names — the nearest shown one within
+   *  PASS_DISTANCE of the cursor, however it got there — previewed as a hover would
+   *  be. Derived from the cursor, so whatever moves the cursor away from it ends the
    *  preview without clearing anything. */
   function cursorPoint(): NationalPoint | null {
-    return cursorTrail ? (profilePanel.passAt(cursorIndex)?.point ?? null) : null;
+    return cursorTrail ? profilePanel.pointAt(cursorIndex) : null;
   }
 
   /** Both views' previews of cursorPoint(). Not while playing, where walking
@@ -870,8 +870,8 @@ async function main(): Promise<void> {
     const at = !view3d && !mapMoving && canHover() && !popupOpen && selectedId === null ? hoverAt : null;
     const pin = at ? pointsLayer.pinAt(at) : null;
     const trail = at && !pin ? trailAt(map, at, trails) : null;
-    // With nothing under the mouse — always so with a trail selected — the pin
-    // profile cursor is on, labelled beside the pin itself while it is on screen.
+    // With nothing under the mouse — always so with a trail selected — the point
+    // the profile cursor is at, labelled beside the pin itself while it is on screen.
     const onCursor = !view3d && !pin && !trail ? cursorPoint() : null;
     const onCursorAt = onCursor ? map.latLngToContainerPoint([onCursor.lat, onCursor.lon]) : null;
     const size = map.getSize();

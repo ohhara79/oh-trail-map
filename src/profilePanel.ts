@@ -282,27 +282,6 @@ export class ProfilePanel {
     return pin;
   }
 
-  /** The pin at GPX point `index`, if there is one: the national point the cursor
-   *  is on when it is there. Two points can share their closest GPX point, and then
-   *  it is the nearer, as the readout names. Read off the passes, so it answers with
-   *  the panel put away too. */
-  passAt(index: number | null): PointPass | null {
-    const profile = this.profile;
-    if (!profile || index === null) return null;
-    const here = { lat: profile.lat[index], lon: profile.lon[index] };
-    let found: PointPass | null = null;
-    let nearest = Infinity;
-    for (const pass of this.pinPasses()) {
-      if (pass.index !== index) continue;
-      const d = haversine(here, pass.point);
-      if (d < nearest) {
-        nearest = d;
-        found = pass;
-      }
-    }
-    return found;
-  }
-
   /** The passes that get a pin: those of a point that is on, less a pass of the
    *  same point as the pin before it — GPS jitter in and out of PASS_DISTANCE — so
    *  one visit is one pin, at its first pass. */
@@ -435,10 +414,11 @@ export class ProfilePanel {
     return found;
   }
 
-  /** The point on, closest to GPX point `i` and within PASS_DISTANCE of it. */
-  private pointAt(i: number): PointPass['point'] | null {
+  /** The point on, closest to GPX point `i` and within PASS_DISTANCE of it: the one
+   *  the readout names, and the one both maps preview (see cursorPoint in main.ts). */
+  pointAt(i: number | null): PointPass['point'] | null {
     const profile = this.profile;
-    if (!profile) return null;
+    if (!profile || i === null) return null;
     const here = { lat: profile.lat[i], lon: profile.lon[i] };
     let found: PointPass['point'] | null = null;
     let nearest = PASS_DISTANCE;

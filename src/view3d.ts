@@ -138,7 +138,7 @@ export type View3d = {
   setFollowing(on: boolean): void;
   /** The dot for the GPX point the profile's cursor is on, or null for none. */
   setProfileCursor(at: { lat: number; lon: number; color: string } | null): void;
-  /** The pin the profile cursor is on, to preview as a hover would, or null for
+  /** The point the profile cursor is at, to preview as a hover would, or null for
    *  none. */
   setCursorPoint(point: NationalPoint | null): void;
   fitTrail(id: string): void;
@@ -281,7 +281,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
    *  the same thing does not restyle the map. */
   let hoveredTrail: string | null = null;
   let hoveredPoint: number | null = null;
-  /** The pin the profile cursor is on, previewed in orbit as a hover would be
+  /** The point the profile cursor is at, previewed in orbit as a hover would be
    *  while the mouse picks nothing. main.ts decides it; see setCursorPoint. */
   let cursorPoint: NationalPoint | null = null;
 
@@ -789,7 +789,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   /** The single place the 3D hover preview is derived, by the orbit click's rules:
    *  nothing new while a popup is open or a trail is selected, then pickAt(). Walking
    *  aims with the crosshair instead, and a moving camera is not about to click.
-   *  With nothing picked, the pin the profile cursor is on, labelled beside its dot. */
+   *  With nothing picked, the point the profile cursor is at, labelled beside its dot. */
   function syncHover(): void {
     const quiet =
       mode !== 'orbit' ||

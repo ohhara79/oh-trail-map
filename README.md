@@ -60,9 +60,9 @@ npm run preview
   jitter) shows only its first pin — and with the cursor on one the readout names it on a line below
   the number and distance. A tap on a pin puts the cursor on its point; a drag
   snaps onto a pin, or onto the trail's start or end, when it passes close by,
-  and ←/→ or ◀ ▶ step one GPX point at a time to the points beside it. With the
-  cursor on a pin, however it got there, the map rings and names that point as a
-  hover would. The cursor and its dot
+  and ←/→ or ◀ ▶ step one GPX point at a time to the points beside it. Whenever the
+  readout names a point, the map rings and names that point too, as a hover
+  would. The cursor and its dot
   belong to the selected trail, not the panel: they stay with the profile
   closed, and the panel opens on the same point. Deselecting the trail clears the point. A trail playing in 3D
   takes the panel over, whether or not you had it open — see below.
