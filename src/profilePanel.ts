@@ -34,8 +34,8 @@ const PIN_HIT_PX_TOUCH = 14;
 /** How near a pin, or the trail's start or end, a drag snaps onto its point, in CSS
  *  pixels along the chart. Narrower than the press: ←/→ and ◀ ▶ still step one GPX
  *  point at a time, to the points beside it. */
-const SNAP_PX_MOUSE = 6;
-const SNAP_PX_TOUCH = 12;
+const SNAP_PX_MOUSE = 3;
+const SNAP_PX_TOUCH = 6;
 /** How far a press on a pin must move before it lets go of the pin and scrubs. */
 const TAP_SLOP_PX = 5;
 /** Holding ◀ or ▶ steps again after HOLD_DELAY_MS, then every REPEAT_MS, taking
