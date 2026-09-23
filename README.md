@@ -59,7 +59,8 @@ npm run preview
   for unnamed — one per visit, so the same point again right after itself (GPS
   jitter) shows only its first pin — and with the cursor on one the readout names it on a line below
   the number and distance. A tap on a pin puts the cursor on its point; a drag
-  never snaps, so the GPX points beside a pin stay in reach. The cursor and its dot
+  snaps onto a pin, or onto the trail's start or end, when it passes close by,
+  and ←/→ or ◀ ▶ step one GPX point at a time to the points beside it. The cursor and its dot
   belong to the selected trail, not the panel: they stay with the profile
   closed, and the panel opens on the same point. Deselecting the trail clears the point. A trail playing in 3D
   takes the panel over, whether or not you had it open — see below.

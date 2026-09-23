@@ -4,7 +4,7 @@
  * lat/lon, elevation, and how far and how long into the trail it is. The national
  * points the trail passes sit on the line as small pins, and the readout names the
  * one the cursor is on, on a line of its own. A tap on a pin puts the cursor on its
- * point.
+ * point, and a drag snaps onto a pin, or the trail's start or end, it passes close by.
  *
  * It renders and reports, like pointsList.ts: main.ts owns which point the cursor
  * is on, hears about every move through onCursor, and hands the answer back with
@@ -27,10 +27,15 @@ const PAD_BOTTOM = 4;
 const MIN_ELE_SPAN = 30;
 /** A point's pin on the line: smaller than the cursor's dot (r 4), which it sits under. */
 const PASS_RADIUS = 3.5;
-/** How near a press must come to a pin's centre to land on its point — a finger's
- *  more than a mouse's. Only a press on the pin: a drag past one never snaps. */
+/** How near a press must come to a pin's centre to land on its point, and hold it
+ *  there until the drag moves off — a finger's more than a mouse's. */
 const PIN_HIT_PX_MOUSE = 8;
 const PIN_HIT_PX_TOUCH = 14;
+/** How near a pin, or the trail's start or end, a drag snaps onto its point, in CSS
+ *  pixels along the chart. Narrower than the press: ←/→ and ◀ ▶ still step one GPX
+ *  point at a time, to the points beside it. */
+const SNAP_PX_MOUSE = 6;
+const SNAP_PX_TOUCH = 12;
 /** How far a press on a pin must move before it lets go of the pin and scrubs. */
 const TAP_SLOP_PX = 5;
 /** Holding ◀ or ▶ steps again after HOLD_DELAY_MS, then every REPEAT_MS, taking
@@ -112,7 +117,7 @@ export class ProfilePanel {
       const pin = this.pinAt(e.clientX - rect.left, e.clientY - rect.top, e.pointerType);
       if (pin === null) {
         this.heldPinX = null;
-        this.scrubTo(e.clientX);
+        this.scrubTo(e.clientX, e.pointerType);
       } else {
         this.heldPinX = e.clientX;
         if (pin !== this.cursor) this.cb.onCursor(pin);
@@ -122,7 +127,7 @@ export class ProfilePanel {
       if (e.pointerId !== this.dragging) return;
       if (this.heldPinX !== null && Math.abs(e.clientX - this.heldPinX) <= TAP_SLOP_PX) return;
       this.heldPinX = null;
-      this.scrubTo(e.clientX);
+      this.scrubTo(e.clientX, e.pointerType);
     });
     const release = (e: PointerEvent): void => {
       if (e.pointerId !== this.dragging) return;
@@ -228,13 +233,24 @@ export class ProfilePanel {
     this.syncCursor();
   }
 
-  /** The cursor to where the pointer is along the chart. */
-  private scrubTo(clientX: number): void {
+  /** The cursor to where the pointer is along the chart, or onto a pin, the start or
+   *  the end when the pointer is within SNAP_PX of it. */
+  private scrubTo(clientX: number, pointerType: string): void {
     const profile = this.profile;
     if (!profile) return;
     const rect = this.chart.getBoundingClientRect();
     const t = rect.width > 0 ? Math.min(1, Math.max(0, (clientX - rect.left) / rect.width)) : 0;
-    const index = indexAtDistance(profile, t * profile.total);
+    let index = indexAtDistance(profile, t * profile.total);
+    const last = profile.s.length - 1;
+    const px = t * this.width;
+    let nearest = pointerType === 'mouse' ? SNAP_PX_MOUSE : SNAP_PX_TOUCH;
+    for (const target of [{ index: 0, x: 0 }, ...this.pins, { index: last, x: this.x(profile.s[last]) }]) {
+      const d = Math.abs(target.x - px);
+      if (d <= nearest) {
+        nearest = d;
+        index = target.index;
+      }
+    }
     if (index !== this.cursor) this.cb.onCursor(index);
   }
 
