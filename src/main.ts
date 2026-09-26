@@ -824,7 +824,7 @@ async function main(): Promise<void> {
    * both views and persists once.
    *
    * Takes many ids rather than one so the master checkbox costs one saveSettings
-   * and one setFilter instead of 285 of each — the same reason setVisible above
+   * and one setFilter instead of 281 of each — the same reason setVisible above
    * refuses to rewrite a record that already agrees.
    */
   function setPointsHidden(ids: Iterable<string>, hidden: boolean): void {

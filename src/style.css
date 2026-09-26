@@ -82,7 +82,7 @@ body {
    scroller here only ever showed the row or two of spare height the other
    blocks left over, and emptying it in renderTrails discarded its scroll
    position on every re-render. The National Points block is last in the panel
-   for exactly this reason: its 285 rows can run on as long as they like without
+   for exactly this reason: its 281 rows can run on as long as they like without
    a scroller of their own, because there is nothing below them to push away but
    the few lines of the author footer. */
 .grow-block { flex: 0 0 auto; display: flex; flex-direction: column; }

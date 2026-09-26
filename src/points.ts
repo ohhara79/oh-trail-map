@@ -79,7 +79,7 @@ export type PointRow = {
    */
   id: string;
   /**
-   * The row's primary line: 이름 - 지점번호, or the 지점번호 alone for the 61 rows
+   * The row's primary line: 이름 - 지점번호, or the 지점번호 alone for the 57 rows
    * the source gives no 이름. The code was once repeated on those rows to give every
    * row the same two-part shape, but a row with nothing before the dash has no two
    * parts to line up — and since the 이름 moved in front, the width that repeat
@@ -112,7 +112,7 @@ export function formatLatLon(point: NationalPoint): string {
 
 /**
  * The list's rows, built once at boot rather than per keystroke: normalising,
- * joining and folding 285 rows on every character typed into the filter is work
+ * joining and folding 281 rows on every character typed into the filter is work
  * with a fixed answer.
  *
  * The NFC normalise is the same one renderTrails applies to a trail name before
@@ -288,8 +288,8 @@ export function createPointsLayer(map: L.Map, points: NationalPoint[]): PointsLa
       for (const [code, { marker }] of markers) {
         const show = !hidden.has(code);
         // The same reason setVisible() in main.ts returns early: hiding one point
-        // must not pay to re-add the 284 markers that are already where they
-        // belong. What is left is 285 Set lookups and no DOM at all.
+        // must not pay to re-add the 280 markers that are already where they
+        // belong. What is left is 281 Set lookups and no DOM at all.
         if (show === group.hasLayer(marker)) continue;
         if (show) group.addLayer(marker);
         else group.removeLayer(marker);

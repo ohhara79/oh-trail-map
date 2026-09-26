@@ -42,3 +42,12 @@ is saved per id. Deleting the rows again is the other option.
 2. `grep -c $'\t사방댐' data/national_points_w_name.tsv` gives 12.
 3. `npm run dev`: the points list has 285 rows. 다사49013778 is a grey pin in 안양 만안구, and
    다사58303831 is a grey pin east of 과천.
+
+## Follow-up: drop the 4 과천 사방댐 again
+
+The 4 과천 사방댐 (다사58263661, 다사58103761, 다사58273791, 다사58303831) are too far east of
+the trails to be worth a pin. They are deleted again, and so is the box widening described
+under Trade-off. The 관악구 2 and 안양 만안구 6 stay.
+
+Rows go from 285 to 281, with 281 unique ids. Unnamed rows go from 61 to 57. The comments
+now say 281, with 280 for the "re-add" count and 57 unnamed.
