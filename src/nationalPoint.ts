@@ -157,9 +157,10 @@ export function decodeNationalPoint(code: string): { lat: number; lon: number } 
  *
  * That duplicate is deduplicated, first row wins. It is not two signs: it is one
  * sign on the 금천구 / 안양시 만안구 boundary, filed once under each, identical in
- * 지점번호 and 사물유형 and nameless in both. The one thing the two rows disagree on
- * is now on screen, so the tiebreak is worth stating: first row wins means the popup
- * reads 서울특별시 금천구 and never 경기도 안양시 만안구. Which of the two it shows is
+ * 지점번호 and 사물유형. Only the 금천구 row carries a name (호압사 갈림길), since only
+ * 금천구's listing gives one. Region and name both reach the screen, so the tiebreak is
+ * worth stating: first row wins means the popup reads 호압사 갈림길 and 서울특별시 금천구,
+ * never a nameless 경기도 안양시 만안구. Which of the two it shows is
  * the order of the file, not a fact about which side of the line the sign stands on.
  * Keeping both would stack two markers on the same coordinate, the lower one
  * permanently unclickable, to say almost the same thing twice.
