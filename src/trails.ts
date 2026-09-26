@@ -25,7 +25,7 @@ export type Settings = {
    * inert.
    *
    * One array on Settings rather than a record per point in its own store: run()
-   * in store.ts opens a transaction per request, so 272 records would be 272
+   * in store.ts opens a transaction per request, so 285 records would be 285
    * transactions every time the master checkbox is clicked. The trails store
    * exists because trails are files whose set changes; the TSV is a bundled
    * module constant with stable ten-character keys.
@@ -101,7 +101,7 @@ export function matchesTokens(name: string, tokens: string[]): boolean {
 
 /**
  * The same test against text that has already been through fold(). The national
- * point list folds its haystacks once at boot — 272 of them, five columns each —
+ * point list folds its haystacks once at boot — 285 of them, five columns each —
  * rather than on every character typed into the filter, and this is how it stays
  * the *same* test rather than a second copy of the rule.
  */

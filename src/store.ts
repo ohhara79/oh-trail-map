@@ -76,7 +76,7 @@ export async function loadSettings(): Promise<Settings> {
   // trail width, and now showPoints — the single National Point Number toggle the
   // per-point list replaced) are dropped here, and so vanish from storage on the
   // next save. A browser that had showPoints off therefore gets its pins back
-  // once: turning `false` into 272 codes needs the point list, which this module
+  // once: turning `false` into 285 codes needs the point list, which this module
   // deliberately cannot see, and one click on the new master checkbox is the very
   // affordance that replaced it.
   return {

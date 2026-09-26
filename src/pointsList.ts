@@ -6,7 +6,7 @@
  * Its own module rather than a second half of ui.ts, which already owns the
  * drawer, the basemap radios, the notices and three floating buttons. What the
  * two lists must agree on lives in listUi.ts; everything here is the part that is
- * only true of points — 272 rows instead of 36, which is why render() refuses to
+ * only true of points — 285 rows instead of 36, which is why render() refuses to
  * rebuild the list to change one checkbox, and a five-column haystack, which is
  * why a match is marked on both of a row's lines.
  *
@@ -91,7 +91,7 @@ export class PointsList {
     this.count.textContent = countLabel(matches.length, this.rows.length);
 
     // Only the filter can change which rows exist. A checkbox or the selection
-    // changes what a row *says*, and rebuilding 272 rows to say it would throw the
+    // changes what a row *says*, and rebuilding 285 rows to say it would throw the
     // focus of whoever just pressed Space out to <body> — leaving them unable to
     // carry on down the list — and discard the panel's scroll position for
     // nothing.
@@ -107,7 +107,7 @@ export class PointsList {
 
   /**
    * Whether the rows on screen are already the rows wanted, in order. Cheap
-   * enough to ask on every toggle: 272 string compares and no allocation, against
+   * enough to ask on every toggle: 285 string compares and no allocation, against
    * a rebuild of some 1400 nodes.
    */
   private sameRows(matches: readonly PointRow[]): boolean {
@@ -142,7 +142,7 @@ export class PointsList {
       const visible = document.createElement('input');
       visible.type = 'checkbox';
       visible.title = 'Show on map';
-      // Named as well as titled, unlike a trail row: 272 checkboxes announced as
+      // Named as well as titled, unlike a trail row: 285 checkboxes announced as
       // "checkbox" with nothing to tell them apart is a different problem from 36.
       visible.setAttribute('aria-label', `Show ${row.title} on map`);
       visible.addEventListener('change', () => this.cb.onToggle(row.id, visible.checked));

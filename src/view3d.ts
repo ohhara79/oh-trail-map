@@ -347,7 +347,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
   }
 
   /**
-   * A filter rather than a rebuilt source: setData would re-upload 272 features to
+   * A filter rather than a rebuilt source: setData would re-upload 285 features to
    * say one thing, and — the reason it had to be a filter — a filtered-out feature
    * keeps its position, so the `index` pointAt() reads stays valid whatever the
    * panel list hides.
