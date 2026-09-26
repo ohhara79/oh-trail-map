@@ -19,12 +19,12 @@ import type { PointRow } from './points';
 import { matchesFolded, searchTokens } from './trails';
 
 export type PointsListCallbacks = {
-  onToggle: (code: string, visible: boolean) => void;
-  /** `codes` is the rows currently on screen, which a filter may have narrowed. */
-  onToggleAll: (visible: boolean, codes: string[]) => void;
+  onToggle: (id: string, visible: boolean) => void;
+  /** `ids` is the rows currently on screen, which a filter may have narrowed. */
+  onToggleAll: (visible: boolean, ids: string[]) => void;
   onFilterChange: () => void;
   /** A row click off its checkbox: go to the point and open its popup. */
-  onSelect: (code: string) => void;
+  onSelect: (id: string) => void;
 };
 
 function el<T extends HTMLElement>(id: string): T {
@@ -50,7 +50,7 @@ export class PointsList {
     // Scoped to the rendered rows, not every point: with a filter active the
     // master checkbox summarises what is on screen, so it must act on that too.
     this.toggleAll.addEventListener('change', () =>
-      this.cb.onToggleAll(this.toggleAll.checked, this.renderedCodes()),
+      this.cb.onToggleAll(this.toggleAll.checked, this.renderedIds()),
     );
 
     this.search.addEventListener('input', () => this.cb.onFilterChange());
@@ -114,7 +114,7 @@ export class PointsList {
     const lis = this.list.children;
     if (lis.length !== matches.length) return false;
     for (let i = 0; i < matches.length; i++) {
-      if ((lis[i] as HTMLElement).dataset.pointCode !== matches[i].code) return false;
+      if ((lis[i] as HTMLElement).dataset.pointId !== matches[i].id) return false;
     }
     return true;
   }
@@ -129,14 +129,14 @@ export class PointsList {
 
     for (const row of matches) {
       const li = document.createElement('li');
-      li.dataset.pointCode = row.code;
+      li.dataset.pointId = row.id;
       // The whole row goes to the point, so there is something to aim
       // at besides a 13px dot on the map, and the title and the detail under it
       // never answer the same click differently. Guarded rather than scoped to a
       // sub-element: the checkbox keeps its own meaning.
       li.addEventListener('click', (e) => {
         if ((e.target as HTMLElement).closest('input, button')) return;
-        this.cb.onSelect(row.code);
+        this.cb.onSelect(row.id);
       });
 
       const visible = document.createElement('input');
@@ -144,8 +144,8 @@ export class PointsList {
       visible.title = 'Show on map';
       // Named as well as titled, unlike a trail row: 272 checkboxes announced as
       // "checkbox" with nothing to tell them apart is a different problem from 36.
-      visible.setAttribute('aria-label', `Show ${row.code} on map`);
-      visible.addEventListener('change', () => this.cb.onToggle(row.code, visible.checked));
+      visible.setAttribute('aria-label', `Show ${row.title} on map`);
+      visible.addEventListener('change', () => this.cb.onToggle(row.id, visible.checked));
 
       // Only there to match a row to its pin; a click falls through to the row.
       const swatch = document.createElement('span');
@@ -179,10 +179,10 @@ export class PointsList {
   private syncChecks(hidden: ReadonlySet<string>, total: number): void {
     let shown = 0;
     for (const li of this.list.children) {
-      const code = (li as HTMLElement).dataset.pointCode ?? '';
+      const id = (li as HTMLElement).dataset.pointId ?? '';
       const box = li.querySelector<HTMLInputElement>('input[type="checkbox"]');
       if (!box) continue;
-      box.checked = !hidden.has(code);
+      box.checked = !hidden.has(id);
       if (box.checked) shown++;
     }
     setTristate(this.toggleAll, shown, total);
@@ -197,7 +197,7 @@ export class PointsList {
    */
   private syncSelection(selected: string | null): void {
     for (const li of this.list.children) {
-      const on = (li as HTMLElement).dataset.pointCode === selected;
+      const on = (li as HTMLElement).dataset.pointId === selected;
       li.classList.toggle('selected', on);
       if (on) li.setAttribute('aria-current', 'true');
       else li.removeAttribute('aria-current');
@@ -210,16 +210,16 @@ export class PointsList {
     this.lastSelected = selected;
     if (changed && selected) {
       this.list
-        .querySelector(`li[data-point-code="${CSS.escape(selected)}"]`)
+        .querySelector(`li[data-point-id="${CSS.escape(selected)}"]`)
         ?.scrollIntoView({ block: 'nearest' });
     }
   }
 
-  /** The codes on screen, in list order, read back off the rows rather than cached
+  /** The ids on screen, in list order, read back off the rows rather than cached
    *  alongside them. The master checkbox acts on these, and `;` `'` step through them. */
-  renderedCodes(): string[] {
+  renderedIds(): string[] {
     return Array.from(this.list.children)
-      .map((li) => (li as HTMLElement).dataset.pointCode ?? '')
+      .map((li) => (li as HTMLElement).dataset.pointId ?? '')
       .filter(Boolean);
   }
 }

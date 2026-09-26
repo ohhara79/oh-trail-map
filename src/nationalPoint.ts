@@ -45,6 +45,12 @@ const FALSE_NORTHING = 2_000_000;
 const CODE_PATTERN = /^([가-하])([가-하])(\d{4})(\d{4})$/;
 
 export type NationalPoint = {
+  /**
+   * The point's identity: 시/도, 시/군/구 and 지점번호, space-joined — see pointId. What
+   * Settings.hiddenPoints stores and every list, marker and selection is keyed on. The
+   * 지점번호 alone is not enough: 다사49293899 is filed under two regions.
+   */
+  id: string;
   /** 시/도. Always present in the file; shown in the popup joined to `district`. */
   province: string;
   /** 시/군/구. Two words for the rows under 안양시 (안양시 동안구, 안양시 만안구) — that
@@ -56,9 +62,22 @@ export type NationalPoint = {
   kind: string;
   /** 이름. Empty for the rows the source has no name for, which is most of them. */
   name: string;
+  /**
+   * Where the point is drawn — pin, 3D dot and ball, popup anchor, fly-to. Equal to
+   * gridLat/gridLon except for a 지점번호 filed more than once, whose rows are spread
+   * a few metres apart so each one gets a pin of its own (see spreadRepeats).
+   */
   lat: number;
   lon: number;
+  /** The 지점번호's true decoded position, and the only one ever printed. */
+  gridLat: number;
+  gridLon: number;
 };
+
+/** The single place a point's identity is built. */
+export function pointId(province: string, district: string, code: string): string {
+  return `${province} ${district} ${code}`;
+}
 
 /** Meridional arc from the equator to `phi`, Snyder eq. 3-21. */
 function meridianArc(phi: number): number {
@@ -155,15 +174,10 @@ export function decodeNationalPoint(code: string): { lat: number; lon: number } 
  * after 사물유형 because they have no 이름 (most of them), a header row, CRLF, a
  * trailing blank line, and one 지점번호 (다사49293899) that appears twice.
  *
- * That duplicate is deduplicated, first row wins. It is not two signs: it is one
- * sign on the 금천구 / 안양시 만안구 boundary, filed once under each, identical in
- * 지점번호 and 사물유형. Only the 금천구 row carries a name (호압사 갈림길), since only
- * 금천구's listing gives one. Region and name both reach the screen, so the tiebreak is
- * worth stating: first row wins means the popup reads 호압사 갈림길 and 서울특별시 금천구,
- * never a nameless 경기도 안양시 만안구. Which of the two it shows is
- * the order of the file, not a fact about which side of the line the sign stands on.
- * Keeping both would stack two markers on the same coordinate, the lower one
- * permanently unclickable, to say almost the same thing twice.
+ * That 지점번호 is one sign on the 금천구 / 안양시 만안구 boundary, filed once under each.
+ * Both rows are kept, since each region's listing is a row someone may look for, and
+ * the region in the id is what tells them apart. A row repeating an id outright — the
+ * same 지점번호 under the same region — would say nothing new, so that one is dropped.
  */
 export function parseNationalPoints(tsv: string): NationalPoint[] {
   const points: NationalPoint[] = [];
@@ -174,20 +188,24 @@ export function parseNationalPoints(tsv: string): NationalPoint[] {
     const fields = line.split('\t');
     if (fields.length < 4) continue;
 
+    // Left exactly as the file has them, like 사물유형 below: these are only ever
+    // rendered, never matched against anything typed, so the NFC fold 이름 needs
+    // would be a third rule for the same kind of text.
+    const province = fields[0].trim();
+    const district = fields[1].trim();
     const code = fields[2].trim();
-    if (seen.has(code)) continue;
+    const id = pointId(province, district, code);
+    if (seen.has(id)) continue;
     // Also what skips the header: its 지점번호 cell holds the literal text 지점번호,
     // which is not a decodable code. So a file exported without one parses too.
     const at = decodeNationalPoint(code);
     if (!at) continue;
-    seen.add(code);
+    seen.add(id);
 
     points.push({
-      // Left exactly as the file has them, like 사물유형 below: these are only ever
-      // rendered, never matched against anything typed, so the NFC fold 이름 needs
-      // would be a third rule for the same kind of text.
-      province: fields[0].trim(),
-      district: fields[1].trim(),
+      id,
+      province,
+      district,
       code,
       kind: fields[3].trim(),
       // NFC for the same reason trails.ts folds names: Hangul from a macOS export
@@ -195,8 +213,41 @@ export function parseNationalPoints(tsv: string): NationalPoint[] {
       name: (fields[4] ?? '').trim().normalize('NFC'),
       lat: at.lat,
       lon: at.lon,
+      gridLat: at.lat,
+      gridLon: at.lon,
     });
   }
 
+  spreadRepeats(points);
   return points;
+}
+
+/** Radius, in metres, of the circle a repeated 지점번호's rows are spread around. Half
+ *  the grid's 10 m unit, so no pin leaves the cell its code names. */
+const REPEAT_SPREAD_M = 5;
+const METRES_PER_DEG = 111_320;
+
+/**
+ * Rows sharing a 지점번호 decode to one position, and pins drawn there would stack, the
+ * lower one never seen or clicked. So their drawn lat/lon are spread evenly around a
+ * small circle, first row due east — for the two 다사49293899 rows, 10 m apart east–west.
+ * gridLat/gridLon keep the true position, which is what the list and popup print.
+ */
+function spreadRepeats(points: NationalPoint[]): void {
+  const byCode = new Map<string, NationalPoint[]>();
+  for (const point of points) {
+    const group = byCode.get(point.code);
+    if (group) group.push(point);
+    else byCode.set(point.code, [point]);
+  }
+  for (const group of byCode.values()) {
+    if (group.length < 2) continue;
+    group.forEach((point, i) => {
+      const angle = (2 * Math.PI * i) / group.length;
+      point.lat = point.gridLat + (REPEAT_SPREAD_M * Math.sin(angle)) / METRES_PER_DEG;
+      point.lon =
+        point.gridLon +
+        (REPEAT_SPREAD_M * Math.cos(angle)) / (METRES_PER_DEG * Math.cos((point.gridLat * Math.PI) / 180));
+    });
+  }
 }

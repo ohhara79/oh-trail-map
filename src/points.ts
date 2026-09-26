@@ -73,11 +73,11 @@ export function loadNationalPoints(): NationalPoint[] {
 /** One point as the panel list draws and filters it. */
 export type PointRow = {
   /**
-   * 지점번호: the row's identity and what Settings.hiddenPoints stores.
+   * NationalPoint.id: the row's identity and what Settings.hiddenPoints stores.
    * Deliberately not normalised — it has to stay the same string as
-   * NationalPoint.code, or a hidden-set key would not match the point it hides.
+   * NationalPoint.id, or a hidden-set key would not match the point it hides.
    */
-  code: string;
+  id: string;
   /**
    * The row's primary line: 이름 - 지점번호, or the 지점번호 alone for the 128 rows
    * the source gives no 이름. The code was once repeated on those rows to give every
@@ -107,7 +107,7 @@ export type PointRow = {
  * precision the source does not have.
  */
 export function formatLatLon(point: NationalPoint): string {
-  return `${point.lat.toFixed(5)}, ${point.lon.toFixed(5)}`;
+  return `${point.gridLat.toFixed(5)}, ${point.gridLon.toFixed(5)}`;
 }
 
 /**
@@ -128,7 +128,7 @@ export function pointRows(points: readonly NationalPoint[]): PointRow[] {
     const title = (point.name ? `${point.name} - ${point.code}` : point.code).normalize('NFC');
     const detail = [point.kind, region].filter(Boolean).join(' · ').normalize('NFC');
     return {
-      code: point.code,
+      id: point.id,
       title,
       detail,
       coords: formatLatLon(point),
@@ -219,7 +219,7 @@ export type PointsLayer = {
   /** Adds and removes markers until exactly the points not in `hidden` are drawn. */
   sync(hidden: ReadonlySet<string>): void;
   /** Rings the pin a click would open, or no pin for null. */
-  setHovered(code: string | null): void;
+  setHovered(id: string | null): void;
   /** The drawn pin a click at `at` (container pixels) opens, or null. */
   pinAt(at: L.Point): NationalPoint | null;
 };
@@ -251,10 +251,10 @@ export function createPointsLayer(map: L.Map, points: NationalPoint[]): PointsLa
   const namedHtml = iconHtml(PIN_COLOR_NAMED);
   const unnamedHtml = iconHtml(PIN_COLOR_UNNAMED);
 
-  // Keyed on 지점번호, which parseNationalPoints has already deduplicated, so it is
-  // unique by construction — and it is the same string Settings.hiddenPoints holds.
+  // Keyed on NationalPoint.id, which parseNationalPoints has already deduplicated, so
+  // it is unique by construction — and it is the same string Settings.hiddenPoints holds.
   const markers = new Map<string, { marker: L.Marker; point: NationalPoint }>();
-  let hoveredCode: string | null = null;
+  let hoveredId: string | null = null;
 
   for (const point of points) {
     const marker = L.marker([point.lat, point.lon], {
@@ -279,7 +279,7 @@ export function createPointsLayer(map: L.Map, points: NationalPoint[]): PointsLa
       // is the one worth seeing, and the one pinAt() prefers on a tie.
       zIndexOffset: point.name ? 1000 : 0,
     });
-    markers.set(point.code, { marker, point });
+    markers.set(point.id, { marker, point });
   }
 
   return {
@@ -295,15 +295,15 @@ export function createPointsLayer(map: L.Map, points: NationalPoint[]): PointsLa
         else group.removeLayer(marker);
       }
     },
-    setHovered(code) {
-      if (code === hoveredCode) return;
+    setHovered(id) {
+      if (id === hoveredId) return;
       const ring = (c: string | null, on: boolean) => {
         const el = c === null ? undefined : markers.get(c)?.marker.getElement();
         el?.classList.toggle('is-hovered', on);
       };
-      ring(hoveredCode, false);
-      ring(code, true);
-      hoveredCode = code;
+      ring(hoveredId, false);
+      ring(id, true);
+      hoveredId = id;
     },
     pinAt(at) {
       let best: NationalPoint | null = null;

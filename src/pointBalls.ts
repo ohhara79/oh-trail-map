@@ -228,7 +228,7 @@ export function createPointBalls(
       let count = 0;
       for (let i = 0; i < points.length; i++) {
         const point = points[i];
-        const ground = skip.has(point.code) ? null : map.queryTerrainElevation([point.lon, point.lat]);
+        const ground = skip.has(point.id) ? null : map.queryTerrainElevation([point.lon, point.lat]);
         grounds[i] = ground ?? NaN;
         if (ground === null) continue;
         const at = MercatorCoordinate.fromLngLat([point.lon, point.lat], ground + BALL_HEIGHT);
@@ -292,7 +292,7 @@ export function createPointBalls(
       let bestT = Infinity;
       for (let i = 0; i < points.length; i++) {
         const point = points[i];
-        if (Number.isNaN(grounds[i]) || skip.has(point.code)) continue;
+        if (Number.isNaN(grounds[i]) || skip.has(point.id)) continue;
         const c = [
           (point.lon - from.lon) * METRES_PER_DEG * Math.cos(from.lat * rad),
           (point.lat - from.lat) * METRES_PER_DEG,

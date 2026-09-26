@@ -289,8 +289,8 @@ export class ProfilePanel {
     const pins: PointPass[] = [];
     let last = '';
     for (const pass of this.passes) {
-      if (this.hiddenPoints.has(pass.point.code) || pass.point.code === last) continue;
-      last = pass.point.code;
+      if (this.hiddenPoints.has(pass.point.id) || pass.point.id === last) continue;
+      last = pass.point.id;
       pins.push(pass);
     }
     return pins;
@@ -423,7 +423,7 @@ export class ProfilePanel {
     let found: PointPass['point'] | null = null;
     let nearest = PASS_DISTANCE;
     for (const { point } of this.passes) {
-      if (this.hiddenPoints.has(point.code)) continue;
+      if (this.hiddenPoints.has(point.id)) continue;
       const d = haversine(here, point);
       if (d < nearest) {
         nearest = d;

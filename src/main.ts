@@ -211,10 +211,26 @@ async function main(): Promise<void> {
   // The open point popup, if any, and the point it describes. A pin opens one only
   // when nothing is selected, like a trail click (see clearMapSelection).
   const points = loadNationalPoints();
-  const pointByCode = new Map(points.map((point) => [point.code, point]));
-  /** The 지점번호 whose pins are off, as the app reads it. Settings holds the same
-   *  thing as an array, rebuilt from here whenever this changes. */
-  const hiddenPoints = new Set(settings.hiddenPoints);
+  const pointById = new Map(points.map((point) => [point.id, point]));
+  /** The ids (see NationalPoint.id) of the points whose pins are off, as the app
+   *  reads it. Settings holds the same thing as an array, rebuilt from here whenever
+   *  this changes.
+   *
+   *  Settings saved before points were keyed by region hold bare 지점번호, which match
+   *  no id now. Each becomes the ids of every point carrying that code — for
+   *  다사49293899 both regions, since hiding it hid the one pin both were — and the
+   *  result is saved back, so this runs once. A key matching nothing at all is kept
+   *  as it was, as it always has been, in case its point comes back to the file. */
+  const hiddenPoints = new Set(
+    settings.hiddenPoints.flatMap((key) => {
+      const migrated = pointById.has(key) ? [] : points.filter((p) => p.code === key).map((p) => p.id);
+      return migrated.length > 0 ? migrated : [key];
+    }),
+  );
+  if (hiddenPoints.size !== settings.hiddenPoints.length || settings.hiddenPoints.some((key) => !hiddenPoints.has(key))) {
+    settings = { ...settings, hiddenPoints: [...hiddenPoints] };
+    void saveSettings(settings);
+  }
   profilePanel.setHiddenPoints(hiddenPoints);
   let pointPopup: L.Popup | null = null;
   let popupPoint: NationalPoint | null = null;
@@ -223,7 +239,7 @@ async function main(): Promise<void> {
   let pendingPoint: NationalPoint | null = null;
   /** The 지점번호 the panel list draws as selected: whichever point has a popup
    *  open in the view you are looking at. View state, like selectedId. */
-  let selectedPointCode: string | null = null;
+  let selectedPointId: string | null = null;
   const pointsLayer = createPointsLayer(map, points);
   // Added once and never removed: sync() below decides which pins are in it.
   pointsLayer.layer.addTo(map);
@@ -329,22 +345,22 @@ async function main(): Promise<void> {
   });
 
   const pointsList = new PointsList(pointRows(points), {
-    onToggle: (code, visible) => setPointsHidden([code], !visible),
-    onToggleAll: (visible, codes) => {
+    onToggle: (id, visible) => setPointsHidden([id], !visible),
+    onToggleAll: (visible, ids) => {
       // Only the rows the list actually showed: a filter must not let one click
       // reach the points it hid.
-      setPointsHidden(codes, !visible);
+      setPointsHidden(ids, !visible);
     },
-    onFilterChange: () => pointsList.render(hiddenPoints, selectedPointCode),
-    onSelect: (code) => goToPoint(code),
+    onFilterChange: () => pointsList.render(hiddenPoints, selectedPointId),
+    onSelect: (id) => goToPoint(id),
   });
 
   /**
    * What a points list row does, and `;` `'` too: goes to the point and opens its
    * popup.
    */
-  function goToPoint(code: string): void {
-    const point = pointByCode.get(code);
+  function goToPoint(id: string): void {
+    const point = pointById.get(id);
     if (!point) return;
     // Like a trail row, which zooms to a hidden trail without turning it on: a
     // row click is you asking for this point now. It selects the point, not the
@@ -401,9 +417,9 @@ async function main(): Promise<void> {
         profilePanel.stepPass(delta);
         return;
       }
-      const codes = pointsList.renderedCodes().filter((code) => !hiddenPoints.has(code));
-      const code = stepIn(codes, selectedPointCode, delta);
-      if (code !== null) goToPoint(code);
+      const ids = pointsList.renderedIds().filter((id) => !hiddenPoints.has(id));
+      const id = stepIn(ids, selectedPointId, delta);
+      if (id !== null) goToPoint(id);
     },
     toggleMinimapSize,
     zoomToSelected: () => {
@@ -417,8 +433,8 @@ async function main(): Promise<void> {
     },
     // All off while any is on, the way the list's master checkbox reads.
     togglePoints: () => {
-      const codes = [...pointByCode.keys()];
-      setPointsHidden(codes, codes.some((code) => !hiddenPoints.has(code)));
+      const ids = [...pointById.keys()];
+      setPointsHidden(ids, ids.some((id) => !hiddenPoints.has(id)));
     },
     // Every trail, like `H` and every point: not only the rows the filter shows.
     toggleTrails: () => {
@@ -797,26 +813,26 @@ async function main(): Promise<void> {
    * onPointPopup.
    */
   function selectPoint(point: NationalPoint | null): void {
-    const code = point?.code ?? null;
-    if (code === selectedPointCode) return;
-    selectedPointCode = code;
-    pointsList.render(hiddenPoints, selectedPointCode);
+    const id = point?.id ?? null;
+    if (id === selectedPointId) return;
+    selectedPointId = id;
+    pointsList.render(hiddenPoints, selectedPointId);
   }
 
   /**
    * The single place a national point's visibility changes: updates the set, syncs
    * both views and persists once.
    *
-   * Takes many codes rather than one so the master checkbox costs one saveSettings
+   * Takes many ids rather than one so the master checkbox costs one saveSettings
    * and one setFilter instead of 272 of each — the same reason setVisible above
    * refuses to rewrite a record that already agrees.
    */
-  function setPointsHidden(codes: Iterable<string>, hidden: boolean): void {
+  function setPointsHidden(ids: Iterable<string>, hidden: boolean): void {
     let changed = false;
-    for (const code of codes) {
-      if (hidden === hiddenPoints.has(code)) continue;
-      if (hidden) hiddenPoints.add(code);
-      else hiddenPoints.delete(code);
+    for (const id of ids) {
+      if (hidden === hiddenPoints.has(id)) continue;
+      if (hidden) hiddenPoints.add(id);
+      else hiddenPoints.delete(id);
       changed = true;
     }
     if (changed) {
@@ -828,7 +844,7 @@ async function main(): Promise<void> {
     }
     // Outside the guard: the browser has already flipped the checkbox that was
     // clicked, so the rows are re-read from the hidden set either way.
-    pointsList.render(hiddenPoints, selectedPointCode);
+    pointsList.render(hiddenPoints, selectedPointId);
   }
 
   /** The 2D pins, a popup either view may have left pointing at a pin that is
@@ -836,7 +852,7 @@ async function main(): Promise<void> {
   function syncPoints(): void {
     pointsLayer.sync(hiddenPoints);
     profilePanel.setHiddenPoints(hiddenPoints);
-    if (popupPoint && hiddenPoints.has(popupPoint.code)) closePointPopup();
+    if (popupPoint && hiddenPoints.has(popupPoint.id)) closePointPopup();
     applyCursorPoint();
     view3d?.syncPoints();
   }
@@ -884,7 +900,7 @@ async function main(): Promise<void> {
     const size = map.getSize();
     const onScreen =
       onCursorAt !== null && onCursorAt.x >= 0 && onCursorAt.y >= 0 && onCursorAt.x <= size.x && onCursorAt.y <= size.y;
-    pointsLayer.setHovered(pin?.code ?? onCursor?.code ?? null);
+    pointsLayer.setHovered(pin?.id ?? onCursor?.id ?? null);
     hoverHalo.show(trail);
     // Leaflet cannot know to give a pointer to either: both are picked geometrically.
     map.getContainer().classList.toggle('map-pick', pin !== null || trail !== null);
@@ -955,7 +971,7 @@ async function main(): Promise<void> {
   for (const id of saved.keys()) if (!present.has(id)) void deleteTrail(id);
 
   refresh();
-  pointsList.render(hiddenPoints, selectedPointCode);
+  pointsList.render(hiddenPoints, selectedPointId);
 
   const restored = visibleBounds();
   const hadTrails = restored.isValid();

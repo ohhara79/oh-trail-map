@@ -105,12 +105,12 @@ export function trailsGeoJson(trails: readonly Trail[]): GeoJSON.FeatureCollecti
 
 /**
  * The index leads back to the NationalPoint for the popup, so the popup is built
- * from the same object the 2D view uses and never from a copy. The code joins a
+ * from the same object the 2D view uses and never from a copy. The id joins a
  * feature to its row in the panel list — and because pointsFilter below filters
  * rather than drops features, the index stays valid whatever the list hides.
  */
 function pointProperties(point: NationalPoint, index: number) {
-  return { index, named: point.name !== '', code: point.code };
+  return { index, named: point.name !== '', id: point.id };
 }
 
 export function pointsGeoJson(points: readonly NationalPoint[]): GeoJSON.FeatureCollection {
@@ -337,7 +337,7 @@ export function visibleFilter(trails: readonly Trail[]): FilterSpecification {
  * `['in', x, ['literal', []]]` is false, so an empty set draws all of them.
  */
 export function pointsFilter(hidden: ReadonlySet<string>): FilterSpecification {
-  return ['!', ['in', ['get', 'code'], ['literal', [...hidden]]]];
+  return ['!', ['in', ['get', 'id'], ['literal', [...hidden]]]];
 }
 
 /** Only the selected trail, and nothing at all when there is no selection. */

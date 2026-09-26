@@ -235,9 +235,9 @@ export function createPointDots(
       // The same order the circle layers drew in: the ring behind its point, the
       // points, then the cursor above them, as its pane is in 2D.
       const skip = hidden();
-      if (hover !== null && !skip.has(points[hover].code)) push(points[hover].lon, points[hover].lat, HOVER);
+      if (hover !== null && !skip.has(points[hover].id)) push(points[hover].lon, points[hover].lat, HOVER);
       for (const i of order) {
-        if (!skip.has(points[i].code)) push(points[i].lon, points[i].lat, looks[i]);
+        if (!skip.has(points[i].id)) push(points[i].lon, points[i].lat, looks[i]);
       }
       if (cursor) push(cursor.lon, cursor.lat, cursor.look);
       if (count === 0) return;

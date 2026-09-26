@@ -358,7 +358,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     // The balls are no style layer to filter: they read the hidden set as they draw.
     map.triggerRepaint();
     // The same rule as 2D: a popup whose pin is gone points at nothing.
-    if (popupPoint && hiddenPoints.has(popupPoint.code)) closePopup();
+    if (popupPoint && hiddenPoints.has(popupPoint.id)) closePopup();
     scheduleHover();
   }
 
@@ -645,7 +645,7 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     for (const point of points) {
       const d = haversine(pose, point);
       // Distance first: it is the cheap test, and it rejects almost every point.
-      if (d > nearestDistance || hiddenPoints.has(point.code)) continue;
+      if (d > nearestDistance || hiddenPoints.has(point.id)) continue;
       if (!inWalkView(new LngLat(point.lon, point.lat))) continue;
       // That far off, a ridge can hide the ball: the same test the crosshair's pick
       // makes, so the label never names a ball a tap could not reach.
@@ -802,12 +802,12 @@ export async function createView3d(opts: View3dOptions): Promise<View3d> {
     const pick = at ? pickAt(at.x, at.y) : null;
     const trail = pick?.trail ?? null;
     const onCursor =
-      mode === 'orbit' && tween === null && !pick && cursorPoint && !getScene().hiddenPoints.has(cursorPoint.code)
+      mode === 'orbit' && tween === null && !pick && cursorPoint && !getScene().hiddenPoints.has(cursorPoint.id)
         ? cursorPoint
         : null;
     const pickedPoint = pick?.point ?? onCursor;
     // main.ts's copy of the point, not this module's: matched by its 지점번호.
-    const pointIndex = pickedPoint ? points.findIndex((p) => p.code === pickedPoint.code) : null;
+    const pointIndex = pickedPoint ? points.findIndex((p) => p.id === pickedPoint.id) : null;
     if (trail !== hoveredTrail) {
       hoveredTrail = trail;
       map.setFilter(LAYER_TRAIL_HOVER, selectedFilter(trail));
