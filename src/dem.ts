@@ -3,13 +3,15 @@
  * (queryTerrainElevation); 2D has none, so it decodes the same tiles itself. No
  * maplibre-gl import here, so the 2D bundle does not grow by it.
  */
+import { inTileBounds } from './basemaps';
 
 /**
- * AWS Terrain Tiles: global, keyless, CORS-open, encoded as terrarium PNGs. Around
- * Seoul the source is SRTM at roughly 30 m, so the mountain has its true shape but
- * no cliffs, boulders or trees. Tiles stop at z15; MapLibre overscales past that.
+ * A copy of AWS Terrain Tiles over TILE_BOUNDS, encoded as terrarium PNGs and
+ * downloaded once by scripts/fetch-tiles.py. Around Seoul the source is SRTM at
+ * roughly 30 m, so the mountain has its true shape but no cliffs, boulders or
+ * trees. Tiles stop at z15; MapLibre overscales past that.
  */
-export const DEM_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+export const DEM_TILES = 'data/tiles/terrain/{z}/{x}/{y}.png';
 export const DEM_MAX_ZOOM = 15;
 
 /** The tiles' size in pixels: about 4.7 m a pixel at z15 around Seoul. */
@@ -63,6 +65,8 @@ export function elevationTile(lat: number, lon: number): string {
  *  failed lately (see RETRY_AFTER); undefined if it has not been asked for, is on
  *  its way, or may be asked for again. */
 export function cachedElevation(lat: number, lon: number): number | null | undefined {
+  // No tiles past the box, so nothing to wait for either.
+  if (!inTileBounds(lat, lon)) return null;
   const spot = tileSpot(lat, lon);
   const pixels = cache.get(spot.key);
   if (pixels === undefined) {
@@ -77,6 +81,7 @@ export function cachedElevation(lat: number, lon: number): number | null | undef
 
 /** Loads the tile over (lat, lon) if need be, then answers as cachedElevation. */
 export async function loadElevation(lat: number, lon: number): Promise<number | null> {
+  if (!inTileBounds(lat, lon)) return null;
   const spot = tileSpot(lat, lon);
   if (!cache.has(spot.key)) {
     let pending = loading.get(spot.key);

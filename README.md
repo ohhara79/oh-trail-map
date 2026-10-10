@@ -15,8 +15,8 @@ npm run preview
 - OSM basemap with your current location (marker + accuracy circle), zoom/pan,
   and a metric scale bar in the bottom-left, in 2D and 3D orbit.
 - A small see-through crosshair marks the map centre, and a readout at the top
-  centre gives its lat, lon and ground elevation — in 2D (from the same AWS
-  terrain tiles 3D uses, fetched as you pan) and in 3D orbit. Walking or playing
+  centre gives its lat, lon and ground elevation — in 2D (from the same local
+  terrain tiles 3D uses) and in 3D orbit. Walking or playing
   a trail in 3D it gives where you stand instead.
 - A locate button in the bottom-right: click to centre on yourself and keep
   following as you move, until you drag the map away or click it again.
@@ -30,7 +30,11 @@ npm run preview
   the panel, the email as a mailto link and the homepage opening in a new tab.
   Bundled at build time; an empty file drops its line.
 - Per-trail visibility toggle, a distinct colour, and distance / ascent / duration stats.
-- Basemap switcher: OSM Standard, OpenTopoMap, Esri satellite.
+- Basemap switcher: OSM Standard, OpenTopoMap, Esri satellite. OSM Standard,
+  OpenTopoMap and the terrain are local files under `data/tiles/` covering only
+  the box lat 37.39–37.49, lon 126.90–127.00 (관악산 with a margin; `TILE_BOUNDS`
+  in `src/basemaps.ts`) — outside it the map is blank. Only Esri satellite is
+  still fetched from its server. See *Map tiles* below.
 - National Point Number emergency-location points from `data/national_points_w_name.tsv`, drawn as circles —
   amber where the point has an 이름, grey where it does not; click one for its 지점번호, 사물유형, 시/도 · 시/군/구, lat, lon and 이름.
   The grid codes are decoded to lat/lon at runtime — see
@@ -121,10 +125,9 @@ npm run preview
     turns the view with the phone.
   - **Esc**: steps back from playback to walk, then to orbit, then to 2D.
 
-  Terrain comes from AWS Terrain Tiles (SRTM, ~30 m), so the mountain has its
-  true shape but no cliffs or trees, and the ground near your feet is soft. 3D
-  loads far more tiles than 2D does — worth keeping in mind with the OSM tile
-  usage policy. MapLibre (~1.5 MB) is only downloaded the first time 3D is opened.
+  Terrain is a local copy of AWS Terrain Tiles (SRTM, ~30 m), so the mountain has
+  its true shape but no cliffs or trees, and the ground near your feet is soft.
+  MapLibre (~1.5 MB) is only downloaded the first time 3D is opened.
 - Each trail's visibility persists in IndexedDB across reloads, and so does the
   set of hidden national points. The single "Show National Point Numbers" toggle
   the list replaced is not carried over, so a browser that had it switched off
@@ -162,6 +165,33 @@ leave Ctrl/Alt/Cmd combinations to the browser.
 | `K` | 3D walk/playback: the minimap small or large, as a click on it does |
 | `Space`, `P` | Pause or play the trail |
 | `X` | Playback speed |
+
+## Map tiles
+
+`data/tiles/{osm,topo,terrain}/{z}/{x}/{y}.png` are downloaded once and served
+with the app (`vite build` copies them into `dist/data/tiles/`). To make or
+refresh them:
+
+```bash
+# Terrain (AWS Terrain Tiles, z0–15, ~180 tiles)
+scripts/fetch-tiles.py --url 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png' \
+    --out data/tiles/terrain --zoom 0-15 --delay 0.1
+
+# OpenTopoMap (z0–17, ~2,400 tiles; slow on purpose, ~40 min)
+scripts/fetch-tiles.py --url 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png' --subdomains abc \
+    --out data/tiles/topo --zoom 0-17 --delay 1
+
+# OSM Standard (z0–19, ~36,000 tiles), rendered locally with OSM's own style —
+# OSM's tile policy forbids bulk-downloading these from tile.openstreetmap.org.
+scripts/render-osm.sh        # Docker; DOCKER="sudo docker" if you are not in the docker group
+scripts/fetch-tiles.py --url 'http://localhost:8080/tile/{z}/{x}/{y}.png' \
+    --out data/tiles/osm --zoom 0-19 --workers 4 --delay 0
+scripts/render-osm.sh stop
+```
+
+Tiles already on disk are skipped, so a run can be interrupted and resumed;
+delete a folder to fetch it fresh. The box in `scripts/fetch-tiles.py` and
+`TILE_BOUNDS` must match.
 
 ## Samples
 

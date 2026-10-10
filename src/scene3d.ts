@@ -16,7 +16,7 @@ import type {
   SkySpecification,
   StyleSpecification,
 } from 'maplibre-gl';
-import type { Basemap } from './basemaps';
+import { TILE_BOUNDS, type Basemap } from './basemaps';
 import { DEM_MAX_ZOOM, DEM_TILES } from './dem';
 import { offset } from './geo';
 import { EARTH_RADIUS } from './gpx';
@@ -51,22 +51,31 @@ export function basemapSource(basemap: Basemap): RasterSourceSpecification {
     : [basemap.url];
   return {
     type: 'raster',
-    tiles,
+    tiles: tiles.map(absolute),
     // The default of 512 would have MapLibre ask for tiles one zoom level coarser
     // than the screen needs, and every basemap here is 256px.
     tileSize: 256,
     maxzoom: basemap.maxZoom,
+    // A local source has no tiles past its box; asking would only 404.
+    ...(basemap.local && { bounds: TILE_BOUNDS }),
   };
 }
 
 export function demSource(): RasterDEMSourceSpecification {
   return {
     type: 'raster-dem',
-    tiles: [DEM_TILES],
+    tiles: [absolute(DEM_TILES)],
     encoding: 'terrarium',
     tileSize: 256,
     maxzoom: DEM_MAX_ZOOM,
+    bounds: TILE_BOUNDS,
   };
+}
+
+/** The local tiles' paths are relative to the page, and MapLibre fetches from a
+ *  worker, which would resolve them against its own script instead. */
+function absolute(url: string): string {
+  return new URL(url, document.baseURI).href.replace(/%7B/g, '{').replace(/%7D/g, '}');
 }
 
 /**

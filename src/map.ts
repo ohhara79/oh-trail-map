@@ -1,5 +1,5 @@
 import L from 'leaflet';
-import { basemapById, MAX_ZOOM } from './basemaps';
+import { basemapById, MAX_ZOOM, TILE_BOUNDS, type Basemap } from './basemaps';
 import { angleDelta } from './geo';
 import { startHeading, type Heading } from './heading';
 
@@ -63,15 +63,7 @@ export function createMap(container: HTMLElement, basemapId: string): MapHandle 
   }).observe(container);
 
   let source = basemapById(basemapId);
-  // maxNativeZoom, not maxZoom: the latter is the whole map's ceiling, since the
-  // map sets none of its own and Leaflet takes the deepest of its layers. Handing
-  // it the source's limit stopped the camera dead at z19 — z17 on OpenTopoMap —
-  // where 3D has always carried on past it, scaling the last tiles up.
-  let layer = L.tileLayer(source.url, {
-    maxNativeZoom: source.maxZoom,
-    maxZoom: MAX_ZOOM,
-    subdomains: source.subdomains ?? 'abc',
-  }).addTo(map);
+  let layer = tileLayerFor(source).addTo(map);
 
   const handle: MapHandle = {
     map,
@@ -80,11 +72,7 @@ export function createMap(container: HTMLElement, basemapId: string): MapHandle 
       if (next.id === source.id) return;
       source = next;
       map.removeLayer(layer);
-      layer = L.tileLayer(next.url, {
-        maxNativeZoom: next.maxZoom,
-        maxZoom: MAX_ZOOM,
-        subdomains: next.subdomains ?? 'abc',
-      }).addTo(map);
+      layer = tileLayerFor(next).addTo(map);
       // No zoom clamp here: every source shares MAX_ZOOM, so coming from OSM at
       // z22 to OpenTopoMap upscales its z17 tiles rather than blanking, and you
       // keep the view you were looking at.
@@ -92,6 +80,21 @@ export function createMap(container: HTMLElement, basemapId: string): MapHandle 
   };
 
   return handle;
+}
+
+function tileLayerFor(source: Basemap): L.TileLayer {
+  const [west, south, east, north] = TILE_BOUNDS;
+  // maxNativeZoom, not maxZoom: the latter is the whole map's ceiling, since the
+  // map sets none of its own and Leaflet takes the deepest of its layers. Handing
+  // it the source's limit stopped the camera dead at z19 — z17 on OpenTopoMap —
+  // where 3D has always carried on past it, scaling the last tiles up.
+  return L.tileLayer(source.url, {
+    maxNativeZoom: source.maxZoom,
+    maxZoom: MAX_ZOOM,
+    subdomains: source.subdomains ?? 'abc',
+    // A local source has no tiles past its box; asking would only 404.
+    bounds: source.local ? L.latLngBounds([south, west], [north, east]) : undefined,
+  });
 }
 
 export type LocateCallbacks = {

@@ -7,21 +7,37 @@ export type Basemap = {
    *  up past it rather than stopping there — see MAX_ZOOM. */
   maxZoom: number;
   subdomains?: string;
+  /** Served from data/tiles/, which only covers TILE_BOUNDS. */
+  local?: boolean;
 };
+
+/**
+ * The box the tiles under data/tiles/ cover, as [west, south, east, north]: 관악산
+ * with a margin. Nothing is fetched outside it. scripts/fetch-tiles.py downloads
+ * exactly this box, so the two must move together.
+ */
+export const TILE_BOUNDS: [number, number, number, number] = [126.9, 37.39, 127.0, 37.49];
+
+export function inTileBounds(lat: number, lon: number): boolean {
+  const [west, south, east, north] = TILE_BOUNDS;
+  return lat >= south && lat <= north && lon >= west && lon <= east;
+}
 
 export const BASEMAPS: Basemap[] = [
   {
     id: 'osm',
     label: 'OSM Standard',
-    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    // Rendered on this machine with OSM's own style: see scripts/render-osm.sh.
+    url: 'data/tiles/osm/{z}/{x}/{y}.png',
     maxZoom: 19,
+    local: true,
   },
   {
     id: 'topo',
     label: 'OpenTopoMap',
-    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    url: 'data/tiles/topo/{z}/{x}/{y}.png',
     maxZoom: 17,
-    subdomains: 'abc',
+    local: true,
   },
   {
     id: 'esri',
