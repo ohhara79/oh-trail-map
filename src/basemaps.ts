@@ -23,7 +23,13 @@ export function inTileBounds(lat: number, lon: number): boolean {
   return lat >= south && lat <= north && lon >= west && lon <= east;
 }
 
-export const BASEMAPS: Basemap[] = [
+/**
+ * Whether the Satellite basemap is offered. Off for public builds: Esri World
+ * Imagery's terms don't allow it there. Set it to true and rebuild to bring it back.
+ */
+export const SATELLITE_ENABLED = false;
+
+const ALL_BASEMAPS: Basemap[] = [
   {
     id: 'osm',
     label: 'OSM Standard',
@@ -47,6 +53,11 @@ export const BASEMAPS: Basemap[] = [
     maxZoom: 19,
   },
 ];
+
+// basemapById falls back to the first entry, so a saved 'esri' just lands on OSM.
+export const BASEMAPS: Basemap[] = ALL_BASEMAPS.filter(
+  (b) => b.id !== 'esri' || SATELLITE_ENABLED,
+);
 
 export function basemapById(id: string): Basemap {
   return BASEMAPS.find((b) => b.id === id) ?? BASEMAPS[0];

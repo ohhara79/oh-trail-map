@@ -34,7 +34,9 @@ npm run preview
   OpenTopoMap and the terrain are local files under `data/tiles/` covering only
   the box lat 37.39–37.49, lon 126.90–127.00 (관악산 with a margin; `TILE_BOUNDS`
   in `src/basemaps.ts`) — outside it the map is blank. Only Esri satellite is
-  still fetched from its server. See *Map tiles* below.
+  still fetched from its server, and it is off by default because its terms don't
+  allow a public release: set `SATELLITE_ENABLED` in `src/basemaps.ts` to `true`
+  and rebuild to offer it. See *Map tiles* below.
 - National Point Number emergency-location points from `data/national_points_w_name.tsv`, drawn as circles —
   amber where the point has an 이름, grey where it does not; click one for its 지점번호, 사물유형, 시/도 · 시/군/구, lat, lon and 이름.
   The grid codes are decoded to lat/lon at runtime — see
