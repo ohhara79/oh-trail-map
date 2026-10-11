@@ -212,3 +212,12 @@ delete a folder to fetch it fresh. The box in `scripts/fetch-tiles.py` and
   LAN IP the browser will refuse geolocation. Everything else (the trails,
   the drawer) works there; testing *location* needs localhost or HTTPS.
 - `dist/` is fully static and can be hosted anywhere.
+
+## License
+
+The code is released under the [MIT License](LICENSE). The map tiles and terrain
+under `data/tiles/` keep their own licenses — OpenStreetMap data (ODbL),
+OpenTopoMap (CC-BY-SA) and the Mapzen/AWS Terrain Tiles — and are credited behind
+the ⓘ in the app (`credit` in `src/basemaps.ts`). The National Point Number data in
+`data/national_points_w_name.tsv` comes from its original source and is not
+relicensed here.
