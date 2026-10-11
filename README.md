@@ -37,6 +37,9 @@ npm run preview
   still fetched from its server, and it is off by default because its terms don't
   allow a public release: set `SATELLITE_ENABLED` in `src/basemaps.ts` to `true`
   and rebuild to offer it. See *Map tiles* below.
+- Map credits behind a small ⓘ in the top-right corner, beside the 3D button: click it for
+  the current basemap's credit and the terrain's, in 2D and 3D. A click
+  elsewhere or Escape folds them away.
 - National Point Number emergency-location points from `data/national_points_w_name.tsv`, drawn as circles —
   amber where the point has an 이름, grey where it does not; click one for its 지점번호, 사물유형, 시/도 · 시/군/구, lat, lon and 이름.
   The grid codes are decoded to lat/lon at runtime — see

@@ -418,6 +418,42 @@ button:hover { background: #f5f6f8; }
   color: #2b3138;
 }
 #view3d[data-state='on'] { color: #fff; background: var(--accent); }
+
+/* The map credits, folded into an ⓘ in the top-right corner: the 12px strip
+   above #view3d and the 10px margin beside it, the one gap left in that column,
+   so the 3D button keeps its place. Flush with the edge and only as tall as the
+   strip, it never touches the button. The box opens to the left, level with the
+   strip and clear of the button, over whatever is there. */
+#credits {
+  position: absolute;
+  top: env(safe-area-inset-top);
+  right: env(safe-area-inset-right);
+  width: 16px;
+  z-index: 1150;
+}
+#credits-toggle {
+  display: block;
+  width: 16px; height: 12px;
+  padding: 0; border: 0; border-radius: 0;
+  background: none;
+  font-size: 11px; line-height: 12px;
+  color: var(--muted);
+}
+#credits-toggle:hover, #credits-toggle[aria-expanded='true'] { background: none; color: var(--fg); }
+#credits-text {
+  position: absolute;
+  /* 48px from the edge: the 3D button's 44px and a 4px gap. */
+  top: 2px; right: 48px;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 80px));
+  padding: 4px 8px;
+  border: 2px solid rgba(0,0,0,.2);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, .92);
+  font-size: 11px; line-height: 1.4;
+  color: var(--fg);
+}
+#credits-text[hidden] { display: none; }
 #view3d[data-state='loading'] { color: var(--accent); animation: locate-pulse 1.4s ease-in-out infinite; }
 /* No WebGL2: dimmed, not disabled, so a click can still say why. */
 #view3d[data-state='unavailable'] { color: var(--muted); text-decoration: line-through; }
@@ -657,10 +693,10 @@ button:hover { background: #f5f6f8; }
    list in sync with CHROME there). visibility follows the fade, so a hidden button
    can be neither clicked nor tabbed to. Scoped to 3D so 2D never transitions
    anything. */
-#app[data-mode3d] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d, #profile, #map, #minimap-you, #readout) {
+#app[data-mode3d] :is(#expand, #compass, #locate, #view3d, #credits, #attitude3d, #mode3d, #playback3d, #profile, #map, #minimap-you, #readout) {
   transition: opacity .25s ease;
 }
-#app[data-chrome='hidden'] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d, #profile, #map, #minimap-you, #readout) {
+#app[data-chrome='hidden'] :is(#expand, #compass, #locate, #view3d, #credits, #attitude3d, #mode3d, #playback3d, #profile, #map, #minimap-you, #readout) {
   opacity: 0; visibility: hidden;
   transition: opacity .25s ease, visibility 0s .25s;
 }
@@ -1082,7 +1118,7 @@ button:hover { background: #f5f6f8; }
   #view3d[data-state='loading'] { animation: none; }
   /* The playback controls still hide and return on a tap; they just snap. Same
      specificity as the rules above and later, so this wins. */
-  #app[data-mode3d] :is(#expand, #compass, #locate, #view3d, #attitude3d, #mode3d, #playback3d, #profile, #map, #minimap-you) { transition: none; }
+  #app[data-mode3d] :is(#expand, #compass, #locate, #view3d, #credits, #attitude3d, #mode3d, #playback3d, #profile, #map, #minimap-you) { transition: none; }
 }
 
 /* ---------------------------------------------------------------------------

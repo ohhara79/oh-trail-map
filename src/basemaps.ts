@@ -9,7 +9,15 @@ export type Basemap = {
   subdomains?: string;
   /** Served from data/tiles/, which only covers TILE_BOUNDS. */
   local?: boolean;
+  /** The credit its terms ask for, as HTML: shown behind the ⓘ (see credits.ts). */
+  credit: string;
 };
+
+/** The terrain is always in use — 3D draws it and the 2D readout reads it — so
+ *  its credit sits under every basemap's. */
+export const TERRAIN_CREDIT =
+  'Terrain: <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Mapzen Terrain Tiles</a>' +
+  ' on AWS (SRTM, GMTED2010, NED, ETOPO1 and others)';
 
 /**
  * The box the tiles under data/tiles/ cover, as [west, south, east, north]: 관악산
@@ -37,6 +45,7 @@ const ALL_BASEMAPS: Basemap[] = [
     url: 'data/tiles/osm/{z}/{x}/{y}.png',
     maxZoom: 19,
     local: true,
+    credit: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   },
   {
     id: 'topo',
@@ -44,6 +53,10 @@ const ALL_BASEMAPS: Basemap[] = [
     url: 'data/tiles/topo/{z}/{x}/{y}.png',
     maxZoom: 17,
     local: true,
+    credit:
+      'Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, SRTM' +
+      ' · Style © <a href="https://opentopomap.org">OpenTopoMap</a>' +
+      ' (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
   },
   {
     id: 'esri',
@@ -51,6 +64,7 @@ const ALL_BASEMAPS: Basemap[] = [
     // Note the {z}/{y}/{x} axis order — differs from the slippy-map default.
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     maxZoom: 19,
+    credit: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
   },
 ];
 

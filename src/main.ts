@@ -2,6 +2,7 @@ import L from 'leaflet';
 import './style.css';
 
 import { basemapById, BASEMAPS } from './basemaps';
+import { createCredits } from './credits';
 import { cachedElevation, elevationTile, loadElevation } from './dem';
 import { compassNeedsPermission, requestCompassPermission, type Heading } from './heading';
 import { createMap, startLocating } from './map';
@@ -154,6 +155,7 @@ async function main(): Promise<void> {
   settings = await loadSettings().catch(() => DEFAULT_SETTINGS);
 
   const handle = createMap(document.getElementById('map')!, settings.basemapId);
+  const credits = createCredits(basemapById(settings.basemapId));
   const { map } = handle;
   const halo = new Halo(map);
 
@@ -472,6 +474,7 @@ async function main(): Promise<void> {
     settings = { ...settings, basemapId: id };
     handle.setBasemap(id);
     view3d?.setBasemap(id);
+    credits.setBasemap(basemapById(id));
     void saveSettings(settings);
   }
 
