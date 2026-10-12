@@ -29,6 +29,13 @@ npm run preview
 - `data/name.txt`, `data/email.txt` and `data/homepage.txt` are shown at the end of
   the panel, the email as a mailto link and the homepage opening in a new tab.
   Bundled at build time; an empty file drops its line.
+- `data/meta.json` gives the page's URL, an `item_id`, a description, a category
+  and a publication date, for the Open Graph and [Dable](https://support.dable.io/media-process-type)
+  meta tags. `vite.config.ts` writes them into `index.html`'s `<head>`, along with the
+  static title and `data/name.txt` as the author, because crawlers run no script.
+  The description also shows at the top of the panel as the page body
+  (`itemprop="articleBody"`). `og:image` is `public/og.png`, a 1200×630 screenshot
+  of the map. With no `meta.json`, there are no tags and no intro.
 - Per-trail visibility toggle, a distinct colour, and distance / ascent / duration stats.
 - Basemap switcher: OSM Standard, OpenTopoMap, Esri satellite. OSM Standard,
   OpenTopoMap and the terrain are local files under `data/tiles/` covering only
