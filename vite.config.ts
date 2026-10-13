@@ -69,8 +69,7 @@ function dableMeta(): Plugin {
     transformIndexHtml(html) {
       if (!existsSync(resolve(root, 'data/meta.json'))) return html.replace('<!--intro-->', '');
       const meta = JSON.parse(read('meta.json')) as PageMeta;
-      const place = read('title.txt');
-      const title = place ? `oh-trail-map (${place})` : 'oh-trail-map';
+      const title = read('title.txt') || 'oh-trail-map';
       const tags: [string, string][] = [
         ['item_id', meta.item_id],
         ['og:url', meta.url],

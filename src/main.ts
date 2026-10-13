@@ -52,17 +52,12 @@ let selectedId: string | null = null;
 const POINT_ZOOM = 17;
 
 /**
- * The app name, with data/title.txt's area in brackets when the file has one:
- * the tab title and the panel heading. The heading keeps index.html's
- * non-breaking hyphens, so a narrow panel wraps before the bracket and never
- * inside the name.
+ * The tab title: data/title.txt, or the app name when the file is empty. The
+ * panel heading is always index.html's app name, which a long title would not
+ * fit.
  */
 function applyTitle(): void {
-  const place = rawTitle.trim();
-  const name = place ? `oh-trail-map (${place})` : 'oh-trail-map';
-  document.title = name;
-  const heading = document.querySelector('.panel-head h1');
-  if (heading) heading.textContent = name.replace('oh-trail-map', 'oh\u2011trail\u2011map');
+  document.title = rawTitle.trim() || 'oh-trail-map';
 }
 
 /**
