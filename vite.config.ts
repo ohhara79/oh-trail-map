@@ -43,8 +43,9 @@ function escapeHtml(text: string): string {
 
 /**
  * The Open Graph and Dable tags (https://support.dable.io/media-process-type),
- * the static <title>, and the #intro text Dable reads as the page body. Written
- * into index.html here and not from main.ts, because crawlers run no script.
+ * the search engines' description tag, the static <title>, and the #intro text
+ * Dable reads as the page body. Written into index.html here and not from
+ * main.ts, because crawlers run no script.
  * The title is applyTitle()'s in main.ts; the author is data/name.txt. Without
  * data/meta.json the page gets none of it.
  */
@@ -80,9 +81,13 @@ function dableMeta(): Plugin {
         ['article:section', meta.section],
         ['article:published_time', meta.published_time],
       ];
-      const head = tags
-        .filter(([, value]) => value)
-        .map(([property, value]) => `<meta property="${property}" content="${escapeHtml(value)}" />`)
+      // name="description", not property=: the snippet search engines show.
+      const head = [`<meta name="description" content="${escapeHtml(meta.description)}" />`]
+        .concat(
+          tags
+            .filter(([, value]) => value)
+            .map(([property, value]) => `<meta property="${property}" content="${escapeHtml(value)}" />`),
+        )
         .join('\n    ');
       return html
         .replace(/<title>.*<\/title>/, `<title>${escapeHtml(title)}</title>\n    ${head}`)
