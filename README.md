@@ -24,7 +24,7 @@ npm run preview
   chunk per file). No files, no trails; the set cannot be changed from the
   browser — add or remove files and restart `npm run dev` or rebuild.
 - `data/title.txt` is the page title — the tab, `<title>` and `og:title` —
-  e.g. `오태호의 관악산 등산 기록 지도`. Bundled at build time; an empty file
+  e.g. `오태호의 관악산 등산 지도`. Bundled at build time; an empty file
   falls back to `oh-trail-map`. The panel heading is always `oh-trail-map`.
 - `data/name.txt`, `data/email.txt` and `data/homepage.txt` are shown at the end of
   the panel, the email as a mailto link and the homepage opening in a new tab.
