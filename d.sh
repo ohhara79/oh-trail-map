@@ -11,6 +11,7 @@ aws s3 sync dist/assets $B/assets --delete --cache-control "public,max-age=31536
 
 aws s3 cp dist/og.png $B/og.png --cache-control "public,max-age=604800"
 aws s3 cp dist/robots.txt $B/robots.txt --cache-control "public,max-age=86400"
+aws s3 cp dist/sitemap.xml $B/sitemap.xml --content-type "application/xml" --cache-control "public,max-age=86400"
 aws s3 cp dist/favicon.ico $B/favicon.ico --cache-control "public,max-age=604800"
 aws s3 cp dist/icon.svg $B/icon.svg --content-type "image/svg+xml" --cache-control "public,max-age=604800"
 aws s3 cp dist/apple-touch-icon.png $B/apple-touch-icon.png --cache-control "public,max-age=604800"

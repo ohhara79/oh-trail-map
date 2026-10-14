@@ -1,5 +1,8 @@
 <!doctype html>
-<html lang="en">
+<!-- ko: the title, description, intro and point names are Korean, and without it a
+     browser whose default stack has no Korean face falls back to a CJK font and
+     renders the Hangul beside Japanese glyph shapes. -->
+<html lang="ko">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -30,7 +33,7 @@
         <div id="panel-body" class="panel-body">
           <!-- data/meta.json's description, written in by dableMeta() in vite.config.ts:
                the page body Dable collects. Static, since its crawler runs no script. -->
-          <p id="intro" class="block intro" itemprop="articleBody" lang="ko"><!--intro--></p>
+          <p id="intro" class="block intro" itemprop="articleBody"><!--intro--></p>
           <section class="block">
             <h2>Basemap</h2>
             <div id="basemap-options" class="options"></div>
@@ -57,8 +60,7 @@
             </div>
             <input id="point-search" type="search" placeholder="Filter by number, name or place"
                    aria-label="Filter national points" autocomplete="off" />
-            <!-- lang, for the reason popupContent gives: every string here is Hangul. -->
-            <ul id="point-list" lang="ko"></ul>
+            <ul id="point-list"></ul>
             <p id="point-empty" class="hint">No national points in data/national_points_w_name.tsv.</p>
           </section>
 

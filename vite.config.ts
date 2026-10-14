@@ -42,16 +42,31 @@ function escapeHtml(text: string): string {
 }
 
 /**
+ * A PNG's width and height, as strings for og:image:width and :height, from the
+ * IHDR chunk that always comes first. Empty, so the tags are left out, when the
+ * file is missing.
+ */
+function pngSize(file: string): [string, string] {
+  if (!existsSync(file)) return ['', ''];
+  const png = readFileSync(file);
+  return [String(png.readUInt32BE(16)), String(png.readUInt32BE(20))];
+}
+
+/**
  * The Open Graph and Dable tags (https://support.dable.io/media-process-type),
- * the search engines' description tag, the static <title>, and the #intro text
- * Dable reads as the page body. Written into index.html here and not from
- * main.ts, because crawlers run no script.
+ * the search engines' description tag, the canonical link, the twitter:card
+ * tag, the static <title>, and the #intro text Dable reads as the page body.
+ * Written into index.html here and not from main.ts, because crawlers run no
+ * script. At build time it also writes robots.txt and, from meta.url, a one-URL
+ * sitemap.xml that robots.txt points to.
  * The title is applyTitle()'s in main.ts; the author is data/name.txt. Without
- * data/meta.json the page gets none of it.
+ * data/meta.json the page gets none of it, and robots.txt has no Sitemap line.
  */
 function dableMeta(): Plugin {
   let root = '';
   const read = (file: string) => readFileSync(resolve(root, 'data', file), 'utf8').trim();
+  const readMeta = () =>
+    existsSync(resolve(root, 'data/meta.json')) ? (JSON.parse(read('meta.json')) as PageMeta) : null;
   return {
     name: 'dable-meta',
     configResolved(config) {
@@ -67,21 +82,32 @@ function dableMeta(): Plugin {
       });
     },
     transformIndexHtml(html) {
-      if (!existsSync(resolve(root, 'data/meta.json'))) return html.replace('<!--intro-->', '');
-      const meta = JSON.parse(read('meta.json')) as PageMeta;
+      const meta = readMeta();
+      if (!meta) return html.replace('<!--intro-->', '');
       const title = read('title.txt') || 'oh-trail-map';
+      const [imageWidth, imageHeight] = pngSize(resolve(root, 'public/og.png'));
       const tags: [string, string][] = [
         ['item_id', meta.item_id],
+        ['og:type', 'website'],
+        ['og:site_name', title],
+        ['og:locale', 'ko_KR'],
         ['og:url', meta.url],
         ['og:title', title],
         ['og:description', meta.description],
         ['og:image', new URL('og.png', meta.url).href],
+        ['og:image:width', imageWidth],
+        ['og:image:height', imageHeight],
         ['dable:author', read('name.txt')],
         ['article:section', meta.section],
         ['article:published_time', meta.published_time],
       ];
       // name="description", not property=: the snippet search engines show.
-      const head = [`<meta name="description" content="${escapeHtml(meta.description)}" />`]
+      // twitter:card is name= too; X takes the title, text and image from og:.
+      const head = [
+        `<link rel="canonical" href="${escapeHtml(meta.url)}" />`,
+        `<meta name="description" content="${escapeHtml(meta.description)}" />`,
+        '<meta name="twitter:card" content="summary_large_image" />',
+      ]
         .concat(
           tags
             .filter(([, value]) => value)
@@ -91,6 +117,28 @@ function dableMeta(): Plugin {
       return html
         .replace(/<title>.*<\/title>/, `<title>${escapeHtml(title)}</title>\n    ${head}`)
         .replace('<!--intro-->', escapeHtml(meta.description));
+    },
+    generateBundle() {
+      const meta = readMeta();
+      const robots = ['User-agent: *', 'Allow: /'];
+      if (meta) {
+        const sitemap = new URL('sitemap.xml', meta.url).href;
+        robots.push('', `Sitemap: ${sitemap}`);
+        // lastmod is the build date: every deploy replaces index.html.
+        const lastmod = new Date().toISOString().slice(0, 10);
+        this.emitFile({
+          type: 'asset',
+          fileName: 'sitemap.xml',
+          source: [
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+            `  <url><loc>${escapeHtml(meta.url)}</loc><lastmod>${lastmod}</lastmod></url>`,
+            '</urlset>',
+            '',
+          ].join('\n'),
+        });
+      }
+      this.emitFile({ type: 'asset', fileName: 'robots.txt', source: robots.join('\n') + '\n' });
     },
   };
 }
