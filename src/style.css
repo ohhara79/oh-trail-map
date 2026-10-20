@@ -92,8 +92,21 @@ body {
 .grow { flex: 1; min-width: 0; }
 .muted { color: var(--muted); font-weight: 400; }
 .hint { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
-/* Hidden rather than an empty bordered strip when data/meta.json is missing. */
-.intro { color: var(--muted); font-size: 12px; margin: 0; }
+/* Kept in the page for Dable's articleBody, but out of sight: the long
+   description pushed Basemap and Trails down the panel. Clipped to 1px rather
+   than display:none, so crawlers and screen readers still read it as page text.
+   Gone altogether when data/meta.json is missing. */
+.intro {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
 .intro:empty { display: none; }
 /* anywhere, so a long homepage URL wraps rather than widening a 320px drawer. */
 .about { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }

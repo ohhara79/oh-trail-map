@@ -34,8 +34,8 @@ npm run preview
   meta tags. `vite.config.ts` writes them into `index.html`'s `<head>`, along with the
   static title, `data/name.txt` as the author, a canonical link to the URL and a
   `twitter:card`, because crawlers run no script.
-  The description also shows at the top of the panel as the page body
-  (`itemprop="articleBody"`). `og:image` is `public/og.png`, a 1200×630 screenshot
+  The description is also in the panel as the page body
+  (`itemprop="articleBody"`), hidden from view so it takes no room. `og:image` is `public/og.png`, a 1200×630 screenshot
   of the map, and its size is read from the file. The build also writes
   `robots.txt` and a one-URL `sitemap.xml` that it points to. With no `meta.json`,
   there are no tags, no intro and no sitemap.
